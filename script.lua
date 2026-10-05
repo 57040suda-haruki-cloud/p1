@@ -2344,12 +2344,20 @@ step(function()
         return U.trueNamecall and U.trueNamecall(self,...)
     end
     if not U.trueNamecall or U.hookJob~=game.JobId then
-        U.trueNamecall=hookmetamethod(game,"__namecall",newcclosure(function(self,...)
-            local m=getnamecallmethod()
-            if (m=="FireServer" or m=="InvokeServer") and self==rem then return forwarder(self,...) end
-            return U.trueNamecall(self,...)
-        end))
-        U.hookJob=game.JobId
+        local _busy2=false
+        local function safeHook(self,...)
+            if _busy2 then return U.trueNamecall and U.trueNamecall(self,...) end
+            _busy2=true
+            local ok4,m=pcall(function() return getnamecallmethod and getnamecallmethod() or "" end)
+            m=(ok4 and m) or ""
+            if (m=="FireServer" or m=="InvokeServer") and self==rem then
+                _busy2=false; return forwarder(self,...)
+            end
+            _busy2=false; return U.trueNamecall and U.trueNamecall(self,...)
+        end
+        local wrapHook=(newcclosure and newcclosure(safeHook)) or safeHook
+        local hOk,hRes=pcall(hookmetamethod,game,"__namecall",wrapHook)
+        if hOk then U.trueNamecall=hRes; U.hookJob=game.JobId end
     end
 end)
 U.installed=true; U.status="ok("..ok.."/"..steps..")"
@@ -3415,27 +3423,38 @@ local function setupUnlock()
                 if cloned then U.equipped[wn]=U.equipped[wn] or {}; U.equipped[wn][ct]=cloned end
             end
 
+            -- クラッシュ対策: getnamecallmethodをpcallで保護、U.trueNamecallのnilガード追加
+            local _fwdBusy = false  -- 再帰防止フラグ
             local function forwarder(self,...)
-                if getnamecallmethod()~="FireServer" then return U.trueNamecall(self,...) end
-                if not U.active then return U.trueNamecall(self,...) end
+                if _fwdBusy then return U.trueNamecall and U.trueNamecall(self,...) end
+                _fwdBusy = true
+                local ok3, meth = pcall(function() return getnamecallmethod and getnamecallmethod() or "" end)
+                local m = (ok3 and meth) or ""
+                if m~="FireServer" then _fwdBusy=false; return U.trueNamecall and U.trueNamecall(self,...) end
+                if not U.active then _fwdBusy=false; return U.trueNamecall and U.trueNamecall(self,...) end
                 local args={...}
                 if self==equipRemote then
                     local wn,ct,cn,opts=args[1],args[2],args[3],args[4]
-                    storeEquip(wn,ct,cn,opts)
+                    pcall(storeEquip,wn,ct,cn,opts)
                     task.defer(function()
                         pcall(function() DataCtrl.CurrentData:Replicate("WeaponInventory") end)
                     end)
-                    return
+                    _fwdBusy=false; return
                 end
                 if favRemote and self==favRemote then
                     local w,cn,fav=args[1],args[2],args[3]
                     U.favorites[w]=U.favorites[w] or {}; U.favorites[w][cn]=fav or nil
                     task.spawn(function() pcall(function() DataCtrl.CurrentData:Replicate("FavoritedCosmetics") end) end)
-                    return
+                    _fwdBusy=false; return
                 end
-                return U.trueNamecall(self,...)
+                _fwdBusy=false; return U.trueNamecall and U.trueNamecall(self,...)
             end
-            if not U.trueNamecall then U.trueNamecall=hookmetamethod(game,"__namecall",forwarder) end
+            -- Deltaクラッシュ対策: newcclosureでラップしてからhookmetamethod
+            if not U.trueNamecall then
+                local safeHook = (newcclosure and newcclosure(forwarder)) or forwarder
+                local hkOk, hkRes = pcall(hookmetamethod, game, "__namecall", safeHook)
+                if hkOk then U.trueNamecall = hkRes end
+            end
         end)
 
         pcall(function()
@@ -3962,20 +3981,89 @@ end
 local MaxMode = {}
 MaxMode.Enabled = false
 
+-- RageSnap: クロスヘアカラーインジケーター (赤=ロック中, シアン=未ロック)
+local _mmCH = {} -- 4本のDrawingライン
+local function _mmBuildCH()
+    if _mmCH[1] then return end
+    local cols = {"Top","Bot","Left","Right"}
+    for i=1,4 do
+        local l = Drawing.new("Line")
+        l.Thickness = 2; l.Transparency = 1; l.Visible = false
+        _mmCH[i] = l
+    end
+end
+local function _mmUpdateCH(locked)
+    local cam = WS_.CurrentCamera; if not cam then return end
+    local vp = cam.ViewportSize
+    local cx, cy = vp.X/2, vp.Y/2
+    local g = 7 -- gap, s = arm length
+    local s = 12
+    local col = locked and Color3.fromRGB(255,50,50) or Color3.fromRGB(0,220,255)
+    -- Top, Bottom, Left, Right
+    local pts = {
+        {Vector2.new(cx,cy-g), Vector2.new(cx,cy-g-s)},
+        {Vector2.new(cx,cy+g), Vector2.new(cx,cy+g+s)},
+        {Vector2.new(cx-g,cy), Vector2.new(cx-g-s,cy)},
+        {Vector2.new(cx+g,cy), Vector2.new(cx+g+s,cy)},
+    }
+    for i,l in ipairs(_mmCH) do
+        l.From = pts[i][1]; l.To = pts[i][2]
+        l.Color = col; l.Visible = true
+    end
+end
+local function _mmHideCH()
+    for _,l in ipairs(_mmCH) do if l then l.Visible=false end end
+end
+
+-- Rage敵キャッシュ (30Hz更新)
+local _rageTarget = nil
+local _rageCacheT  = 0
+
 function MaxMode.enable()
     MaxMode.Enabled = true
-    SilentShot.FOV = 350;  SilentShot.enable()
-    AimSmooth.Speed = 12; AimSmooth.FOV = 350; AimSmooth.enable()
+    SilentShot.FOV = 350; SilentShot.enable()
     AutoShoot.Delay = 0.03; AutoShoot.enable()
+    _mmBuildCH(); _rageTarget = nil; _rageCacheT = 0
+    -- インスタントスナップ: AimSmoothを使わず毎フレームで直接スナップ
+    _conn("MaxMode_snap", RN_.RenderStepped:Connect(function(dt)
+        if not MaxMode.Enabled then return end
+        -- ターゲットを30Hzでリフレッシュ
+        _rageCacheT = _rageCacheT + dt
+        if _rageCacheT >= 0.033 then
+            _rageCacheT = 0
+            _rageTarget = _closestEnemy(350)
+        end
+        local enemy = _rageTarget
+        -- クロスヘア更新
+        pcall(_mmUpdateCH, enemy ~= nil)
+        if not enemy or not enemy.Character then return end
+        if not mousemoverel then return end
+        local bone = _getBone(enemy.Character)
+        if not bone then return end
+        local cam = WS_.CurrentCamera
+        local facing = cam.CFrame.LookVector
+        local predPos = _predictPos(enemy, bone) or bone.Position
+        local dir = (predPos - cam.CFrame.Position).Unit
+        if dir == Vector3.zero then return end
+        local sens = UserSettings():GetService("UserGameSettings").MouseSensitivity
+        local moveC = Vector2.new(1, 0.77) * math.rad(0.5)
+        local dyaw   = math.atan2(facing.X,facing.Z) - math.atan2(dir.X,dir.Z)
+        dyaw = ((dyaw + math.pi) % (2*math.pi)) - math.pi
+        local dpitch = math.asin(math.clamp(facing.Y,-1,1)) - math.asin(math.clamp(dir.Y,-1,1))
+        -- alpha=1: スムーズなし即スナップ
+        local angle  = Vector2.new(dyaw, dpitch) / (moveC * math.max(sens, 0.01))
+        pcall(mousemoverel, angle.X, angle.Y)
+    end))
 end
 
 function MaxMode.disable()
     MaxMode.Enabled = false
+    _stop("MaxMode_snap")
+    pcall(_mmHideCH)
+    _rageTarget = nil
     SilentShot.disable()
-    AimSmooth.disable()
     AutoShoot.disable()
     SilentShot.FOV = 120
-    AimSmooth.Speed = 6; AimSmooth.FOV = 150
     AutoShoot.Delay = 0.08
 end
 
