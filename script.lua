@@ -573,62 +573,150 @@ VFXCFG.applyCC=_vfxCC; VFXCFG.applyBloom=_vfxBloom; VFXCFG.applySunRays=_vfxSunR
 _UM.VFXCFG=VFXCFG
 end -- VFXCFG
 
-do -- [uncode] Rage Silent: UseItemリモートをフックして頭部に誘導
-local RSAI={}; RSAI.Enabled=false; RSAI.Prediction=0.12
-RSAI.HeadOffset=Vector3.new(0,0.1,0); RSAI._conn=nil
-local function _rsaiClosestHead()
-    local myChar=LP.Character; local myRoot=myChar and myChar:FindFirstChild("HumanoidRootPart")
+do -- [uncode] Rage Silent: UseItemリモートをフックして頭部に誘導 + FOVサークル
+local RSAI={}
+RSAI.Enabled    = false
+RSAI.Prediction = 0.12
+RSAI.HeadOffset = Vector3.new(0,0.1,0)
+RSAI.FOV        = 180   -- degrees; 180 = unlimited
+RSAI.ShowCircle = true  -- FOVサークル描画
+RSAI.Part       = "Head" -- "Head" | "HumanoidRootPart" | "closest"
+RSAI._conn      = nil
+RSAI._circ      = nil
+
+-- FOVサークル作成
+local function _rsaiMakeCirc()
+    pcall(function()
+        if not Drawing then return end
+        local c = Drawing.new("Circle")
+        c.Color     = Color3.fromRGB(255,255,255)
+        c.Thickness = 1
+        c.Filled    = false
+        c.Transparency = 0.6
+        c.Visible   = false
+        RSAI._circ  = c
+    end)
+end
+pcall(_rsaiMakeCirc)
+
+-- スクリーン中心からのFOVピクセル半径を返す
+local function _fovPixelRadius(fovDeg)
+    local cam = workspace.CurrentCamera
+    local h   = cam.ViewportSize.Y
+    local scale = (h * 0.5) / math.tan(math.rad(cam.FieldOfView) * 0.5)
+    return scale * math.tan(math.rad(fovDeg * 0.5))
+end
+
+-- 指定ワールド位置がFOV内かチェック
+local function _inFOV(worldPos, fovDeg)
+    if fovDeg >= 180 then return true end
+    local cam   = workspace.CurrentCamera
+    local sp, onSc = cam:WorldToViewportPoint(worldPos)
+    if not onSc then return false end
+    local c  = cam.ViewportSize * 0.5
+    local dx = sp.X - c.X; local dy = sp.Y - c.Y
+    local r  = _fovPixelRadius(fovDeg)
+    return (dx*dx + dy*dy) <= r*r
+end
+
+-- 最も近い対象Partを返す
+local function _rsaiClosestPart()
+    local myChar = LP.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
-    local best,bestDist=nil,math.huge
+    local partName = RSAI.Part
+    local best, bestDist = nil, math.huge
     for _,p in ipairs(Players:GetPlayers()) do
-        if p~=LP and p.Character then
-            local head=p.Character:FindFirstChild("Head")
-            local hum=p.Character:FindFirstChildOfClass("Humanoid")
-            if head and hum and hum.Health>0 and not head:FindFirstChild("TeammateLabel") then
-                local d=(head.Position-myRoot.Position).Magnitude
-                if d<bestDist then bestDist=d;best=head end
+        if p ~= LP and p.Character then
+            local target
+            if partName == "closest" then
+                -- キャラクター全パーツから最近傍
+                for _,bp in ipairs(p.Character:GetDescendants()) do
+                    if bp:IsA("BasePart") then
+                        local d = (bp.Position - myRoot.Position).Magnitude
+                        if d < bestDist then
+                            local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                            if hum and hum.Health > 0 then
+                                bestDist = d; best = bp
+                            end
+                        end
+                    end
+                end
+            else
+                target = p.Character:FindFirstChild(partName == "Head" and "Head" or "HumanoidRootPart")
+                local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                if target and hum and hum.Health > 0 then
+                    local d = (target.Position - myRoot.Position).Magnitude
+                    if d < bestDist then bestDist = d; best = target end
+                end
             end
         end
     end
+    -- FOV内チェック
+    if best and not _inFOV(best.Position, RSAI.FOV) then return nil end
     return best
 end
+
 function RSAI.enable()
-    RSAI.Enabled=true
+    RSAI.Enabled = true
     if RSAI._conn then RSAI._conn:Disconnect() end
-    RSAI._conn=RunService.Heartbeat:Connect(function()
+    -- FOVサークルを表示
+    if RSAI._circ and RSAI.ShowCircle then
+        local r = _fovPixelRadius(RSAI.FOV)
+        local cam = workspace.CurrentCamera
+        local c   = cam.ViewportSize * 0.5
+        RSAI._circ.Position = Vector2.new(c.X, c.Y)
+        RSAI._circ.Radius   = math.max(1, r)
+        RSAI._circ.Visible  = RSAI.FOV < 180
+    end
+    RSAI._conn = RunService.Heartbeat:Connect(function()
         if not RSAI.Enabled then return end
-        local myChar=LP.Character; if not myChar then return end
+        -- FOVサークル位置更新
         pcall(function()
-            local rs_=RS:FindFirstChild("Remotes"); if not rs_ then return end
-            local repl=rs_:FindFirstChild("Replication"); if not repl then return end
-            local figh=repl:FindFirstChild("Fighter"); if not figh then return end
-            local useItem=figh:FindFirstChild("UseItem"); if not useItem then return end
-            local util=require(RS.Modules.Utility)
-            local enumLib=require(RS.Modules.EnumLibrary)
-            local fc=require(LP.PlayerScripts.Controllers.FighterController)
+            if RSAI._circ and RSAI.ShowCircle and RSAI.FOV < 180 then
+                local cam = workspace.CurrentCamera
+                local c   = cam.ViewportSize * 0.5
+                local r   = _fovPixelRadius(RSAI.FOV)
+                RSAI._circ.Position = Vector2.new(c.X, c.Y)
+                RSAI._circ.Radius   = math.max(1, r)
+                RSAI._circ.Visible  = true
+            elseif RSAI._circ then
+                RSAI._circ.Visible = false
+            end
+        end)
+        local myChar = LP.Character; if not myChar then return end
+        pcall(function()
+            local rs_    = RS:FindFirstChild("Remotes"); if not rs_ then return end
+            local repl   = rs_:FindFirstChild("Replication"); if not repl then return end
+            local figh   = repl:FindFirstChild("Fighter"); if not figh then return end
+            local useItem= figh:FindFirstChild("UseItem"); if not useItem then return end
+            local util   = require(RS.Modules.Utility)
+            local enumLib= require(RS.Modules.EnumLibrary)
+            local fc     = require(LP.PlayerScripts.Controllers.FighterController)
             if not fc or not fc.LocalFighter then return end
-            local item=fc.LocalFighter.EquippedItem; if not item then return end
-            local head=_rsaiClosestHead(); if not head then return end
-            local vel=head.Velocity or Vector3.zero
-            local predicted=head.Position+vel*RSAI.Prediction+RSAI.HeadOffset
-            local cam=workspace.CurrentCamera.CFrame
-            local finalCF=CFrame.new(cam.Position,cam.Position+(predicted-cam.Position).Unit)
-            local cameradata={}
-            cameradata[utf8.char(1)]={
-                [utf8.char(0)]=util:EncodeCFrame(finalCF),
-                [utf8.char(1)]=util:EncodeCFrame(finalCF),
-                [utf8.char(2)]=head,
-                [utf8.char(3)]=util:EncodeCFrame(head.CFrame:ToObjectSpace(CFrame.new(predicted)))
+            local item   = fc.LocalFighter.EquippedItem; if not item then return end
+            local part   = _rsaiClosestPart(); if not part then return end
+            local vel     = part.Velocity or Vector3.zero
+            local predicted = part.Position + vel * RSAI.Prediction + RSAI.HeadOffset
+            local cam    = workspace.CurrentCamera.CFrame
+            local finalCF = CFrame.new(cam.Position, cam.Position + (predicted - cam.Position).Unit)
+            local cameradata = {}
+            cameradata[utf8.char(1)] = {
+                [utf8.char(0)] = util:EncodeCFrame(finalCF),
+                [utf8.char(1)] = util:EncodeCFrame(finalCF),
+                [utf8.char(2)] = part,
+                [utf8.char(3)] = util:EncodeCFrame(part.CFrame:ToObjectSpace(CFrame.new(predicted)))
             }
-            useItem:FireServer(item:Get("ObjectID"),enumLib:ToEnum("StartShooting"),cameradata,nil)
+            useItem:FireServer(item:Get("ObjectID"), enumLib:ToEnum("StartShooting"), cameradata, nil)
         end)
     end)
 end
 function RSAI.disable()
-    RSAI.Enabled=false
-    if RSAI._conn then RSAI._conn:Disconnect();RSAI._conn=nil end
+    RSAI.Enabled = false
+    if RSAI._conn then RSAI._conn:Disconnect(); RSAI._conn = nil end
+    if RSAI._circ then pcall(function() RSAI._circ.Visible = false end) end
 end
-_UM.RSAI=RSAI
+_UM.RSAI = RSAI
 end -- RSAI
 
 do -- [uncode] Projectile TP: 飛び道具を最近敵の頭に吸着
@@ -3897,11 +3985,18 @@ SkinSwap.Enabled = false
 SkinSwap.Preset  = "neon_red"
 
 local _skinPresets = {
-    neon_red   = {color = Color3.fromRGB(255, 50,  50),  mat = Enum.Material.Neon},
-    neon_blue  = {color = Color3.fromRGB( 50, 100, 255), mat = Enum.Material.Neon},
-    neon_green = {color = Color3.fromRGB( 50, 255,  80), mat = Enum.Material.Neon},
-    chrome     = {color = Color3.fromRGB(180, 200, 220), mat = Enum.Material.SmoothPlastic},
-    gold       = {color = Color3.fromRGB(255, 200,  40), mat = Enum.Material.SmoothPlastic},
+    neon_red    = {color = Color3.fromRGB(255, 50,  50),  mat = Enum.Material.Neon},
+    neon_blue   = {color = Color3.fromRGB( 50, 100, 255), mat = Enum.Material.Neon},
+    neon_green  = {color = Color3.fromRGB( 50, 255,  80), mat = Enum.Material.Neon},
+    chrome      = {color = Color3.fromRGB(180, 200, 220), mat = Enum.Material.SmoothPlastic},
+    gold        = {color = Color3.fromRGB(255, 200,  40), mat = Enum.Material.SmoothPlastic},
+    void        = {color = Color3.fromRGB( 10,   0,  30), mat = Enum.Material.Neon},
+    ice         = {color = Color3.fromRGB(150, 230, 255), mat = Enum.Material.Glass},
+    lava        = {color = Color3.fromRGB(255,  80,   0), mat = Enum.Material.Neon},
+    holographic = {color = Color3.fromRGB(130, 255, 230), mat = Enum.Material.ForceField},
+    white       = {color = Color3.fromRGB(255, 255, 255), mat = Enum.Material.SmoothPlastic},
+    black       = {color = Color3.fromRGB( 10,  10,  10), mat = Enum.Material.SmoothPlastic},
+    pink        = {color = Color3.fromRGB(255,  80, 180), mat = Enum.Material.Neon},
 }
 local _skinOrig = {}
 local _skinHue  = 0
@@ -3932,7 +4027,9 @@ end
 
 function SkinSwap.enable()
     SkinSwap.Enabled = true
+    table.clear(_skinOrig)
     if SkinSwap.Preset ~= "rainbow" then _skinApplyPreset() end
+    local _reTimer = 0
     _conn("SkinSwap", RN_.Heartbeat:Connect(function(dt)
         if not SkinSwap.Enabled then return end
         if SkinSwap.Preset == "rainbow" then
@@ -3946,6 +4043,13 @@ function SkinSwap.enable()
                     end
                     pcall(function() p.Color = col; p.Material = Enum.Material.Neon end)
                 end
+            end
+        else
+            -- 非レインボー: 0.12秒ごとに再適用してゲームリセットを上書き
+            _reTimer = _reTimer + dt
+            if _reTimer >= 0.12 then
+                _reTimer = 0
+                _skinApplyPreset()
             end
         end
     end))
@@ -5245,13 +5349,22 @@ return {
     pcall(function()
         if not B.visLeft then return end
         B.visLeft:AddDivider()
-        BT(B.visLeft,"UC_SKIN",  "Enable Skin",  false,function(v) if v then E.SkinSwap.enable()  else E.SkinSwap.disable()  end end)
-        BT(B.visLeft,"UC_SK_RD", "Neon Red",     false,function(v) if v then E.SkinSwap.Preset="neon_red";   if E.SkinSwap.Enabled then E.SkinSwap.enable() end end end)
-        BT(B.visLeft,"UC_SK_BL", "Neon Blue",    false,function(v) if v then E.SkinSwap.Preset="neon_blue";  if E.SkinSwap.Enabled then E.SkinSwap.enable() end end end)
-        BT(B.visLeft,"UC_SK_GN", "Neon Green",   false,function(v) if v then E.SkinSwap.Preset="neon_green"; if E.SkinSwap.Enabled then E.SkinSwap.enable() end end end)
-        BT(B.visLeft,"UC_SK_CR", "Chrome",        false,function(v) if v then E.SkinSwap.Preset="chrome";     if E.SkinSwap.Enabled then E.SkinSwap.enable() end end end)
-        BT(B.visLeft,"UC_SK_GD", "Gold",          false,function(v) if v then E.SkinSwap.Preset="gold";       if E.SkinSwap.Enabled then E.SkinSwap.enable() end end end)
-        BT(B.visLeft,"UC_SK_RB", "Rainbow",       false,function(v) if v then E.SkinSwap.Preset="rainbow";    if E.SkinSwap.Enabled then E.SkinSwap.enable() end end end)
+        BT(B.visLeft,"UC_SKIN","Skin Changer",false,function(v)
+            if v then E.SkinSwap.enable() else E.SkinSwap.disable() end
+        end)
+        B.visLeft:AddDropdown("UC_SK_PRESET",{
+            Text="Skin Preset",
+            Default="neon_red",
+            Values={"neon_red","neon_blue","neon_green","chrome","gold","rainbow",
+                    "void","ice","lava","holographic","white","black","pink"},
+            Callback=function(v)
+                E.SkinSwap.Preset = v
+                if E.SkinSwap.Enabled then
+                    -- table.clear(_skinOrig) → done inside enable()
+                    E.SkinSwap.enable()
+                end
+            end
+        })
     end)
 
     pcall(function()
@@ -5309,8 +5422,7 @@ return {
                     c:SetAttribute("_uc_tracked", true)
                     hum.Died:Connect(function()
                         _kills = _kills + 1
-                        pcall(function() if Notify then Notify("KILL! K:"..tostring(_kills).." D:"..tostring(_deaths), 3) end end)
-                        print("[UNCODE v8] Kill #".._kills)
+                        print("[UNCODE v8] Kill #".._kills.." D:"..tostring(_deaths))
                     end)
                 end
             end
@@ -5321,7 +5433,7 @@ return {
         LP.CharacterAdded:Connect(function()
             task.wait(2)
             _deaths = _deaths + 1
-            pcall(function() if Notify then Notify("Died... K:"..tostring(_kills).." D:"..tostring(_deaths), 3) end end)
+            print("[UNCODE v8] Death #".._deaths.." K:"..tostring(_kills))
         end)
         task.spawn(function() task.wait(2); _trackPlayers() end)
         -- ミッションタブ / miscRightにキルカウント表示
@@ -5486,8 +5598,24 @@ return {
         BT(B.combatKX,"UC_RSAI","Rage Silent",false,function(v)
             if v then RSAI.enable() else RSAI.disable() end
         end)
-        B.combatKX:AddSlider("UC_RSAI_PRED",{Text="Prediction (s)",Default=12,Min=0,Max=50,Rounding=0,
+        B.combatKX:AddSlider("UC_RSAI_PRED",{Text="Silent Prediction",Default=12,Min=0,Max=50,Rounding=0,
             Callback=function(v) RSAI.Prediction=v/100 end})
+        B.combatKX:AddSlider("UC_RSAI_FOV",{Text="Silent FOV",Default=180,Min=10,Max=180,Rounding=0,
+            Callback=function(v)
+                RSAI.FOV=v
+                if RSAI._circ then
+                    RSAI._circ.Visible = RSAI.Enabled and RSAI.ShowCircle and v<180
+                end
+            end})
+        BT(B.combatKX,"UC_RSAI_CIRC","Silent FOV Circle",true,function(v)
+            RSAI.ShowCircle=v
+            if RSAI._circ and (not v or not RSAI.Enabled) then
+                RSAI._circ.Visible=false
+            end
+        end)
+        B.combatKX:AddDropdown("UC_RSAI_PART",{Text="Target Part",Default="Head",
+            Values={"Head","HumanoidRootPart","closest"},
+            Callback=function(v) RSAI.Part=v end})
     end)
 
     -- ============================================================
