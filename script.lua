@@ -86,6 +86,30 @@ local CoreGui    = cloneref(game:GetService("CoreGui"))
 local LP         = Players.LocalPlayer
 local Camera     = workspace.CurrentCamera
 
+-- [LUAHOOK] キャッシュ付きプレイヤーリスト (GetPlayers()の繰り返し呼び出しを回避)
+local _safePlayersCache = nil
+local function getSafePlayers()
+    if _safePlayersCache then return _safePlayersCache end
+    local list = {}
+    for _, p in ipairs(Players:GetChildren()) do
+        if p:IsA("Player") then list[#list + 1] = p end
+    end
+    _safePlayersCache = list
+    return list
+end
+Players.PlayerAdded:Connect(function() _safePlayersCache = nil end)
+Players.PlayerRemoving:Connect(function() _safePlayersCache = nil end)
+
+-- [LUAHOOK] 統一入力チェック (モバイル/デスクトップ両対応)
+local isMobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
+local function isInputActive(key)
+    if key == "MB1" then return isMobile or UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) end
+    if key == "MB2" then return isMobile or UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) end
+    if key == "Always" then return true end
+    local kc = not isMobile and Enum.KeyCode[key]
+    return kc ~= false and kc and UIS:IsKeyDown(kc) or false
+end
+
 local char, root, hum
 local function bindChar(c)
     char=c; root=nil; hum=nil
@@ -175,6 +199,35 @@ pcall(function()
         end
     end
 
+    -- [Harion] GetMouse偽装フック: MiscellaneousControllerが実マウス位置を読めないようにする
+    local function HookGetMouse()
+        pcall(function()
+            if not hookfunction then return end
+            local oldGM; oldGM = hookfunction(LP.GetMouse, newcclosure(function(self, ...)
+                if self == LP then
+                    local ok, trace = pcall(debug.traceback)
+                    if ok and type(trace) == "string" and trace:find("MiscellaneousController", 1, true) then
+                        local realMouse = oldGM(self, ...)
+                        return setmetatable({}, {
+                            __index = function(_, key)
+                                if key == "X" or key == "Y" then
+                                    local loc = UIS:GetMouseLocation()
+                                    return key == "X" and loc.X or loc.Y
+                                end
+                                local val = realMouse[key]
+                                return type(val) == "function"
+                                    and function(_, ...) return val(realMouse, ...) end
+                                    or val
+                            end,
+                            __newindex = function(_, key, value) realMouse[key] = value end,
+                        })
+                    end
+                end
+                return oldGM(self, ...)
+            end))
+        end)
+    end
+
     local function HookAC(ac)
         if not ac then return end
         local oi; oi=SafeHook(hookmetamethod,ac,"__index",function(t,k)
@@ -210,10 +263,36 @@ pcall(function()
         if ac then
             HookAC(ac)
             HookKick()
+            HookGetMouse()
             pcall(function() ac.Enabled=false end)
             stateAC.bypassed=true
         end
     end
+end)
+
+-- [Harion] setmetatableバイパス: CameraSecurity/AnalyticsPipelineの検出をブロック
+pcall(function()
+    if not hookfunction then return end
+    local ok, renv = pcall(getrenv)
+    if not ok or not renv then return end
+    local smt = rawget(renv, "setmetatable")
+    if not smt then return end
+    local oldSMT; oldSMT = hookfunction(smt, newcclosure(function(Table, Metatable)
+        if type(Metatable) == "table" then
+            local mode = rawget(Metatable, "__mode")
+            if mode == "kv" or mode == "v" or mode == "k" then
+                local ok2, trace = pcall(debug.traceback)
+                if ok2 and type(trace) == "string" then
+                    if trace:find("MiscellaneousController", 1, true)
+                    or trace:find("CameraSecurity", 1, true)
+                    or trace:find("AnalyticsPipelineController", 1, true) then
+                        return oldSMT({1, 2, 3}, {})
+                    end
+                end
+            end
+        end
+        return oldSMT(Table, Metatable)
+    end))
 end)
 
 task.spawn(function()
@@ -280,6 +359,41 @@ local function hookRemotes()
 end
 task.spawn(hookRemotes)
 RS.DescendantAdded:Connect(function(d) if d:IsA("RemoteEvent") then task.delay(0.1,hookRemotes) end end)
+
+-- [LUAHOOK] AutoCollect: firetouchinterestでワークスペースの_dropオブジェクトを自動回収
+local ACCFG = {enabled=false, interval=0.1}
+local _accTimer = 0
+local _accConn = nil
+local function startAutoCollect()
+    if _accConn then _accConn:Disconnect(); _accConn=nil end
+    _accTimer = 0
+    _accConn = RunService.Heartbeat:Connect(function(dt)
+        if not ACCFG.enabled then _accConn:Disconnect(); _accConn=nil; return end
+        _accTimer = _accTimer + dt
+        if _accTimer < ACCFG.interval then return end
+        _accTimer = 0
+        pcall(function()
+            if not root then return end
+            local hrp = root
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if not obj:IsA("BasePart") then continue end
+                local n = obj.Name
+                if not (n:find("_drop", 1, true) or n:find("Drop", 1, true) or n:find("drop", 1, true)) then continue end
+                if obj:FindFirstChild("Health") or obj:FindFirstChild("Ammo")
+                   or obj:FindFirstChild("Coin") or obj:FindFirstChild("Item") then
+                    if firetouchinterest then
+                        firetouchinterest(hrp, obj, 0)
+                        firetouchinterest(hrp, obj, 1)
+                    end
+                end
+            end
+        end)
+    end)
+end
+local function stopAutoCollect()
+    ACCFG.enabled = false
+    if _accConn then _accConn:Disconnect(); _accConn=nil end
+end
 
 AB("uc_proj",Enum.RenderPriority.Camera.Value+5,function()
     if not PB.enabled then return end
@@ -413,6 +527,37 @@ local function startVoid()
     end))
 end
 local function stopVoid() KC("void"); VCFG.enabled=false end
+
+-- [Harion] IsWithinPart/IsWithinTaggedPartsバイパス: Void中はOOB検出をブロック
+task.spawn(function()
+    task.wait(5)
+    pcall(function()
+        if not hookfunction then return end
+        local ok, util = pcall(function()
+            for _, v in ipairs(RS:GetDescendants()) do
+                if v.Name == "Utility" and v:IsA("ModuleScript") then
+                    local s, m = pcall(require, v)
+                    if s and type(m) == "table" and m.IsWithinPart then return m end
+                end
+            end
+        end)
+        if not ok or not util then return end
+        if util.IsWithinPart then
+            local origIWP = util.IsWithinPart
+            util.IsWithinPart = newcclosure(function(...)
+                if VCFG.enabled then return true end
+                return origIWP(...)
+            end)
+        end
+        if util.IsWithinTaggedParts then
+            local origIWTP = util.IsWithinTaggedParts
+            util.IsWithinTaggedParts = newcclosure(function(...)
+                if VCFG.enabled then return workspace.Terrain end
+                return origIWTP(...)
+            end)
+        end
+    end)
+end)
 
 local OCFG = {
     enabled=false,speed=90,dist=8,height=0,lerp=0.3,mode="Circle",
@@ -4636,6 +4781,19 @@ return {
                 end)
             end
         end)
+    end)
+
+    -- ============================================================
+    -- 機能強化: AutoCollect (ドロップ自動回収)
+    -- ============================================================
+    pcall(function()
+        if B.miscLeft then
+            B.miscLeft:AddDivider()
+            BT(B.miscLeft,"UC_ACOLL","Auto Collect",false,function(v)
+                ACCFG.enabled = v
+                if v then startAutoCollect() else stopAutoCollect() end
+            end)
+        end
     end)
 
     -- ============================================================
