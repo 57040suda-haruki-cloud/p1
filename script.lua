@@ -1007,6 +1007,224 @@ end
 _UM.WFOV=WFOV
 end -- WFOV
 
+do -- [uncode] Weapon Picker: PickWeapons remoteで武器ロードアウトを自動選択
+local WPK = {}
+WPK.Enabled = false
+WPK.Slot1 = "Assault Rifle"
+WPK.Slot2 = "Handgun"
+WPK.Slot3 = "Fists"
+WPK.Slot4 = "Grenade"
+WPK._loopRunning = false
+WPK.List = {}
+
+local function _wpkBuildList()
+    pcall(function()
+        local sp = cloneref(game:GetService("StarterPlayer"))
+        local wf = sp.StarterPlayerScripts.Assets.ViewModels.Weapons
+        for _, v in pairs(wf:GetChildren()) do
+            if v:IsA("Model") then table.insert(WPK.List, v.Name) end
+        end
+        local uf = wf:FindFirstChild("Unobtainable")
+        if uf then
+            for _, v in pairs(uf:GetChildren()) do
+                if v:IsA("Model") then table.insert(WPK.List, v.Name) end
+            end
+        end
+        table.sort(WPK.List)
+    end)
+    if #WPK.List == 0 then
+        WPK.List = {
+            "Assault Rifle","Crossbow","Daggers","Fists","Grenade",
+            "Handgun","Katana","Shotgun","SMG","Sniper","Slingshot",
+        }
+    end
+end
+
+local function _wpkFire()
+    pcall(function()
+        local _rs = cloneref(game:GetService("ReplicatedStorage"))
+        _rs.Remotes.Replication.Fighter.PickWeapons:FireServer({
+            WPK.Slot1, WPK.Slot2, WPK.Slot3, WPK.Slot4
+        })
+    end)
+end
+
+function WPK.pickOnce() pcall(_wpkFire) end
+
+function WPK.enable()
+    WPK.Enabled = true
+    if WPK._loopRunning then return end
+    WPK._loopRunning = true
+    task.spawn(function()
+        while WPK.Enabled do pcall(_wpkFire); task.wait(0.5) end
+        WPK._loopRunning = false
+    end)
+end
+
+function WPK.disable()
+    WPK.Enabled = false
+end
+
+task.spawn(_wpkBuildList)
+_UM.WPK = WPK
+end -- WPK
+
+do -- [uncode] Weapon Mods: NoSpread / FullAuto / FastShoot / FireRate override
+local WPNM = {}
+WPNM.Enabled = false
+WPNM.NoSpread = false
+WPNM.FastShoot = false
+WPNM.FastProjectile = false
+WPNM.FullAuto = false
+WPNM.AlwaysBackstab = false
+WPNM.FireRate = 100  -- %
+
+local _wst = {
+    Installed = false,
+    InfoCache = setmetatable({},{__mode="k"}),
+    FullAutoItems = setmetatable({},{__mode="k"}),
+    ProjectileReloadCache = setmetatable({},{__mode="k"}),
+    ClientItem=nil, GunItem=nil, GrenadeItem=nil,
+    OriginalInput=nil, OriginalGunStart=nil,
+}
+
+local function _wpnRemember(info, key)
+    if type(info)~="table" or info[key]==nil then return nil end
+    local cache = _wst.InfoCache[info]
+    if not cache then cache={}; _wst.InfoCache[info]=cache end
+    if cache[key]==nil then cache[key]=info[key] end
+    return cache[key]
+end
+
+local function _wpnApplyInfo(item)
+    local info = item and item.Info
+    if type(info)~="table" then return end
+    local fast = WPNM.Enabled and WPNM.FastShoot
+    local nosp = WPNM.Enabled and WPNM.NoSpread
+    for _, key in ipairs({"ShootRecoil","ShootSpread"}) do
+        local orig = _wpnRemember(info, key)
+        if orig ~= nil then info[key] = (fast or nosp) and 0 or orig end
+    end
+    local ps = _wpnRemember(info, "ProjectileSpeed")
+    if ps ~= nil then
+        info.ProjectileSpeed = (WPNM.Enabled and WPNM.FastShoot) and 99999999 or ps
+    end
+    local fr = math.max((WPNM.FireRate or 100)/100, 0.01)
+    for _, key in ipairs({"ShootCooldown","QuickShotCooldown","BurstCooldown","AttackCooldown","HeavyAttackCooldown"}) do
+        local orig = _wpnRemember(info, key)
+        if orig ~= nil then
+            if fast then info[key] = 0
+            elseif fr ~= 1 then info[key] = orig / fr
+            else info[key] = orig end
+        end
+    end
+end
+
+local function _wpnIsLocal(item)
+    if not item then return false end
+    local ok, res = pcall(function()
+        local f = item.ClientFighter; if not f then return false end
+        if f.IsLocalPlayer==true then return true end
+        return f.Player == cloneref(game:GetService("Players")).LocalPlayer
+    end)
+    return ok and res
+end
+
+local function _wpnRestoreInfo()
+    for info, vals in pairs(_wst.InfoCache) do
+        if type(info)=="table" then
+            for key, val in pairs(vals) do pcall(function() info[key]=val end) end
+        end
+    end
+end
+
+local function _wpnStartFullAuto(item, input)
+    if _wst.FullAutoItems[item] then return end
+    _wst.FullAutoItems[item] = true
+    task.spawn(function()
+        local UIS2 = cloneref(game:GetService("UserInputService"))
+        while WPNM.Enabled and WPNM.FullAuto and item and _wpnIsLocal(item)
+            and UIS2:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+            local info = item.Info
+            local cd = info and tonumber(info.ShootCooldown) or (1/60)
+            task.wait(math.clamp(cd>0 and cd or (1/60), 1/60, 1))
+            if not (WPNM.Enabled and WPNM.FullAuto and _wpnIsLocal(item)) then break end
+            if _wst.OriginalInput then pcall(_wst.OriginalInput, item, input) end
+        end
+        _wst.FullAutoItems[item] = nil
+    end)
+end
+
+local function _wpnInstall()
+    if _wst.Installed then return end
+    pcall(function()
+        local lp = cloneref(game:GetService("Players")).LocalPlayer
+        local ps = lp:WaitForChild("PlayerScripts",10); if not ps then return end
+        local mods = ps:WaitForChild("Modules",10); if not mods then return end
+        local itemTypes = mods:WaitForChild("ItemTypes",10)
+
+        local ok1,ci = pcall(function()
+            return require(mods.ClientReplicatedClasses.ClientFighter.ClientItem)
+        end)
+        if not ok1 or not ci then return end
+        _wst.ClientItem = ci
+
+        if itemTypes then
+            local ok2,gi = pcall(function() return require(itemTypes:WaitForChild("Gun",5)) end)
+            if ok2 and gi then _wst.GunItem = gi end
+            local ok5,gri = pcall(function()
+                return require(itemTypes:FindFirstChild("Throwable") or itemTypes:FindFirstChild("Grenade"))
+            end)
+            if ok5 and gri then _wst.GrenadeItem = gri end
+        end
+
+        _wst.OriginalInput = ci.Input
+        ci.Input = newcclosure(function(self, input, ...)
+            if WPNM.Enabled and _wpnIsLocal(self) then _wpnApplyInfo(self) end
+            local result = {_wst.OriginalInput(self, input, ...)}
+            if WPNM.Enabled and WPNM.FullAuto and input=="StartShooting" and _wpnIsLocal(self) then
+                _wpnStartFullAuto(self, input)
+            end
+            return unpack(result)
+        end)
+
+        if _wst.GunItem then
+            _wst.OriginalGunStart = _wst.GunItem.StartShooting
+            _wst.GunItem.StartShooting = newcclosure(function(self, ...)
+                if WPNM.Enabled and _wpnIsLocal(self) then _wpnApplyInfo(self) end
+                local result = {_wst.OriginalGunStart(self, ...)}
+                if WPNM.Enabled and WPNM.NoSpread and _wpnIsLocal(self) and typeof(result[3])=="table" then
+                    result[4] = true
+                end
+                return unpack(result)
+            end)
+        end
+
+        _wst.Installed = true
+        print("[UNCODE v8] WeaponMods hooks installed")
+    end)
+end
+
+function WPNM.enable()
+    WPNM.Enabled = true
+    task.spawn(_wpnInstall)
+end
+
+function WPNM.disable()
+    WPNM.Enabled = false
+    _wpnRestoreInfo()
+    if _wst.ClientItem and _wst.OriginalInput then
+        pcall(function() _wst.ClientItem.Input = _wst.OriginalInput end)
+    end
+    if _wst.GunItem and _wst.OriginalGunStart then
+        pcall(function() _wst.GunItem.StartShooting = _wst.OriginalGunStart end)
+    end
+    _wst.Installed = false
+    table.clear(_wst.FullAutoItems)
+end
+
+_UM.WPNM = WPNM
+end -- WPNM
 
 
 AB("uc_proj",Enum.RenderPriority.Camera.Value+5,function()
@@ -4553,9 +4771,99 @@ function AP.disable()
     _stop("AP")
 end
 
+-- ============================================================
+-- [uncode] Triggerbot: クロスヘアに敵が重なったら自動射撃
+-- ============================================================
+local TRIG = {}
+TRIG.Enabled = false
+TRIG.ReactionTime = 100   -- ms (反応時間)
+TRIG.ForgetTime   = 0.5   -- seconds (ロック保持時間)
+TRIG.MaxDistance  = 150   -- studs (最大距離)
+
+local _trigRP = RaycastParams.new()
+_trigRP.FilterType  = Enum.RaycastFilterType.Exclude
+_trigRP.IgnoreWater = true
+
+local _trigLocked     = nil
+local _trigCandidate  = nil
+local _trigCandSince  = 0
+local _trigLastSeen   = 0
+local _trigLastShot   = 0
+local _trigShooting   = false
+
+local function _trigCharFromPart(part)
+    local node = part
+    while node and node ~= workspace do
+        if node:IsA("Model") and node:FindFirstChildOfClass("Humanoid") then return node end
+        node = node.Parent
+    end
+end
+
+local function _trigGetTarget()
+    local cam = WS_.CurrentCamera
+    if not cam or not LP_.Character then return nil end
+    local vp  = cam.ViewportSize
+    local ray = cam:ViewportPointToRay(vp.X/2, vp.Y/2)
+    local filter = {LP_.Character, cam}
+    local vm = workspace:FindFirstChild("ViewModels")
+    if vm then table.insert(filter, vm) end
+    _trigRP.FilterDescendantsInstances = filter
+    local hit = workspace:Raycast(ray.Origin, ray.Direction * TRIG.MaxDistance, _trigRP)
+    if not hit or not hit.Instance then return nil end
+    local char = _trigCharFromPart(hit.Instance)
+    if not char or char == LP_.Character then return nil end
+    local player = PL_:GetPlayerFromCharacter(char)
+    if not player or player == LP_ then return nil end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return nil end
+    return char
+end
+
+local function _trigGetStable()
+    local target = _trigGetTarget()
+    local now    = tick()
+    if target then
+        if target ~= _trigCandidate then
+            _trigCandidate = target; _trigCandSince = now
+        end
+        local reaction = TRIG.ReactionTime / 1000
+        if target == _trigLocked or now - _trigCandSince >= reaction then
+            _trigLocked = target; _trigLastSeen = now
+        end
+    else
+        _trigCandidate = nil
+    end
+    if _trigLocked and now - _trigLastSeen <= TRIG.ForgetTime then
+        local hum = _trigLocked:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then return _trigLocked end
+    end
+    _trigLocked = nil; return nil
+end
+
+function TRIG.enable()
+    TRIG.Enabled = true
+    _trigLocked = nil; _trigCandidate = nil
+    _conn("TRIG", RN_.Heartbeat:Connect(function()
+        if not TRIG.Enabled then return end
+        if not _trigGetStable() then return end
+        if _trigShooting then return end
+        local now = tick()
+        if now - _trigLastShot < 0.05 then return end
+        _trigLastShot = now; _trigShooting = true
+        _doAttack()
+        task.delay(0.05, function() _trigShooting = false end)
+    end))
+end
+
+function TRIG.disable()
+    TRIG.Enabled = false
+    _stop("TRIG")
+    _trigLocked = nil; _trigCandidate = nil
+end
+
 return {
     SilentShot=SilentShot, AimSmooth=AimSmooth, AutoShoot=AutoShoot,
-    MaxMode=MaxMode,
+    MaxMode=MaxMode, TRIG=TRIG,
     SkinSwap=SkinSwap, KA=KA, AP=AP,
     FLY=FLY, PH=PH, TP3=TP3, FC=FC,
     SB=SB, ANT=ANT, AJ=AJ, TGS=TGS, ORB=ORB,
@@ -5362,6 +5670,7 @@ return {
     local RSAI   = _UM.RSAI;  local PTP   = _UM.PTP;   local AKT    = _UM.AKT
     local HESP   = _UM.HESP;  local OAPP  = _UM.OAPP;  local XRAY   = _UM.XRAY
     local ATMO   = _UM.ATMO;  local LGHT  = _UM.LGHT;  local WFOV   = _UM.WFOV
+    local WPK    = _UM.WPK;   local WPNM  = _UM.WPNM   -- 新規: 武器ピック / 武器MOD
     -- VFX内部ヘルパーのエイリアス
     local _vfxCC       = VFXCFG and VFXCFG.applyCC
     local _vfxBloom    = VFXCFG and VFXCFG.applyBloom
@@ -5402,6 +5711,25 @@ return {
         BT(B.combatKX,"UC_AP",       "Auto Parry",   false,function(v) if v then E.AP.enable()        else E.AP.disable()        end end)
         B.combatKX:AddDivider()
         BT(B.combatKX,"UC_MaxMode",  "Max Mode",     false,function(v) if v then E.MaxMode.enable()   else E.MaxMode.disable()   end end)
+        -- Triggerbot
+        B.combatKX:AddDivider()
+        BT(B.combatKX,"UC_TRIG","Triggerbot",false,function(v)
+            if v then E.TRIG.enable() else E.TRIG.disable() end
+        end)
+        B.combatKX:AddSlider("UC_TRIG_RT",{Text="Reaction (ms)",Default=100,Min=0,Max=300,Rounding=0,
+            Callback=function(v) E.TRIG.ReactionTime=v end})
+        B.combatKX:AddSlider("UC_TRIG_FT",{Text="Forget Time (s)",Default=5,Min=0,Max=100,Rounding=0,
+            Callback=function(v) E.TRIG.ForgetTime=v/10 end})
+        B.combatKX:AddSlider("UC_TRIG_MD",{Text="Max Distance",Default=150,Min=25,Max=500,Rounding=0,
+            Callback=function(v) E.TRIG.MaxDistance=v end})
+        -- Weapon Mods
+        B.combatKX:AddDivider()
+        BT(B.combatKX,"UC_WPNM_NS","No Spread",      false,function(v) if WPNM then WPNM.NoSpread=v; if v and not WPNM.Enabled then WPNM.enable() end end end)
+        BT(B.combatKX,"UC_WPNM_FS","Fast Shoot",     false,function(v) if WPNM then WPNM.FastShoot=v; if v and not WPNM.Enabled then WPNM.enable() end end end)
+        BT(B.combatKX,"UC_WPNM_FP","Fast Projectile",false,function(v) if WPNM then WPNM.FastProjectile=v; if v and not WPNM.Enabled then WPNM.enable() end end end)
+        BT(B.combatKX,"UC_WPNM_FA","Full Auto",      false,function(v) if WPNM then WPNM.FullAuto=v; if v and not WPNM.Enabled then WPNM.enable() end end end)
+        B.combatKX:AddSlider("UC_WPNM_FR",{Text="Fire Rate %",Default=100,Min=1,Max=100,Rounding=0,
+            Callback=function(v) if WPNM then WPNM.FireRate=v; if WPNM.Enabled then pcall(function() end) end end end})
     end)
 
 
@@ -5474,6 +5802,30 @@ return {
         BT(B.miscLeft,"UC_AJ", "Air Jump",        false,function(v) if v then E.AJ.enable()  else E.AJ.disable()  end end)
         BT(B.miscLeft,"UC_CMV","Speed Boost",     false,function(v) if v then E.CMV.enable() else E.CMV.disable() end end)
         BT(B.miscLeft,"UC_BL", "Blink (F key)",   false,function(v) if v then E.BL.enable()  else E.BL.disable()  end end)
+        -- Weapon Picker (WPK)
+        if WPK then
+            B.miscLeft:AddDivider()
+            BT(B.miscLeft,"UC_WPK_AUTO","Auto Pick Weapons",false,function(v)
+                if v then WPK.enable() else WPK.disable() end
+            end)
+            -- Build weapon list (may be populated async, use fallback if empty)
+            local _wpkList = #WPK.List > 0 and WPK.List or {
+                "Assault Rifle","Crossbow","Daggers","Fists","Grenade",
+                "Handgun","Katana","Shotgun","SMG","Sniper","Slingshot",
+            }
+            B.miscLeft:AddDropdown("UC_WPK_S1",{
+                Text="Primary",Default="Assault Rifle",Values=_wpkList,
+                Callback=function(v) WPK.Slot1=v; if not WPK.Enabled then WPK.pickOnce() end end})
+            B.miscLeft:AddDropdown("UC_WPK_S2",{
+                Text="Secondary",Default="Handgun",Values=_wpkList,
+                Callback=function(v) WPK.Slot2=v; if not WPK.Enabled then WPK.pickOnce() end end})
+            B.miscLeft:AddDropdown("UC_WPK_S3",{
+                Text="Melee",Default="Fists",Values=_wpkList,
+                Callback=function(v) WPK.Slot3=v; if not WPK.Enabled then WPK.pickOnce() end end})
+            B.miscLeft:AddDropdown("UC_WPK_S4",{
+                Text="Utility",Default="Grenade",Values=_wpkList,
+                Callback=function(v) WPK.Slot4=v; if not WPK.Enabled then WPK.pickOnce() end end})
+        end
     end)
 
     pcall(function()
