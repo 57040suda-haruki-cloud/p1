@@ -4907,8 +4907,8 @@ pcall(function()
                     _ucx_stop("AutoAtk")
                 end
             end)
-            Options and B.miscLeft:AddSlider("UC_AUTK_Rate",{Text="Attack Rate (ms)",Default=80,Min=10,Max=500,Rounding=0,
-                Callback=function(v) _autoAtk.rate=v/1000 end})
+            if Options then B.miscLeft:AddSlider("UC_AUTK_Rate",{Text="Attack Rate (ms)",Default=80,Min=10,Max=500,Rounding=0,
+                Callback=function(v) _autoAtk.rate=v/1000 end}) end
         end
     end)
 
