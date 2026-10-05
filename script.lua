@@ -395,6 +395,235 @@ local function stopAutoCollect()
     if _accConn then _accConn:Disconnect(); _accConn=nil end
 end
 
+-- ============================================================
+-- [uncode] Chat Spam: チャットにメッセージを連続送信
+-- ============================================================
+local CS = {}
+CS.Enabled  = false
+CS.Interval = 2.0
+CS.MsgIdx   = 0
+CS.Messages = {"gg","uncode","lol","🔥"}
+
+local function _csSend(text)
+    pcall(function()
+        local tcs = cloneref(game:GetService("TextChatService"))
+        local ch  = tcs:FindFirstChild("TextChannels")
+        ch = ch and (ch:FindFirstChild("RBXGeneral") or ch:FindFirstChild("RBXSystem"))
+        if ch and ch.SendAsync then ch:SendAsync(tostring(text)); return end
+        local ev = RS:FindFirstChild("DefaultChatSystemChatEvents")
+        ev = ev and ev:FindFirstChild("SayMessageRequest")
+        if ev then ev:FireServer(tostring(text),"All") end
+    end)
+end
+function CS.enable()
+    CS.Enabled = true
+    task.spawn(function()
+        while CS.Enabled do
+            if #CS.Messages > 0 then
+                CS.MsgIdx = (CS.MsgIdx % #CS.Messages) + 1
+                _csSend(CS.Messages[CS.MsgIdx])
+            end
+            task.wait(math.max(0.5, CS.Interval))
+        end
+    end)
+end
+function CS.disable() CS.Enabled = false end
+function CS.setMessages(list) CS.Messages = list or CS.Messages; CS.MsgIdx = 0 end
+
+-- ============================================================
+-- [uncode] Auto Queue: マッチメイキングに自動再キュー
+-- ============================================================
+local AQ = {}
+AQ.Enabled  = false
+AQ.Mode     = "1v1"
+AQ.Interval = 6.0
+
+local function _aqQueue()
+    pcall(function()
+        local ok, ctrl = pcall(function()
+            local ps = LP:FindFirstChild("PlayerScripts")
+            local c  = ps and ps:FindFirstChild("Controllers",true)
+            local mc = c  and c.Parent:FindFirstChild("MatchmakingController")
+            return mc and require(mc) or nil
+        end)
+        if ok and ctrl and ctrl.QueueInto then ctrl:QueueInto(AQ.Mode); return end
+        local r = RS:FindFirstChild("Remotes"); if not r then return end
+        local mm = r:FindFirstChild("Matchmaking"); if not mm then return end
+        local jq = mm:FindFirstChild("JoinQueue")
+        if jq then jq:InvokeServer(AQ.Mode) end
+    end)
+end
+function AQ.enable()
+    AQ.Enabled = true
+    task.spawn(function()
+        while AQ.Enabled do
+            _aqQueue()
+            task.wait(AQ.Interval)
+        end
+    end)
+end
+function AQ.disable()
+    AQ.Enabled = false
+    pcall(function()
+        local r = RS:FindFirstChild("Remotes"); if not r then return end
+        local mm = r:FindFirstChild("Matchmaking"); if not mm then return end
+        local lq = mm:FindFirstChild("LeaveQueue")
+        if lq then lq:FireServer() end
+    end)
+end
+
+-- ============================================================
+-- [uncode] Animation Player: エモートアニメーション再生
+-- ============================================================
+local ANIM = {}
+ANIM.Enabled  = false
+ANIM.Speed    = 1.0
+ANIM.Selected = "Dance"
+ANIM._track   = nil
+ANIM._aobj    = nil
+
+local _animList = {
+    ["Dance"]          = "507771019",
+    ["Floss"]          = "507776697",
+    ["Take the L"]     = "507776727",
+    ["Samba"]          = "507776826",
+    ["Rock Out"]       = "507776870",
+    ["Gangnam Style"]  = "5647368185",
+    ["Bodybuilder"]    = "3994130516",
+    ["Twirl"]          = "3716633898",
+    ["Still Standing"] = "11435177473",
+    ["The Worm"]       = "5432681162",
+    ["Hype Dance"]     = "6869813008",
+    ["Line Dance"]     = "4049646104",
+    ["Dolphin Dance"]  = "5938365243",
+    ["Zesty"]          = "9032595690",
+    ["Frosty Flair"]   = "10214406616",
+}
+ANIM.List = {}
+for k in pairs(_animList) do ANIM.List[#ANIM.List+1] = k end
+table.sort(ANIM.List)
+
+local function _animStop()
+    ANIM.Enabled = false
+    if ANIM._track then pcall(function() ANIM._track:Stop(0.1) end); ANIM._track = nil end
+    if ANIM._aobj  then pcall(function() ANIM._aobj:Destroy()  end); ANIM._aobj  = nil end
+end
+local function _animPlay(name)
+    _animStop()
+    ANIM.Enabled = true
+    local id = _animList[name]; if not id then return end
+    task.spawn(function()
+        local char = LP.Character; if not char then return end
+        local hum  = char:FindFirstChildOfClass("Humanoid"); if not hum then return end
+        local anir = hum:FindFirstChildOfClass("Animator"); if not anir then return end
+        local aobj = Instance.new("Animation")
+        aobj.AnimationId = "rbxassetid://" .. id
+        local ok, t = pcall(function() return anir:LoadAnimation(aobj) end)
+        if not ok then aobj:Destroy(); return end
+        ANIM._aobj  = aobj
+        ANIM._track = t
+        t.Priority  = Enum.AnimationPriority.Action4
+        t.Looped    = true
+        t:Play(0.1, 1, ANIM.Speed)
+        while ANIM.Enabled and t.IsPlaying do
+            t:AdjustSpeed(ANIM.Speed)
+            RunService.Heartbeat:Wait()
+        end
+        _animStop()
+    end)
+end
+function ANIM.enable()  _animPlay(ANIM.Selected) end
+function ANIM.disable() _animStop() end
+function ANIM.setAnim(name) ANIM.Selected = name; if ANIM.Enabled then _animPlay(name) end end
+
+-- ============================================================
+-- [uncode] Desync / Anti-Aim: サーバー側カメラ角度を偽装
+-- ============================================================
+local DESYNC = {}
+DESYNC.Enabled    = false
+DESYNC.PitchMode  = "disabled"   -- disabled/up/down/zero/random
+DESYNC.YawMode    = "disabled"   -- disabled/backwards/spin/random
+DESYNC.SpinSpeed  = 5.0
+DESYNC.Underground= false
+DESYNC._spinAngle = 0
+
+local function _dsFireCam(pitch, yaw)
+    pcall(function()
+        local rems = RS:FindFirstChild("Remotes"); if not rems then return end
+        local repl = rems:FindFirstChild("Replication"); if not repl then return end
+        local figh = repl:FindFirstChild("Fighter"); if not figh then return end
+        local ucr  = figh:FindFirstChild("UpdateCameraRotation"); if not ucr then return end
+        local cf   = CFrame.fromEulerAnglesYXZ(math.rad(pitch), math.rad(yaw), 0)
+        ucr:FireServer(cf)
+    end)
+end
+function DESYNC.enable()
+    DESYNC.Enabled = true
+    _conn("DESYNC", RunService.Heartbeat:Connect(function()
+        if not DESYNC.Enabled then return end
+        local pitch = 0
+        if     DESYNC.PitchMode == "up"     then pitch = -89
+        elseif DESYNC.PitchMode == "down"   then pitch =  89
+        elseif DESYNC.PitchMode == "zero"   then pitch =   0
+        elseif DESYNC.PitchMode == "random" then pitch = math.random(-89,89) end
+
+        DESYNC._spinAngle = (DESYNC._spinAngle + DESYNC.SpinSpeed) % 360
+        local yaw = DESYNC._spinAngle
+        if     DESYNC.YawMode == "disabled"  then
+            yaw = 0
+            if Camera then
+                local lv = Camera.CFrame.LookVector
+                yaw = math.deg(math.atan2(-lv.X, -lv.Z))
+            end
+        elseif DESYNC.YawMode == "backwards" then yaw = yaw + 180
+        elseif DESYNC.YawMode == "random"    then yaw = math.random(0,360) end
+        -- spin: そのままspinAngleを使う
+
+        _dsFireCam(
+            DESYNC.PitchMode ~= "disabled" and pitch or 0,
+            yaw
+        )
+
+        if DESYNC.Underground then
+            pcall(function()
+                local char = LP.Character; if not char then return end
+                local root = char:FindFirstChild("HumanoidRootPart"); if not root then return end
+                root.CFrame = root.CFrame * CFrame.new(0,-500,0)
+            end)
+        end
+    end))
+end
+function DESYNC.disable()
+    DESYNC.Enabled = false
+    _stop("DESYNC")
+end
+
+-- ============================================================
+-- [uncode] Color Correction / Bloom / Sun Rays 映像エフェクト
+-- ============================================================
+local VFXCFG = {
+    CC=false, CCBright=0, CCContrast=0, CCSat=0, CCTint=Color3.new(1,1,1),
+    Bloom=false, BloomInt=0.5, BloomSize=24, BloomThresh=0.95,
+    SunRays=false, SRInt=0.25, SRSpread=0.5,
+    _cc=nil, _bl=nil, _sr=nil
+}
+local function _vfxCC()
+    if not VFXCFG.CC then if VFXCFG._cc then VFXCFG._cc:Destroy(); VFXCFG._cc=nil end; return end
+    if not VFXCFG._cc then VFXCFG._cc=Instance.new("ColorCorrectionEffect",Lighting) end
+    VFXCFG._cc.Brightness=VFXCFG.CCBright; VFXCFG._cc.Contrast=VFXCFG.CCContrast
+    VFXCFG._cc.Saturation=VFXCFG.CCSat;    VFXCFG._cc.TintColor=VFXCFG.CCTint
+end
+local function _vfxBloom()
+    if not VFXCFG.Bloom then if VFXCFG._bl then VFXCFG._bl:Destroy(); VFXCFG._bl=nil end; return end
+    if not VFXCFG._bl then VFXCFG._bl=Instance.new("BloomEffect",Lighting) end
+    VFXCFG._bl.Intensity=VFXCFG.BloomInt; VFXCFG._bl.Size=VFXCFG.BloomSize; VFXCFG._bl.Threshold=VFXCFG.BloomThresh
+end
+local function _vfxSunRays()
+    if not VFXCFG.SunRays then if VFXCFG._sr then VFXCFG._sr:Destroy(); VFXCFG._sr=nil end; return end
+    if not VFXCFG._sr then VFXCFG._sr=Instance.new("SunRaysEffect",Lighting) end
+    VFXCFG._sr.Intensity=VFXCFG.SRInt; VFXCFG._sr.Spread=VFXCFG.SRSpread
+end
+
 AB("uc_proj",Enum.RenderPriority.Camera.Value+5,function()
     if not PB.enabled then return end
     local t=getClosest(); local orig=Camera.CFrame.Position
@@ -4857,6 +5086,102 @@ return {
             B.visRight:AddSlider("UC_ESP_DIST",{Text="ESP Max Distance",Default=600,Min=50,Max=3000,Rounding=0,
                 Callback=function(v) E.ESP.MaxDist=v end})
         end
+    end)
+
+    -- ============================================================
+    -- [uncode] Chat Spam UI
+    -- ============================================================
+    pcall(function()
+        if not B.miscRight then return end
+        B.miscRight:AddDivider()
+        BT(B.miscRight,"UC_CS","Chat Spam",false,function(v)
+            if v then CS.enable() else CS.disable() end
+        end)
+        B.miscRight:AddSlider("UC_CS_INT",{Text="Spam Interval (s)",Default=2,Min=0.5,Max=10,Rounding=1,
+            Callback=function(v) CS.Interval=v end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Auto Queue UI
+    -- ============================================================
+    pcall(function()
+        if not B.miscLeft then return end
+        B.miscLeft:AddDivider()
+        BT(B.miscLeft,"UC_AQ","Auto Queue",false,function(v)
+            if v then AQ.enable() else AQ.disable() end
+        end)
+        B.miscLeft:AddDropdown("UC_AQ_MODE",{Text="Queue Mode",Default="1v1",
+            Values={"1v1","2v2","3v3","4v4","Casual","Ranked"},
+            Callback=function(v) AQ.Mode=v end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Animation Player UI
+    -- ============================================================
+    pcall(function()
+        if not B.miscRight then return end
+        B.miscRight:AddDivider()
+        BT(B.miscRight,"UC_ANIM","Animation Player",false,function(v)
+            if v then ANIM.enable() else ANIM.disable() end
+        end)
+        B.miscRight:AddDropdown("UC_ANIM_SEL",{Text="Emote",Default="Dance",
+            Values=ANIM.List,
+            Callback=function(v) ANIM.setAnim(v) end})
+        B.miscRight:AddSlider("UC_ANIM_SPD",{Text="Anim Speed",Default=1,Min=0.1,Max=4,Rounding=1,
+            Callback=function(v) ANIM.Speed=v; if ANIM._track then pcall(function() ANIM._track:AdjustSpeed(v) end) end end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Desync / Anti-Aim UI (強化版)
+    -- ============================================================
+    pcall(function()
+        if not B.miscLeft then return end
+        B.miscLeft:AddDivider()
+        BT(B.miscLeft,"UC_DESYNC","Desync / Anti-Aim",false,function(v)
+            if v then DESYNC.enable() else DESYNC.disable() end
+        end)
+        B.miscLeft:AddDropdown("UC_DS_PITCH",{Text="Pitch Mode",Default="disabled",
+            Values={"disabled","up","down","zero","random"},
+            Callback=function(v) DESYNC.PitchMode=v end})
+        B.miscLeft:AddDropdown("UC_DS_YAW",{Text="Yaw Mode",Default="disabled",
+            Values={"disabled","backwards","spin","random"},
+            Callback=function(v) DESYNC.YawMode=v end})
+        B.miscLeft:AddSlider("UC_DS_SPD",{Text="Spin Speed",Default=5,Min=1,Max=30,Rounding=0,
+            Callback=function(v) DESYNC.SpinSpeed=v end})
+        BT(B.miscLeft,"UC_DS_UG","Underground",false,function(v) DESYNC.Underground=v end)
+    end)
+
+    -- ============================================================
+    -- [uncode] Color Correction / Bloom / Sun Rays UI
+    -- ============================================================
+    pcall(function()
+        if not B.visLeft then return end
+        B.visLeft:AddDivider()
+        BT(B.visLeft,"UC_CC","Color Correction",false,function(v)
+            VFXCFG.CC=v; _vfxCC()
+        end)
+        B.visLeft:AddSlider("UC_CC_BR",{Text="CC Brightness",Default=0,Min=-1,Max=1,Rounding=2,
+            Callback=function(v) VFXCFG.CCBright=v; if VFXCFG.CC then _vfxCC() end end})
+        B.visLeft:AddSlider("UC_CC_CT",{Text="CC Contrast",Default=0,Min=-1,Max=1,Rounding=2,
+            Callback=function(v) VFXCFG.CCContrast=v; if VFXCFG.CC then _vfxCC() end end})
+        B.visLeft:AddSlider("UC_CC_SA",{Text="CC Saturation",Default=0,Min=-2,Max=2,Rounding=2,
+            Callback=function(v) VFXCFG.CCSat=v; if VFXCFG.CC then _vfxCC() end end})
+        B.visLeft:AddDivider()
+        BT(B.visLeft,"UC_BLM","Bloom",false,function(v)
+            VFXCFG.Bloom=v; _vfxBloom()
+        end)
+        B.visLeft:AddSlider("UC_BLM_INT",{Text="Bloom Intensity",Default=50,Min=1,Max=200,Rounding=0,
+            Callback=function(v) VFXCFG.BloomInt=v/100; if VFXCFG.Bloom then _vfxBloom() end end})
+        B.visLeft:AddSlider("UC_BLM_SZ",{Text="Bloom Size",Default=24,Min=1,Max=56,Rounding=0,
+            Callback=function(v) VFXCFG.BloomSize=v; if VFXCFG.Bloom then _vfxBloom() end end})
+        B.visLeft:AddDivider()
+        BT(B.visLeft,"UC_SR","Sun Rays",false,function(v)
+            VFXCFG.SunRays=v; _vfxSunRays()
+        end)
+        B.visLeft:AddSlider("UC_SR_INT",{Text="Sun Rays Intensity",Default=25,Min=1,Max=100,Rounding=0,
+            Callback=function(v) VFXCFG.SRInt=v/100; if VFXCFG.SunRays then _vfxSunRays() end end})
+        B.visLeft:AddSlider("UC_SR_SPR",{Text="Sun Rays Spread",Default=50,Min=1,Max=100,Rounding=0,
+            Callback=function(v) VFXCFG.SRSpread=v/100; if VFXCFG.SunRays then _vfxSunRays() end end})
     end)
 
     print("[UNCODE v8] Features wired OK")
