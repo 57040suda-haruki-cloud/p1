@@ -995,38 +995,7 @@ pcall(function()
     CL3:AddSlider("WP_FireRate",{Text="Fire Rate x",Default=1,Min=1,Max=10,Rounding=1})
 end)
 
-local _kxRP=RaycastParams.new()
-_kxRP.FilterType=Enum.RaycastFilterType.Blacklist
-AB("uc_kxaim",Enum.RenderPriority.Camera.Value+10,function()
-    if not Toggles.KX_On or not Toggles.KX_On.Value then return end
-    local tChar=getClosest(false)
-    if not tChar or not tChar.Character then return end
-    local hn=Options.KX_Hitbox and Options.KX_Hitbox.Value or "Head"
-    local hb=tChar.Character:FindFirstChild(hn) or tChar.Character:FindFirstChild("HumanoidRootPart")
-    if not hb then return end
-    if Toggles.KX_Vis and Toggles.KX_Vis.Value then
-        _kxRP.FilterDescendantsInstances={LP.Character,Camera}
-        local res=workspace:Raycast(Camera.CFrame.Position,(hb.Position-Camera.CFrame.Position).Unit*2000,_kxRP)
-        if res and not res.Instance:IsDescendantOf(tChar.Character) then return end
-    end
-    local sm=1/((Options.KX_Smooth and Options.KX_Smooth.Value) or 12)
-    local aimPos = hb.Position
-    if Toggles.KX_Pred and Toggles.KX_Pred.Value then
-        pcall(function()
-            local vel = hb.AssemblyLinearVelocity
-            local ping = (game:GetService("Stats").Network.ServerStatsItem["Data Ping"].Value or 80) * 0.001
-            aimPos = hb.Position + vel * (ping + 0.05)
-        end)
-    end
-    if Toggles.KX_Silent and Toggles.KX_Silent.Value then
-        pcall(function()
-            local dir=(aimPos-Camera.CFrame.Position).Unit
-            Camera.CFrame=CFrame.new(Camera.CFrame.Position,Camera.CFrame.Position+dir*0.98+Camera.CFrame.LookVector*0.02)
-        end)
-    else
-        pcall(function() Camera.CFrame=Camera.CFrame:Lerp(CFrame.lookAt(Camera.CFrame.Position,aimPos),sm) end)
-    end
-end)
+-- [KX aimbot removed: E.KA handles aimbot in IIFE Part1]
 
 
 -- FOV Circle
@@ -1048,105 +1017,7 @@ AB("fov_circle",Enum.RenderPriority.Camera.Value+1,function()
     end
 end)
 
-local _atkRemCache = nil
-local function findAtkRemote()
-    local rem = RS:FindFirstChild("Remotes"); if not rem then return nil end
-    for _,r in ipairs(rem:GetDescendants()) do
-        if r:IsA("RemoteEvent") then
-            local nm=r.Name:lower()
-            if nm:find("useitem") or nm:find("attack") or nm:find("fight") then
-                _atkRemCache=r; return r
-            end
-        end
-    end
-    return nil
-end
-
-task.spawn(findAtkRemote)
-
-RS.DescendantAdded:Connect(function(d)
-    if d:IsA("RemoteEvent") then _atkRemCache=nil end
-end)
-
-local rbAtk=0
-local rbResolver={
-    angles={0,30,60,90,120,150,180,210,240,270,300,330},
-    idx=1, shotsSinceAdvance=0, advanceEvery=3,
-    hitBias={}, lastTargetName=nil,
-
-    onHit=function(self, angle)
-        self.hitBias[angle]=(self.hitBias[angle] or 0)+1
-    end,
-
-    get=function(self)
-        return self.angles[self.idx]
-    end,
-
-    advance=function(self)
-
-        local best,bestScore=nil,-1
-        for _,a in ipairs(self.angles) do
-            local s=self.hitBias[a] or 0
-            if s>bestScore and a~=self.angles[self.idx] then bestScore=s; best=a end
-        end
-        if best and bestScore>0 then
-
-            for i,a in ipairs(self.angles) do if a==best then self.idx=i; return end end
-        end
-        self.idx=(self.idx%#self.angles)+1
-    end,
-}
-
-AC("ragebot",RunService.Heartbeat:Connect(function()
-    if not Toggles.RB_On or not Toggles.RB_On.Value then return end
-    local intv=(Options.RB_Interval and Options.RB_Interval.Value or 50)/1000
-    if tick()-rbAtk<intv then return end; rbAtk=tick()
-
-    local t=getClosest(); if not t or not t.Character then return end
-    local tr=t.Character:FindFirstChild("HumanoidRootPart"); if not tr then return end
-    local okPos,rawPos=pcall(function() return tr.Position end)
-    local pos=okPos and rawPos or Vector3.zero
-
-    if Toggles.RB_Snap and Toggles.RB_Snap.Value and root then
-        pcall(function()
-            local sd=Options.RB_SnapDist and Options.RB_SnapDist.Value or 4
-            local dir=pos-root.Position; local dist=dir.Magnitude
-            if dist>0.1 then root.CFrame=CFrame.new(pos-dir.Unit*math.min(sd,dist)) end
-        end)
-    end
-
-    local resolverOff=0
-    if Toggles.Resolver_On and Toggles.Resolver_On.Value then
-
-        local tn=t.Name
-        if rbResolver.lastTargetName~=tn then
-            rbResolver.lastTargetName=tn
-            rbResolver.idx=1
-            rbResolver.shotsSinceAdvance=0
-        end
-        resolverOff=rbResolver:get()
-        rbResolver.shotsSinceAdvance = rbResolver.shotsSinceAdvance + 1
-        if rbResolver.shotsSinceAdvance>=rbResolver.advanceEvery then
-            rbResolver.shotsSinceAdvance=0
-            rbResolver:advance()
-        end
-    end
-
-    local burst=Toggles.RB_Burst and Toggles.RB_Burst.Value
-    local baseAngles=burst and {0,90,180,270} or {0}
-    local weapon=Options.RB_Weapon and Options.RB_Weapon.Value or "Sword"
-    local atkRem=_atkRemCache or findAtkRemote()
-    for _,extra in ipairs(baseAngles) do
-        if not atkRem then break end
-        local bPos=pos+CFrame.Angles(0,math.rad(extra+resolverOff),0)*Vector3.new(0,0,0.4)
-        pcall(function()
-            atkRem:FireServer({id=HTTP:GenerateGUID(false),item=weapon,position=bPos,
-                attackNum=math.random(1,9999),heavyAttackNum=math.random(1,9999),
-                rotation=tr.CFrame.Rotation,one=Vector3.one,startAiming=true,
-                packed={"\x00","\x01","\x02","\x03"}})
-        end)
-    end
-end))
+-- [Ragebot removed: E.KA + E.AutoShoot handle combat in IIFE Part1]
 
 pcall(function()
     local VOID_MODES={"Quantum","Chaos","Drift","Still","Circle","Figure8","WideSweep","FastBounce","Blink","GridHop","HeightWave","SquareLoop","CrossSweep","Stairs","NoiseCloud","Spiral","Loop","SlowDrift"}
@@ -1253,9 +1124,7 @@ pcall(function()
             applyShader(Options.ShaderPreset and Options.ShaderPreset.Value or "Cyber"); Notify("Shader applied",2) end end)
 end)
 
-AC("esp",RunService.Heartbeat:Connect(function()
-    -- DISABLED: old BillboardGui ESP removed; use Drawing API ESP (UC_ESP toggle)
-end))
+-- [AC("esp") stub removed]
 AB("visloop",Enum.RenderPriority.Last.Value,function()
     do local _t=os.clock() if _t-(_vlT or 0)<0.1 then return end; _vlT=_t end
     if Toggles.Fullbright and Toggles.Fullbright.Value then
@@ -1788,143 +1657,11 @@ local function RestorePart(p)
     end)
 end
 
-local function ApplyPartLook(part,color,matName,trans,wireframe,noTex,isArm,noClothes)
-    BackupPart(part)
-    pcall(function()
-        part.Color=color
-        if Enum.Material[matName] then part.Material=Enum.Material[matName] end
-        if wireframe then
-            part.Transparency=1
-            local w=part:FindFirstChild("UC_Wire")
-            if not(w and w:IsA("WireframeHandleAdornment")) then
-                if w then w:Destroy() end
-                local ok,wf=pcall(function()
-                    local x=Instance.new("WireframeHandleAdornment")
-                    x.Name="UC_Wire"; x.Adornee=part; x.Color3=color; x.Transparency=0; x.AlwaysOnTop=true; x.Parent=part
-                    return x
-                end)
-                if ok and wf then pcall(function() wf.Color3=color end) end
-            end
-        else
-            part.Transparency=math.clamp(trans,0,1)
-            local w=part:FindFirstChild("UC_Wire"); if w then w:Destroy() end
-        end
-        if noTex then
-            for _,ch in ipairs(part:GetChildren()) do
-                if ch:IsA("Texture") or ch:IsA("Decal") or ch:IsA("SurfaceAppearance") then ch.Transparency=1 end
-            end
-        end
-        if isArm and noClothes then
-            local st=part:FindFirstChildOfClass("ShirtTexture")
-            if st then if part:GetAttribute("UC_OShirtT")==nil then part:SetAttribute("UC_OShirtT",st.Transparency) end; st.Transparency=1 end
-        end
-        part:SetAttribute("UC_Overridden",true)
-    end)
-end
+-- [ApplyPartLook/ApplyVMOverride/AC("vmoverride") removed: dead loop (RV.Viewmodel never set via old RV table)]
 
-local function ApplyVMOverride()
-    local cam=workspace.CurrentCamera; if not cam then return end
-    if not RV.Viewmodel.OverrideEnabled then
-        if not VMDirty then return end
-        for _,d in ipairs(cam:GetDescendants()) do if d:IsA("BasePart") and d:GetAttribute("UC_Overridden") then RestorePart(d) end end
-        VMDirty=false; return
-    end
-    VMDirty=true
-    local vmT=1-math.clamp(RV.Viewmodel.VMTrans,0,100)/100*0.9
-    local armT=1-math.clamp(RV.Viewmodel.ArmTrans,0,100)/100*0.9
-    local weapons,arms=FindVMParts()
-    for _,p in ipairs(weapons) do
-        if not p:GetAttribute("IgnoreTransparency") then
-            ApplyPartLook(p,RV.Viewmodel.VMColor,RV.Viewmodel.VMMaterial,1-vmT,RV.Viewmodel.VMWireframe,RV.Viewmodel.VMNoTextures,false,false)
-        end
-    end
-    for _,p in ipairs(arms) do
-        ApplyPartLook(p,RV.Viewmodel.ArmColor,RV.Viewmodel.ArmMaterial,1-armT,false,false,true,RV.Viewmodel.ArmNoClothes)
-    end
-end
+-- [RVESPGui/MakeRVESP/ClearRVESP/AC("rvESP") removed: visGui was destroyed, no instances can be parented]
 
-local vmTimer=0
-AC("vmoverride",RunService.Heartbeat:Connect(function(dt)
-    vmTimer = vmTimer + dt; if vmTimer<0.2 then return end; vmTimer=0
-    pcall(ApplyVMOverride)
-end))
-
-local RVESPGui={}
-local visGui=RVNew("ScreenGui",{Name="UC_Vis",ResetOnSpawn=false,ZIndexBehavior=Enum.ZIndexBehavior.Sibling,DisplayOrder=999},CoreGui); pcall(function() visGui:Destroy() end) -- RV ESP disabled; free memory
-
-local function ClearRVESP(p)
-    local f=RVESPGui[p]; if f then pcall(f.Destroy,f); RVESPGui[p]=nil end
-    local hl=RVESPGui[p.Name.."_hl"]; if hl then pcall(hl.Destroy,hl); RVESPGui[p.Name.."_hl"]=nil end
-    RVESPGui[p.Name.."_refs"]=nil
-end
-
-local function MakeRVESP(p)
-    ClearRVESP(p)
-    local c=p.Character; if not c then return end
-    local hrp=c:FindFirstChild("HumanoidRootPart"); local hum=c:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
-
-    local root=RVNew("BillboardGui",{Name="UC_ESP_"..p.Name,Adornee=hrp,Size=UDim2.new(0,120,0,96),StudsOffset=Vector3.new(0,2.5,0),AlwaysOnTop=true},visGui)
-    RVESPGui[p]=root
-
-    local box=RVNew("Frame",{Size=UDim2.new(0,60,0,60),Position=UDim2.new(0.5,-30,0,26),BackgroundTransparency=1,BorderSizePixel=0,Visible=RV.ESP.Box},root)
-    local corners={}
-    local L0=14; local T0=math.max(1,math.floor(RV.ESP.Thickness))
-    local defs={{0,0,L0,T0},{0,0,T0,L0},{60-L0,0,L0,T0},{60-T0,0,T0,L0},{0,60-T0,L0,T0},{0,60-T0,T0,L0},{60-L0,60-T0,L0,T0},{60-T0,60-T0,T0,L0}}
-    for _,d in ipairs(defs) do
-        local f=RVNew("Frame",{Size=UDim2.new(0,d[3],0,d[4]),Position=UDim2.new(0,d[1],0,d[2]),BackgroundColor3=RV.ESP.BoxFill,BorderSizePixel=0},box)
-        table.insert(corners,f)
-    end
-
-    local dname=RV.ESP.NameType=="DisplayName" and p.DisplayName or (RV.ESP.NameType=="Both" and p.Name.."["..p.DisplayName.."]" or p.Name)
-    local nl=RVNew("TextLabel",{Size=UDim2.new(1,0,0,14),Position=UDim2.new(0,0,0,0),BackgroundTransparency=1,Font=Enum.Font.Code,TextSize=12,TextColor3=RV.ESP.NameA,TextStrokeTransparency=0.3,Text=dname,Visible=RV.ESP.Name},root)
-
-    local tool=c:FindFirstChildOfClass("Tool")
-    local wl=RVNew("TextLabel",{Size=UDim2.new(1,0,0,10),Position=UDim2.new(0,0,0,14),BackgroundTransparency=1,Font=Enum.Font.Code,TextSize=10,TextColor3=Color3.new(1,1,1),TextStrokeTransparency=0.4,Text=tool and tool.Name or "",Visible=RV.ESP.Weapon},root)
-
-    local dl=RVNew("TextLabel",{Size=UDim2.new(1,0,0,12),Position=UDim2.new(0,0,1,-26),BackgroundTransparency=1,Font=Enum.Font.Code,TextSize=10,TextColor3=Color3.fromRGB(150,150,150),Text="",Visible=RV.ESP.Distance},root)
-
-    local wm=RVNew("TextLabel",{Size=UDim2.new(1,0,0,12),Position=UDim2.new(0,0,1,-13),BackgroundTransparency=1,Font=Enum.Font.GothamBold,TextSize=11,TextColor3=RV.ESP.WatermarkColor,TextStrokeTransparency=0.3,Text=RV.ESP.WatermarkText,Visible=RV.ESP.Watermark},root)
-
-    local hbBG=RVNew("Frame",{Size=UDim2.new(0,4,0,56),Position=UDim2.new(0.5,-37,0,28),BackgroundColor3=Color3.fromRGB(20,20,20),BorderSizePixel=0,Visible=RV.ESP.Healthbar},root)
-    local hbFill=RVNew("Frame",{Size=UDim2.new(1,0,1,0),BackgroundColor3=RV.ESP.HB_A,BorderSizePixel=0},hbBG)
-
-    local hl=nil
-    if RV.ESP.Skeleton or RV.ESP.Outline then
-        hl=RVNew("Highlight",{FillColor=RV.ESP.BoxFill,OutlineColor=RV.ESP.SkelC,FillTransparency=0.7,OutlineTransparency=0.1,DepthMode=Enum.HighlightDepthMode.Occluded,Adornee=c},visGui)
-    end
-    RVESPGui[p.Name.."_hl"]=hl
-    RVESPGui[p.Name.."_refs"]={box=box,corners=corners,name=nl,weap=wl,dist=dl,wmark=wm,hbBG=hbBG,hbFill=hbFill,hl=hl}
-end
-
-local lastESPTime=0
-AC("rvESP",RunService.Heartbeat:Connect(function()
-end))
-Players.PlayerRemoving:Connect(function(p) ClearRVESP(p) end)
-
-local crossGui=RVNew("ScreenGui",{Name="UC_Cross",ResetOnSpawn=false,IgnoreGuiInset=true,DisplayOrder=9999,ZIndexBehavior=Enum.ZIndexBehavior.Sibling},CoreGui)
-local crossRoot=RVNew("Frame",{Name="Cross",Size=UDim2.new(0,0,0,0),Position=UDim2.new(0.5,0,0.5,0),BackgroundTransparency=1,Visible=false},crossGui)
-local crossSpin=RVNew("Frame",{Size=UDim2.new(0,0,0,0),BackgroundTransparency=1},crossRoot)
-local crossTxtBox=RVNew("Frame",{Size=UDim2.new(0,0,0,0),BackgroundTransparency=1},crossRoot)
-local crossLines,crossOutlines={},{}
-for i=1,4 do
-    local o=RVNew("Frame",{BorderSizePixel=0,BackgroundColor3=Color3.new(0,0,0),BackgroundTransparency=0.5,AnchorPoint=Vector2.new(0.5,0.5),ZIndex=2},crossSpin)
-    crossOutlines[i]=o
-    local f=RVNew("Frame",{BorderSizePixel=0,BackgroundColor3=Color3.new(1,1,1),AnchorPoint=Vector2.new(0.5,0.5),ZIndex=3},crossSpin)
-    crossLines[i]=f
-end
-local crossLabel=RVNew("TextLabel",{Size=UDim2.new(0,300,0,20),Position=UDim2.new(0,-150,0,22),BackgroundTransparency=1,Font=Enum.Font.Arial,TextSize=14,TextColor3=Color3.new(1,1,1),TextStrokeTransparency=0,Text="uncode",Visible=false,ZIndex=4},crossTxtBox)
-local crossTick=0; local crossMenuMode=false
-
-RVBind(UIS.InputBegan:Connect(function(io,gpe)
-    if gpe then return end
-    if RV.Crosshair.Enabled and RV.Crosshair.FollowMouse and io.KeyCode==Enum.KeyCode.M then
-        crossMenuMode=not crossMenuMode
-    end
-end))
-
-AB("crosshair",Enum.RenderPriority.Camera.Value+20,function(dt)
-end)
+-- [Crosshair GUI removed: 11 Roblox instances never rendered; RV module handles crosshair via Drawing API]
 
 local HitSoundIDs={bell="rbxassetid://6518811702",pop="rbxassetid://9106153995",tick="rbxassetid://9106202384",fortnite="rbxassetid://9106232005"}
 local TracerPool={}
@@ -2031,19 +1768,7 @@ LP.CharacterAdded:Connect(function(c)
     end)
 end)
 
-local hud=RVNew("Frame",{Name="UC_HUD",Size=UDim2.new(0,220,0,64),BackgroundColor3=Color3.fromRGB(7,7,7),BorderSizePixel=0,Visible=false},visGui)
-RVNew("UIStroke",{Color=Color3.fromRGB(184,172,255),Thickness=1,Transparency=0.4},hud)
-RVNew("UICorner",{CornerRadius=UDim.new(0,6)},hud)
-local hudName=RVNew("TextLabel",{Size=UDim2.new(1,-10,0,18),Position=UDim2.new(0,5,0,4),BackgroundTransparency=1,Font=Enum.Font.Code,TextSize=12,TextColor3=Color3.fromRGB(225,225,225),TextXAlignment=Enum.TextXAlignment.Left,Text="target: -"},hud)
-local hudInfo=RVNew("TextLabel",{Size=UDim2.new(1,-10,0,16),Position=UDim2.new(0,5,0,22),BackgroundTransparency=1,Font=Enum.Font.Code,TextSize=11,TextColor3=Color3.fromRGB(150,150,150),TextXAlignment=Enum.TextXAlignment.Left,Text="hp: -  dist: -"},hud)
-local hudBar=RVNew("Frame",{Size=UDim2.new(1,-10,0,8),Position=UDim2.new(0,5,0,42),BackgroundColor3=Color3.fromRGB(35,35,40),BorderSizePixel=0},hud)
-RVNew("UICorner",{CornerRadius=UDim.new(0,3)},hudBar)
-local hudFill=RVNew("Frame",{Size=UDim2.new(1,0,1,0),BackgroundColor3=Color3.fromRGB(184,172,255),BorderSizePixel=0},hudBar)
-RVNew("UICorner",{CornerRadius=UDim.new(0,3)},hudFill)
-
-local lastHUDTime=0
-AC("thud",RunService.Heartbeat:Connect(function()
-end))
+-- [HUD/AC("thud") removed: HUD was parentless (visGui destroyed), thud callback was empty]
 
 pcall(function()
 
@@ -3014,6 +2739,7 @@ do
             Destroy=function()end}
     end
 end
+_RV_SRC = nil; pcall(collectgarbage,"collect") -- Free 83KB embedded module source
 
 pcall(function()
 
@@ -3127,7 +2853,10 @@ Notify("RV Visuals Ready . Aura/Crosshair/ESP/HitFX/Tracers/UnlockAll",4)
 
 local _UCEngine
 task.spawn(function()
-    task.wait(2); pcall(collectgarbage,"collect") -- UIを先に表示 → メモリ分散
+    task.wait(2)
+    pcall(collectgarbage,"collect") -- GC pass 1: clear setup overhead
+    task.wait(0.3)
+    pcall(collectgarbage,"collect") -- GC pass 2: ensure freed strings collected
     local _E1; local _ok1,_err1 = pcall(function()
         _E1 = (function()
 
@@ -3938,7 +3667,9 @@ return {
         end)()
     end)
     if not _ok1 then print("[UNCODE v8] Part1 err:"..tostring(_err1)) end
-    pcall(collectgarbage,"collect"); task.wait(0.5) -- 💡 メモリ分割: 戦闘系ロード後GC→視覚系ロード
+    pcall(collectgarbage,"collect")
+    task.wait(0.8) -- ← 延長: iOS GCがクロージャを回収する時間を確保
+    pcall(collectgarbage,"collect")
     local _E2; local _ok2,_err2 = pcall(function()
         _E2 = (function()
 local RS_  = game:GetService("ReplicatedStorage")
@@ -4729,6 +4460,22 @@ return {
     task.wait()
 
     pcall(function()
+        -- Wire KX_On → E.KA (old KX aimbot loop removed)
+        if Toggles.KX_On then
+            local _origKX = Toggles.KX_On.Callback
+            Toggles.KX_On.Callback = function(v)
+                if v then E.KA.enable() else E.KA.disable() end
+                if _origKX then pcall(_origKX, v) end
+            end
+        end
+        -- Wire RB_On → E.KA + E.AutoShoot (old ragebot loop removed)
+        if Toggles.RB_On then
+            local _origRB = Toggles.RB_On.Callback
+            Toggles.RB_On.Callback = function(v)
+                if v then E.KA.enable(); E.AutoShoot.enable() else E.KA.disable(); E.AutoShoot.disable() end
+                if _origRB then pcall(_origRB, v) end
+            end
+        end
         if Toggles.KX_Silent then
             local _orig = Toggles.KX_Silent.Callback
             Toggles.KX_Silent.Callback = function(v)
