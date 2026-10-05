@@ -396,709 +396,513 @@ local function stopAutoCollect()
 end
 
 -- ============================================================
--- [uncode] Chat Spam: チャットにメッセージを連続送信
+-- [uncode] Module helpers: 接続プール + モジュール名前空間
 -- ============================================================
-local CS = {}
-CS.Enabled  = false
-CS.Interval = 2.0
-CS.MsgIdx   = 0
-CS.Messages = {"gg","uncode","lol","🔥"}
+local _ucPool = {}
+local function _ucConn(key, c)
+    if not _ucPool[key] then _ucPool[key] = {} end
+    table.insert(_ucPool[key], c); return c
+end
+local function _ucStop(key)
+    for _, c in ipairs(_ucPool[key] or {}) do pcall(function() c:Disconnect() end) end
+    _ucPool[key] = {}
+end
+local _UM = {} -- 全新規モジュールの名前空間
 
+do -- [uncode] Chat Spam: チャットにメッセージを連続送信
+local CS = {}; CS.Enabled=false; CS.Interval=2.0; CS.MsgIdx=0
+CS.Messages={"gg","uncode","lol","🔥"}
 local function _csSend(text)
     pcall(function()
-        local tcs = cloneref(game:GetService("TextChatService"))
-        local ch  = tcs:FindFirstChild("TextChannels")
-        ch = ch and (ch:FindFirstChild("RBXGeneral") or ch:FindFirstChild("RBXSystem"))
-        if ch and ch.SendAsync then ch:SendAsync(tostring(text)); return end
-        local ev = RS:FindFirstChild("DefaultChatSystemChatEvents")
-        ev = ev and ev:FindFirstChild("SayMessageRequest")
+        local tcs=cloneref(game:GetService("TextChatService"))
+        local ch=tcs:FindFirstChild("TextChannels")
+        ch=ch and (ch:FindFirstChild("RBXGeneral") or ch:FindFirstChild("RBXSystem"))
+        if ch and ch.SendAsync then ch:SendAsync(tostring(text));return end
+        local ev=RS:FindFirstChild("DefaultChatSystemChatEvents")
+        ev=ev and ev:FindFirstChild("SayMessageRequest")
         if ev then ev:FireServer(tostring(text),"All") end
     end)
 end
 function CS.enable()
-    CS.Enabled = true
+    CS.Enabled=true
     task.spawn(function()
         while CS.Enabled do
-            if #CS.Messages > 0 then
-                CS.MsgIdx = (CS.MsgIdx % #CS.Messages) + 1
-                _csSend(CS.Messages[CS.MsgIdx])
-            end
-            task.wait(math.max(0.5, CS.Interval))
+            if #CS.Messages>0 then CS.MsgIdx=(CS.MsgIdx%#CS.Messages)+1; _csSend(CS.Messages[CS.MsgIdx]) end
+            task.wait(math.max(0.5,CS.Interval))
         end
     end)
 end
-function CS.disable() CS.Enabled = false end
-function CS.setMessages(list) CS.Messages = list or CS.Messages; CS.MsgIdx = 0 end
+function CS.disable() CS.Enabled=false end
+function CS.setMessages(list) CS.Messages=list or CS.Messages; CS.MsgIdx=0 end
+_UM.CS=CS
+end -- CS
 
--- ============================================================
--- [uncode] Auto Queue: マッチメイキングに自動再キュー
--- ============================================================
-local AQ = {}
-AQ.Enabled  = false
-AQ.Mode     = "1v1"
-AQ.Interval = 6.0
-
+do -- [uncode] Auto Queue: マッチメイキングに自動再キュー
+local AQ={}; AQ.Enabled=false; AQ.Mode="1v1"; AQ.Interval=6.0
 local function _aqQueue()
     pcall(function()
-        local ok, ctrl = pcall(function()
-            local ps = LP:FindFirstChild("PlayerScripts")
-            local c  = ps and ps:FindFirstChild("Controllers",true)
-            local mc = c  and c.Parent:FindFirstChild("MatchmakingController")
+        local ok,ctrl=pcall(function()
+            local ps=LP:FindFirstChild("PlayerScripts")
+            local c=ps and ps:FindFirstChild("Controllers",true)
+            local mc=c and c.Parent:FindFirstChild("MatchmakingController")
             return mc and require(mc) or nil
         end)
-        if ok and ctrl and ctrl.QueueInto then ctrl:QueueInto(AQ.Mode); return end
-        local r = RS:FindFirstChild("Remotes"); if not r then return end
-        local mm = r:FindFirstChild("Matchmaking"); if not mm then return end
-        local jq = mm:FindFirstChild("JoinQueue")
-        if jq then jq:InvokeServer(AQ.Mode) end
+        if ok and ctrl and ctrl.QueueInto then ctrl:QueueInto(AQ.Mode);return end
+        local r=RS:FindFirstChild("Remotes"); if not r then return end
+        local mm=r:FindFirstChild("Matchmaking"); if not mm then return end
+        local jq=mm:FindFirstChild("JoinQueue"); if jq then jq:InvokeServer(AQ.Mode) end
     end)
 end
 function AQ.enable()
-    AQ.Enabled = true
-    task.spawn(function()
-        while AQ.Enabled do
-            _aqQueue()
-            task.wait(AQ.Interval)
-        end
-    end)
+    AQ.Enabled=true
+    task.spawn(function() while AQ.Enabled do _aqQueue(); task.wait(AQ.Interval) end end)
 end
 function AQ.disable()
-    AQ.Enabled = false
+    AQ.Enabled=false
     pcall(function()
-        local r = RS:FindFirstChild("Remotes"); if not r then return end
-        local mm = r:FindFirstChild("Matchmaking"); if not mm then return end
-        local lq = mm:FindFirstChild("LeaveQueue")
-        if lq then lq:FireServer() end
+        local r=RS:FindFirstChild("Remotes"); if not r then return end
+        local mm=r:FindFirstChild("Matchmaking"); if not mm then return end
+        local lq=mm:FindFirstChild("LeaveQueue"); if lq then lq:FireServer() end
     end)
 end
+_UM.AQ=AQ
+end -- AQ
 
--- ============================================================
--- [uncode] Animation Player: エモートアニメーション再生
--- ============================================================
-local ANIM = {}
-ANIM.Enabled  = false
-ANIM.Speed    = 1.0
-ANIM.Selected = "Dance"
-ANIM._track   = nil
-ANIM._aobj    = nil
-
-local _animList = {
-    ["Dance"]          = "507771019",
-    ["Floss"]          = "507776697",
-    ["Take the L"]     = "507776727",
-    ["Samba"]          = "507776826",
-    ["Rock Out"]       = "507776870",
-    ["Gangnam Style"]  = "5647368185",
-    ["Bodybuilder"]    = "3994130516",
-    ["Twirl"]          = "3716633898",
-    ["Still Standing"] = "11435177473",
-    ["The Worm"]       = "5432681162",
-    ["Hype Dance"]     = "6869813008",
-    ["Line Dance"]     = "4049646104",
-    ["Dolphin Dance"]  = "5938365243",
-    ["Zesty"]          = "9032595690",
-    ["Frosty Flair"]   = "10214406616",
+do -- [uncode] Animation Player: エモートアニメーション再生
+local ANIM={}; ANIM.Enabled=false; ANIM.Speed=1.0; ANIM.Selected="Dance"
+ANIM._track=nil; ANIM._aobj=nil
+local _animList={
+    ["Dance"]="507771019",["Floss"]="507776697",["Take the L"]="507776727",
+    ["Samba"]="507776826",["Rock Out"]="507776870",["Gangnam Style"]="5647368185",
+    ["Bodybuilder"]="3994130516",["Twirl"]="3716633898",["Still Standing"]="11435177473",
+    ["The Worm"]="5432681162",["Hype Dance"]="6869813008",["Line Dance"]="4049646104",
+    ["Dolphin Dance"]="5938365243",["Zesty"]="9032595690",["Frosty Flair"]="10214406616",
 }
-ANIM.List = {}
-for k in pairs(_animList) do ANIM.List[#ANIM.List+1] = k end
-table.sort(ANIM.List)
-
+ANIM.List={}; for k in pairs(_animList) do ANIM.List[#ANIM.List+1]=k end; table.sort(ANIM.List)
 local function _animStop()
-    ANIM.Enabled = false
-    if ANIM._track then pcall(function() ANIM._track:Stop(0.1) end); ANIM._track = nil end
-    if ANIM._aobj  then pcall(function() ANIM._aobj:Destroy()  end); ANIM._aobj  = nil end
+    ANIM.Enabled=false
+    if ANIM._track then pcall(function() ANIM._track:Stop(0.1) end); ANIM._track=nil end
+    if ANIM._aobj  then pcall(function() ANIM._aobj:Destroy()  end); ANIM._aobj=nil  end
 end
 local function _animPlay(name)
-    _animStop()
-    ANIM.Enabled = true
-    local id = _animList[name]; if not id then return end
+    _animStop(); ANIM.Enabled=true
+    local id=_animList[name]; if not id then return end
     task.spawn(function()
-        local char = LP.Character; if not char then return end
-        local hum  = char:FindFirstChildOfClass("Humanoid"); if not hum then return end
-        local anir = hum:FindFirstChildOfClass("Animator"); if not anir then return end
-        local aobj = Instance.new("Animation")
-        aobj.AnimationId = "rbxassetid://" .. id
-        local ok, t = pcall(function() return anir:LoadAnimation(aobj) end)
-        if not ok then aobj:Destroy(); return end
-        ANIM._aobj  = aobj
-        ANIM._track = t
-        t.Priority  = Enum.AnimationPriority.Action4
-        t.Looped    = true
-        t:Play(0.1, 1, ANIM.Speed)
-        while ANIM.Enabled and t.IsPlaying do
-            t:AdjustSpeed(ANIM.Speed)
-            RunService.Heartbeat:Wait()
-        end
+        local char=LP.Character; if not char then return end
+        local hum=char:FindFirstChildOfClass("Humanoid"); if not hum then return end
+        local anir=hum:FindFirstChildOfClass("Animator"); if not anir then return end
+        local aobj=Instance.new("Animation"); aobj.AnimationId="rbxassetid://"..id
+        local ok,t=pcall(function() return anir:LoadAnimation(aobj) end)
+        if not ok then aobj:Destroy();return end
+        ANIM._aobj=aobj; ANIM._track=t
+        t.Priority=Enum.AnimationPriority.Action4; t.Looped=true; t:Play(0.1,1,ANIM.Speed)
+        while ANIM.Enabled and t.IsPlaying do t:AdjustSpeed(ANIM.Speed); RunService.Heartbeat:Wait() end
         _animStop()
     end)
 end
 function ANIM.enable()  _animPlay(ANIM.Selected) end
 function ANIM.disable() _animStop() end
-function ANIM.setAnim(name) ANIM.Selected = name; if ANIM.Enabled then _animPlay(name) end end
+function ANIM.setAnim(name) ANIM.Selected=name; if ANIM.Enabled then _animPlay(name) end end
+_UM.ANIM=ANIM
+end -- ANIM
 
--- ============================================================
--- [uncode] Desync / Anti-Aim: サーバー側カメラ角度を偽装
--- ============================================================
-local DESYNC = {}
-DESYNC.Enabled    = false
-DESYNC.PitchMode  = "disabled"   -- disabled/up/down/zero/random
-DESYNC.YawMode    = "disabled"   -- disabled/backwards/spin/random
-DESYNC.SpinSpeed  = 5.0
-DESYNC.Underground= false
-DESYNC._spinAngle = 0
-
-local function _dsFireCam(pitch, yaw)
+do -- [uncode] Desync / Anti-Aim: サーバー側カメラ角度を偽装
+local DESYNC={}; DESYNC.Enabled=false; DESYNC.PitchMode="disabled"; DESYNC.YawMode="disabled"
+DESYNC.SpinSpeed=5.0; DESYNC.Underground=false; DESYNC._spinAngle=0
+local function _dsFireCam(pitch,yaw)
     pcall(function()
-        local rems = RS:FindFirstChild("Remotes"); if not rems then return end
-        local repl = rems:FindFirstChild("Replication"); if not repl then return end
-        local figh = repl:FindFirstChild("Fighter"); if not figh then return end
-        local ucr  = figh:FindFirstChild("UpdateCameraRotation"); if not ucr then return end
-        local cf   = CFrame.fromEulerAnglesYXZ(math.rad(pitch), math.rad(yaw), 0)
-        ucr:FireServer(cf)
+        local rems=RS:FindFirstChild("Remotes"); if not rems then return end
+        local repl=rems:FindFirstChild("Replication"); if not repl then return end
+        local figh=repl:FindFirstChild("Fighter"); if not figh then return end
+        local ucr=figh:FindFirstChild("UpdateCameraRotation"); if not ucr then return end
+        ucr:FireServer(CFrame.fromEulerAnglesYXZ(math.rad(pitch),math.rad(yaw),0))
     end)
 end
 function DESYNC.enable()
-    DESYNC.Enabled = true
-    _conn("DESYNC", RunService.Heartbeat:Connect(function()
+    DESYNC.Enabled=true
+    _ucConn("DESYNC",RunService.Heartbeat:Connect(function()
         if not DESYNC.Enabled then return end
-        local pitch = 0
-        if     DESYNC.PitchMode == "up"     then pitch = -89
-        elseif DESYNC.PitchMode == "down"   then pitch =  89
-        elseif DESYNC.PitchMode == "zero"   then pitch =   0
-        elseif DESYNC.PitchMode == "random" then pitch = math.random(-89,89) end
-
-        DESYNC._spinAngle = (DESYNC._spinAngle + DESYNC.SpinSpeed) % 360
-        local yaw = DESYNC._spinAngle
-        if     DESYNC.YawMode == "disabled"  then
-            yaw = 0
-            if Camera then
-                local lv = Camera.CFrame.LookVector
-                yaw = math.deg(math.atan2(-lv.X, -lv.Z))
-            end
-        elseif DESYNC.YawMode == "backwards" then yaw = yaw + 180
-        elseif DESYNC.YawMode == "random"    then yaw = math.random(0,360) end
-        -- spin: そのままspinAngleを使う
-
-        _dsFireCam(
-            DESYNC.PitchMode ~= "disabled" and pitch or 0,
-            yaw
-        )
-
+        local pitch=0
+        if     DESYNC.PitchMode=="up"     then pitch=-89
+        elseif DESYNC.PitchMode=="down"   then pitch=89
+        elseif DESYNC.PitchMode=="zero"   then pitch=0
+        elseif DESYNC.PitchMode=="random" then pitch=math.random(-89,89) end
+        DESYNC._spinAngle=(DESYNC._spinAngle+DESYNC.SpinSpeed)%360
+        local yaw=DESYNC._spinAngle
+        if     DESYNC.YawMode=="disabled"  then
+            yaw=0; if Camera then local lv=Camera.CFrame.LookVector; yaw=math.deg(math.atan2(-lv.X,-lv.Z)) end
+        elseif DESYNC.YawMode=="backwards" then yaw=yaw+180
+        elseif DESYNC.YawMode=="random"    then yaw=math.random(0,360) end
+        _dsFireCam(DESYNC.PitchMode~="disabled" and pitch or 0,yaw)
         if DESYNC.Underground then
             pcall(function()
-                local char = LP.Character; if not char then return end
-                local root = char:FindFirstChild("HumanoidRootPart"); if not root then return end
-                root.CFrame = root.CFrame * CFrame.new(0,-500,0)
+                local char=LP.Character; if not char then return end
+                local root=char:FindFirstChild("HumanoidRootPart"); if not root then return end
+                root.CFrame=root.CFrame*CFrame.new(0,-500,0)
             end)
         end
     end))
 end
-function DESYNC.disable()
-    DESYNC.Enabled = false
-    _stop("DESYNC")
-end
+function DESYNC.disable() DESYNC.Enabled=false; _ucStop("DESYNC") end
+_UM.DESYNC=DESYNC
+end -- DESYNC
 
--- ============================================================
--- [uncode] Color Correction / Bloom / Sun Rays 映像エフェクト
--- ============================================================
-local VFXCFG = {
-    CC=false, CCBright=0, CCContrast=0, CCSat=0, CCTint=Color3.new(1,1,1),
-    Bloom=false, BloomInt=0.5, BloomSize=24, BloomThresh=0.95,
-    SunRays=false, SRInt=0.25, SRSpread=0.5,
-    _cc=nil, _bl=nil, _sr=nil
+do -- [uncode] VFX: Color Correction / Bloom / Sun Rays
+local VFXCFG={
+    CC=false,CCBright=0,CCContrast=0,CCSat=0,CCTint=Color3.new(1,1,1),
+    Bloom=false,BloomInt=0.5,BloomSize=24,BloomThresh=0.95,
+    SunRays=false,SRInt=0.25,SRSpread=0.5,_cc=nil,_bl=nil,_sr=nil
 }
 local function _vfxCC()
-    if not VFXCFG.CC then if VFXCFG._cc then VFXCFG._cc:Destroy(); VFXCFG._cc=nil end; return end
+    if not VFXCFG.CC then if VFXCFG._cc then VFXCFG._cc:Destroy();VFXCFG._cc=nil end;return end
     if not VFXCFG._cc then VFXCFG._cc=Instance.new("ColorCorrectionEffect",Lighting) end
     VFXCFG._cc.Brightness=VFXCFG.CCBright; VFXCFG._cc.Contrast=VFXCFG.CCContrast
-    VFXCFG._cc.Saturation=VFXCFG.CCSat;    VFXCFG._cc.TintColor=VFXCFG.CCTint
+    VFXCFG._cc.Saturation=VFXCFG.CCSat; VFXCFG._cc.TintColor=VFXCFG.CCTint
 end
 local function _vfxBloom()
-    if not VFXCFG.Bloom then if VFXCFG._bl then VFXCFG._bl:Destroy(); VFXCFG._bl=nil end; return end
+    if not VFXCFG.Bloom then if VFXCFG._bl then VFXCFG._bl:Destroy();VFXCFG._bl=nil end;return end
     if not VFXCFG._bl then VFXCFG._bl=Instance.new("BloomEffect",Lighting) end
     VFXCFG._bl.Intensity=VFXCFG.BloomInt; VFXCFG._bl.Size=VFXCFG.BloomSize; VFXCFG._bl.Threshold=VFXCFG.BloomThresh
 end
 local function _vfxSunRays()
-    if not VFXCFG.SunRays then if VFXCFG._sr then VFXCFG._sr:Destroy(); VFXCFG._sr=nil end; return end
+    if not VFXCFG.SunRays then if VFXCFG._sr then VFXCFG._sr:Destroy();VFXCFG._sr=nil end;return end
     if not VFXCFG._sr then VFXCFG._sr=Instance.new("SunRaysEffect",Lighting) end
     VFXCFG._sr.Intensity=VFXCFG.SRInt; VFXCFG._sr.Spread=VFXCFG.SRSpread
 end
+VFXCFG.applyCC=_vfxCC; VFXCFG.applyBloom=_vfxBloom; VFXCFG.applySunRays=_vfxSunRays
+_UM.VFXCFG=VFXCFG
+end -- VFXCFG
 
--- ============================================================
--- [uncode] Rage Silent: UseItemリモートをフックして頭部に誘導
--- ============================================================
-local RSAI = {}
-RSAI.Enabled    = false
-RSAI.Prediction = 0.12
-RSAI.HeadOffset = Vector3.new(0, 0.1, 0)
-RSAI._conn      = nil
-
+do -- [uncode] Rage Silent: UseItemリモートをフックして頭部に誘導
+local RSAI={}; RSAI.Enabled=false; RSAI.Prediction=0.12
+RSAI.HeadOffset=Vector3.new(0,0.1,0); RSAI._conn=nil
 local function _rsaiClosestHead()
-    local myChar = LP.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    local myChar=LP.Character; local myRoot=myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
-    local best, bestDist = nil, math.huge
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP and p.Character then
-            local head = p.Character:FindFirstChild("Head")
-            local hum  = p.Character:FindFirstChildOfClass("Humanoid")
-            if head and hum and hum.Health > 0 then
-                -- チームメイト除外
-                if not head:FindFirstChild("TeammateLabel") and
-                   not (myRoot:FindFirstChild("TeammateLabel") and head:FindFirstAncestorOfClass("Model") == myChar) then
-                    local d = (head.Position - myRoot.Position).Magnitude
-                    if d < bestDist then bestDist=d; best=head end
-                end
+    local best,bestDist=nil,math.huge
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p~=LP and p.Character then
+            local head=p.Character:FindFirstChild("Head")
+            local hum=p.Character:FindFirstChildOfClass("Humanoid")
+            if head and hum and hum.Health>0 and not head:FindFirstChild("TeammateLabel") then
+                local d=(head.Position-myRoot.Position).Magnitude
+                if d<bestDist then bestDist=d;best=head end
             end
         end
     end
     return best
 end
-
 function RSAI.enable()
-    RSAI.Enabled = true
+    RSAI.Enabled=true
     if RSAI._conn then RSAI._conn:Disconnect() end
-    RSAI._conn = RunService.Heartbeat:Connect(function()
+    RSAI._conn=RunService.Heartbeat:Connect(function()
         if not RSAI.Enabled then return end
-        local myChar = LP.Character; if not myChar then return end
+        local myChar=LP.Character; if not myChar then return end
         pcall(function()
-            local rs_  = RS:FindFirstChild("Remotes"); if not rs_ then return end
-            local repl = rs_:FindFirstChild("Replication"); if not repl then return end
-            local figh = repl:FindFirstChild("Fighter"); if not figh then return end
-            local useItem = figh:FindFirstChild("UseItem"); if not useItem then return end
-            local util    = require(RS.Modules.Utility)
-            local enumLib = require(RS.Modules.EnumLibrary)
-            local fc      = require(LP.PlayerScripts.Controllers.FighterController)
+            local rs_=RS:FindFirstChild("Remotes"); if not rs_ then return end
+            local repl=rs_:FindFirstChild("Replication"); if not repl then return end
+            local figh=repl:FindFirstChild("Fighter"); if not figh then return end
+            local useItem=figh:FindFirstChild("UseItem"); if not useItem then return end
+            local util=require(RS.Modules.Utility)
+            local enumLib=require(RS.Modules.EnumLibrary)
+            local fc=require(LP.PlayerScripts.Controllers.FighterController)
             if not fc or not fc.LocalFighter then return end
-            local item = fc.LocalFighter.EquippedItem; if not item then return end
-            local head = _rsaiClosestHead(); if not head then return end
-            local vel     = head.Velocity or Vector3.zero
-            local predicted = head.Position + vel * RSAI.Prediction + RSAI.HeadOffset
-            local cam     = workspace.CurrentCamera.CFrame
-            local dir     = (predicted - cam.Position).Unit
-            local finalCF = CFrame.new(cam.Position, cam.Position + dir)
-            local cameradata = {}
-            cameradata[utf8.char(1)] = {
-                [utf8.char(0)] = util:EncodeCFrame(finalCF),
-                [utf8.char(1)] = util:EncodeCFrame(finalCF),
-                [utf8.char(2)] = head,
-                [utf8.char(3)] = util:EncodeCFrame(head.CFrame:ToObjectSpace(CFrame.new(predicted)))
+            local item=fc.LocalFighter.EquippedItem; if not item then return end
+            local head=_rsaiClosestHead(); if not head then return end
+            local vel=head.Velocity or Vector3.zero
+            local predicted=head.Position+vel*RSAI.Prediction+RSAI.HeadOffset
+            local cam=workspace.CurrentCamera.CFrame
+            local finalCF=CFrame.new(cam.Position,cam.Position+(predicted-cam.Position).Unit)
+            local cameradata={}
+            cameradata[utf8.char(1)]={
+                [utf8.char(0)]=util:EncodeCFrame(finalCF),
+                [utf8.char(1)]=util:EncodeCFrame(finalCF),
+                [utf8.char(2)]=head,
+                [utf8.char(3)]=util:EncodeCFrame(head.CFrame:ToObjectSpace(CFrame.new(predicted)))
             }
-            useItem:FireServer(item:Get("ObjectID"), enumLib:ToEnum("StartShooting"), cameradata, nil)
+            useItem:FireServer(item:Get("ObjectID"),enumLib:ToEnum("StartShooting"),cameradata,nil)
         end)
     end)
 end
 function RSAI.disable()
-    RSAI.Enabled = false
-    if RSAI._conn then RSAI._conn:Disconnect(); RSAI._conn=nil end
+    RSAI.Enabled=false
+    if RSAI._conn then RSAI._conn:Disconnect();RSAI._conn=nil end
 end
+_UM.RSAI=RSAI
+end -- RSAI
 
--- ============================================================
--- [uncode] Projectile TP: 飛び道具を最近敵の頭に吸着
--- ============================================================
-local PTP = {}
-PTP.Enabled = false
-local _ptpConns  = {}
-local _ptpAttached = setmetatable({}, {__mode="k"})
-local _ptpFolders = {["Daggers"]=true, ["Bow"]=true, ["Slingshot"]=true, ["Arrow"]=true, ["Kunai"]=true}
-
+do -- [uncode] Projectile TP: 飛び道具を最近敵の頭に吸着
+local PTP={}; PTP.Enabled=false
+local _ptpConns={}; local _ptpAttached=setmetatable({},{__mode="k"})
+local _ptpFolders={["Daggers"]=true,["Bow"]=true,["Slingshot"]=true,["Arrow"]=true,["Kunai"]=true}
 local function _ptpClosestHead()
-    local myChar = LP.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    local myChar=LP.Character; local myRoot=myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
-    local best, bestDist = nil, math.huge
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP and p.Character then
-            local head = p.Character:FindFirstChild("Head")
-            if head then
-                local d = (head.Position - myRoot.Position).Magnitude
-                if d < bestDist then bestDist=d; best=head end
-            end
+    local best,bestDist=nil,math.huge
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p~=LP and p.Character then
+            local head=p.Character:FindFirstChild("Head")
+            if head then local d=(head.Position-myRoot.Position).Magnitude; if d<bestDist then bestDist=d;best=head end end
         end
     end
     return best
 end
-
 local function _ptpAttachPart(part)
-    if not PTP.Enabled then return end
-    if not part or not part:IsA("BasePart") then return end
-    if _ptpAttached[part] then return end
-    _ptpAttached[part] = true
-    pcall(function() part.CanCollide=false; part.Massless=true end)
+    if not PTP.Enabled or not part or not part:IsA("BasePart") or _ptpAttached[part] then return end
+    _ptpAttached[part]=true; pcall(function() part.CanCollide=false;part.Massless=true end)
     task.spawn(function()
         while part and part.Parent and PTP.Enabled do
-            local head = _ptpClosestHead()
+            local head=_ptpClosestHead()
             if head and head.Parent then
-                pcall(function()
-                    part.AssemblyAngularVelocity = Vector3.zero
-                    part.CFrame = CFrame.new(head.Position + Vector3.new(0,0.25,0))
-                end)
+                pcall(function() part.AssemblyAngularVelocity=Vector3.zero; part.CFrame=CFrame.new(head.Position+Vector3.new(0,0.25,0)) end)
             end
             RunService.Heartbeat:Wait()
         end
     end)
 end
-
 local function _ptpHookFolder(folder)
-    for _, d in ipairs(folder:GetDescendants()) do
-        if d:IsA("BasePart") then _ptpAttachPart(d) end
-    end
-    local c = folder.DescendantAdded:Connect(function(desc)
-        if desc:IsA("BasePart") then _ptpAttachPart(desc) end
-    end)
-    table.insert(_ptpConns, c)
+    for _,d in ipairs(folder:GetDescendants()) do if d:IsA("BasePart") then _ptpAttachPart(d) end end
+    table.insert(_ptpConns,folder.DescendantAdded:Connect(function(d) if d:IsA("BasePart") then _ptpAttachPart(d) end end))
 end
-
 function PTP.enable()
-    PTP.Enabled = true
-    for _, child in ipairs(workspace:GetChildren()) do
-        if _ptpFolders[child.Name] then _ptpHookFolder(child) end
-    end
-    local c = workspace.ChildAdded:Connect(function(child)
-        if _ptpFolders[child.Name] then _ptpHookFolder(child) end
-    end)
-    table.insert(_ptpConns, c)
+    PTP.Enabled=true
+    for _,child in ipairs(workspace:GetChildren()) do if _ptpFolders[child.Name] then _ptpHookFolder(child) end end
+    table.insert(_ptpConns,workspace.ChildAdded:Connect(function(child) if _ptpFolders[child.Name] then _ptpHookFolder(child) end end))
 end
 function PTP.disable()
-    PTP.Enabled = false
-    for _, c in ipairs(_ptpConns) do pcall(function() c:Disconnect() end) end
-    _ptpConns = {}
-    table.clear(_ptpAttached)
+    PTP.Enabled=false
+    for _,c in ipairs(_ptpConns) do pcall(function() c:Disconnect() end) end
+    _ptpConns={}; table.clear(_ptpAttached)
 end
+_UM.PTP=PTP
+end -- PTP
 
--- ============================================================
--- [uncode] Anti Katana: 刀デフレクト中は射撃をブロック
--- ============================================================
-local AKT = {}
-AKT.Enabled = false
-AKT._deflecting = {}
-AKT._hooked = false
-AKT._origFS = nil
-
+do -- [uncode] Anti Katana: 刀デフレクト中は射撃をブロック
+local AKT={}; AKT.Enabled=false; AKT._deflecting={}; AKT._hooked=false; AKT._origFS=nil
 local function _aktIsDeflecting(userId)
-    local now = tick()
-    if AKT._deflecting[userId] and AKT._deflecting[userId] > now then return true end
-    AKT._deflecting[userId] = nil
-    return false
+    local now=tick()
+    if AKT._deflecting[userId] and AKT._deflecting[userId]>now then return true end
+    AKT._deflecting[userId]=nil; return false
 end
-
 function AKT.enable()
-    AKT.Enabled = true
-    if AKT._hooked then return end
+    AKT.Enabled=true; if AKT._hooked then return end
     pcall(function()
-        local useItem = RS.Remotes.Replication.Fighter.UseItem
-        local enumLib = require(RS.Modules.EnumLibrary)
-        local startShooting = enumLib:ToEnum("StartShooting")
-        AKT._origFS = hookfunction(useItem.FireServer, newcclosure(function(self, obj, action, cameradata, ...)
-            if AKT.Enabled and action == startShooting then
-                -- 最近敵がデフレクト中なら射撃をキャンセル
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= LP and _aktIsDeflecting(p.UserId) then
-                        return nil
-                    end
-                end
+        local useItem=RS.Remotes.Replication.Fighter.UseItem
+        local enumLib=require(RS.Modules.EnumLibrary)
+        local startShooting=enumLib:ToEnum("StartShooting")
+        AKT._origFS=hookfunction(useItem.FireServer,newcclosure(function(self,obj,action,cameradata,...)
+            if AKT.Enabled and action==startShooting then
+                for _,p in ipairs(Players:GetPlayers()) do if p~=LP and _aktIsDeflecting(p.UserId) then return nil end end
             end
-            return AKT._origFS(self, obj, action, cameradata, ...)
+            return AKT._origFS(self,obj,action,cameradata,...)
         end))
-        AKT._hooked = true
-        -- KatanaクラスのReplicateFromServerをフック
-        local ok, katana = pcall(function()
-            for _, item in ipairs(RS:GetDescendants()) do
-                if item.Name == "Katana" and item:IsA("ModuleScript") then
-                    return require(item)
-                end
+        AKT._hooked=true
+        local ok,katana=pcall(function()
+            for _,item in ipairs(RS:GetDescendants()) do
+                if item.Name=="Katana" and item:IsA("ModuleScript") then return require(item) end
             end
         end)
         if ok and katana and katana.ReplicateFromServer then
-            local origRep = katana.ReplicateFromServer
-            hookfunction(katana.ReplicateFromServer, newcclosure(function(self, action, ...)
-                local actionStr = tostring(action):lower()
-                if actionStr:find("deflect") or actionStr == "startaiming" or actionStr == "startblocking" then
-                    local player = rawget(self,"ClientFighter") and rawget(self,"ClientFighter").Player
-                    if player and player ~= LP then
-                        AKT._deflecting[player.UserId] = tick() + 1.2
-                    end
+            local origRep=katana.ReplicateFromServer
+            hookfunction(katana.ReplicateFromServer,newcclosure(function(self,action,...)
+                local actionStr=tostring(action):lower()
+                if actionStr:find("deflect") or actionStr=="startaiming" or actionStr=="startblocking" then
+                    local player=rawget(self,"ClientFighter") and rawget(self,"ClientFighter").Player
+                    if player and player~=LP then AKT._deflecting[player.UserId]=tick()+1.2 end
                 end
-                return origRep(self, action, ...)
+                return origRep(self,action,...)
             end))
         end
     end)
 end
-function AKT.disable()
-    AKT.Enabled = false
-    table.clear(AKT._deflecting)
-end
+function AKT.disable() AKT.Enabled=false; table.clear(AKT._deflecting) end
+_UM.AKT=AKT
+end -- AKT
 
--- ============================================================
--- [uncode] Highlight ESP: Highlight インスタンスで敵を強調
--- ============================================================
-local HESP = {}
-HESP.Enabled        = false
-HESP.FillColor      = Color3.fromRGB(255, 50, 50)
-HESP.OutlineColor   = Color3.fromRGB(255, 255, 255)
-HESP.FillTrans      = 0.35
-HESP.OutlineTrans   = 0.0
-HESP.ThroughWalls   = true
-HESP._highlights    = {}
-
+do -- [uncode] Highlight ESP: Highlightインスタンスで敵を強調
+local HESP={}
+HESP.Enabled=false; HESP.FillColor=Color3.fromRGB(255,50,50); HESP.OutlineColor=Color3.fromRGB(255,255,255)
+HESP.FillTrans=0.35; HESP.OutlineTrans=0.0; HESP.ThroughWalls=true; HESP._highlights={}
 local function _hespApply(player)
     if not HESP.Enabled then return end
-    local char = player.Character; if not char then return end
+    local char=player.Character; if not char then return end
     if HESP._highlights[player] then
         if HESP._highlights[player].Parent then return end
         HESP._highlights[player]:Destroy()
     end
-    local h = Instance.new("Highlight")
-    h.FillColor         = HESP.FillColor
-    h.OutlineColor      = HESP.OutlineColor
-    h.FillTransparency  = HESP.FillTrans
-    h.OutlineTransparency = HESP.OutlineTrans
-    h.DepthMode         = HESP.ThroughWalls and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
-    h.Adornee           = char
-    h.Parent            = CoreGui
-    HESP._highlights[player] = h
+    local h=Instance.new("Highlight")
+    h.FillColor=HESP.FillColor; h.OutlineColor=HESP.OutlineColor
+    h.FillTransparency=HESP.FillTrans; h.OutlineTransparency=HESP.OutlineTrans
+    h.DepthMode=HESP.ThroughWalls and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
+    h.Adornee=char; h.Parent=CoreGui; HESP._highlights[player]=h
 end
 local function _hespRemove(player)
-    local h = HESP._highlights[player]
-    if h then pcall(function() h:Destroy() end) end
-    HESP._highlights[player] = nil
+    local h=HESP._highlights[player]; if h then pcall(function() h:Destroy() end) end; HESP._highlights[player]=nil
 end
 local function _hespRefresh()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP then _hespApply(p) end
-    end
+    for _,p in ipairs(Players:GetPlayers()) do if p~=LP then _hespApply(p) end end
 end
-
 function HESP.enable()
-    HESP.Enabled = true
-    _hespRefresh()
-    _conn("HESP_char", Players.PlayerAdded:Connect(function(p)
-        p.CharacterAdded:Connect(function() task.wait(0.5); _hespApply(p) end)
+    HESP.Enabled=true; _hespRefresh()
+    _ucConn("HESP_char",Players.PlayerAdded:Connect(function(p)
+        p.CharacterAdded:Connect(function() task.wait(0.5);_hespApply(p) end)
     end))
-    _conn("HESP_rm", Players.PlayerRemoving:Connect(_hespRemove))
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP then
-            p.CharacterAdded:Connect(function() task.wait(0.5); _hespApply(p) end)
-        end
+    _ucConn("HESP_rm",Players.PlayerRemoving:Connect(_hespRemove))
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p~=LP then p.CharacterAdded:Connect(function() task.wait(0.5);_hespApply(p) end) end
     end
-    _conn("HESP_hb", RunService.Heartbeat:Connect(function()
+    _ucConn("HESP_hb",RunService.Heartbeat:Connect(function()
         if not HESP.Enabled then return end
-        for p, h in pairs(HESP._highlights) do
-            if not h.Parent then _hespApply(p) end
-        end
+        for p,h in pairs(HESP._highlights) do if not h.Parent then _hespApply(p) end end
     end))
 end
 function HESP.disable()
-    HESP.Enabled = false
-    _stop("HESP_char"); _stop("HESP_rm"); _stop("HESP_hb")
+    HESP.Enabled=false
+    _ucStop("HESP_char");_ucStop("HESP_rm");_ucStop("HESP_hb")
     for p in pairs(HESP._highlights) do _hespRemove(p) end
 end
 function HESP.refresh()
     for p in pairs(HESP._highlights) do _hespRemove(p) end
     if HESP.Enabled then _hespRefresh() end
 end
+_UM.HESP=HESP
+end -- HESP
 
--- ============================================================
--- [uncode] Override Appearance: 敵キャラのマテリアル/透明度を上書き
--- ============================================================
-local OAPP = {}
-OAPP.Enabled      = false
-OAPP.Material     = Enum.Material.ForceField
-OAPP.Transparency = 0.0
-OAPP.Color        = nil   -- nilのとき色変更なし
-OAPP._origProps   = {}    -- {[BasePart] = {Material, Transparency, Color}}
-
+do -- [uncode] Override Appearance: 敵キャラのマテリアル/透明度を上書き
+local OAPP={}
+OAPP.Enabled=false; OAPP.Material=Enum.Material.ForceField; OAPP.Transparency=0.0
+OAPP.Color=nil; OAPP._origProps={}
 local function _oappApplyChar(char)
     if not char then return end
-    for _, part in ipairs(char:GetDescendants()) do
+    for _,part in ipairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
             if not OAPP._origProps[part] then
-                OAPP._origProps[part] = {
-                    Material     = part.Material,
-                    Transparency = part.Transparency,
-                    Color        = part.Color,
-                }
+                OAPP._origProps[part]={Material=part.Material,Transparency=part.Transparency,Color=part.Color}
             end
             pcall(function()
-                part.Material     = OAPP.Material
-                part.Transparency = OAPP.Transparency
-                if OAPP.Color then part.Color = OAPP.Color end
+                part.Material=OAPP.Material; part.Transparency=OAPP.Transparency
+                if OAPP.Color then part.Color=OAPP.Color end
             end)
         end
     end
 end
 local function _oappRestoreChar(char)
     if not char then return end
-    for _, part in ipairs(char:GetDescendants()) do
+    for _,part in ipairs(char:GetDescendants()) do
         if part:IsA("BasePart") and OAPP._origProps[part] then
-            local orig = OAPP._origProps[part]
-            pcall(function()
-                part.Material     = orig.Material
-                part.Transparency = orig.Transparency
-                part.Color        = orig.Color
-            end)
-            OAPP._origProps[part] = nil
+            local orig=OAPP._origProps[part]
+            pcall(function() part.Material=orig.Material;part.Transparency=orig.Transparency;part.Color=orig.Color end)
+            OAPP._origProps[part]=nil
         end
     end
 end
-
 function OAPP.enable()
-    OAPP.Enabled = true
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP then _oappApplyChar(p.Character) end
-    end
-    _conn("OAPP_pa", Players.PlayerAdded:Connect(function(p)
-        p.CharacterAdded:Connect(function(c) task.wait(0.5); if OAPP.Enabled then _oappApplyChar(c) end end)
+    OAPP.Enabled=true
+    for _,p in ipairs(Players:GetPlayers()) do if p~=LP then _oappApplyChar(p.Character) end end
+    _ucConn("OAPP_pa",Players.PlayerAdded:Connect(function(p)
+        p.CharacterAdded:Connect(function(c) task.wait(0.5);if OAPP.Enabled then _oappApplyChar(c) end end)
     end))
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP then
-            p.CharacterAdded:Connect(function(c) task.wait(0.5); if OAPP.Enabled then _oappApplyChar(c) end end)
-        end
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p~=LP then p.CharacterAdded:Connect(function(c) task.wait(0.5);if OAPP.Enabled then _oappApplyChar(c) end end) end
     end
 end
 function OAPP.disable()
-    OAPP.Enabled = false
-    _stop("OAPP_pa")
-    for _, p in ipairs(Players:GetPlayers()) do _oappRestoreChar(p.Character) end
+    OAPP.Enabled=false; _ucStop("OAPP_pa")
+    for _,p in ipairs(Players:GetPlayers()) do _oappRestoreChar(p.Character) end
     table.clear(OAPP._origProps)
 end
+_UM.OAPP=OAPP
+end -- OAPP
 
--- ============================================================
--- [uncode] XRay: 全オブジェクトを半透明にして透視
--- ============================================================
-local XRAY = {}
-XRAY.Enabled      = false
-XRAY.Transparency = 0.85
-XRAY._modified    = setmetatable({}, {__mode="k"})
-
+do -- [uncode] XRay: 全オブジェクトを半透明にして透視
+local XRAY={}
+XRAY.Enabled=false; XRAY.Transparency=0.85; XRAY._modified=setmetatable({},{__mode="k"})
 local function _xrayMod(obj)
-    if not obj or not obj:IsA("BasePart") then return end
-    if obj.Anchored then return end
-    -- キャラクターはスキップ
+    if not obj or not obj:IsA("BasePart") or obj.Anchored then return end
     if Players:GetPlayerFromCharacter(obj.Parent) then return end
     if Players:GetPlayerFromCharacter(obj.Parent and obj.Parent.Parent) then return end
-    XRAY._modified[obj] = true
-    pcall(function() obj.LocalTransparencyModifier = 1 - XRAY.Transparency end)
+    XRAY._modified[obj]=true; pcall(function() obj.LocalTransparencyModifier=1-XRAY.Transparency end)
 end
 local function _xrayClear()
     for obj in pairs(XRAY._modified) do
-        pcall(function() if obj and obj.Parent then obj.LocalTransparencyModifier = 0 end end)
+        pcall(function() if obj and obj.Parent then obj.LocalTransparencyModifier=0 end end)
     end
     table.clear(XRAY._modified)
 end
-
 function XRAY.enable()
-    XRAY.Enabled = true
-    for _, v in ipairs(workspace:GetDescendants()) do _xrayMod(v) end
-    _conn("XRAY_add", workspace.DescendantAdded:Connect(_xrayMod))
+    XRAY.Enabled=true
+    for _,v in ipairs(workspace:GetDescendants()) do _xrayMod(v) end
+    _ucConn("XRAY_add",workspace.DescendantAdded:Connect(_xrayMod))
 end
-function XRAY.disable()
-    XRAY.Enabled = false
-    _stop("XRAY_add")
-    _xrayClear()
-end
+function XRAY.disable() XRAY.Enabled=false; _ucStop("XRAY_add"); _xrayClear() end
+_UM.XRAY=XRAY
+end -- XRAY
 
--- ============================================================
--- [uncode] Atmosphere: カスタム大気エフェクト
--- ============================================================
-local ATMO = {}
-ATMO.Enabled = false
-ATMO.Density = 0.3
-ATMO.Offset  = 0.2
-ATMO.Haze    = 1.0
-ATMO.Glare   = 0.5
-ATMO.Color   = Color3.fromRGB(199, 199, 199)
-ATMO._inst   = nil
-
+do -- [uncode] Atmosphere: カスタム大気エフェクト
+local ATMO={}
+ATMO.Enabled=false; ATMO.Density=0.3; ATMO.Offset=0.2; ATMO.Haze=1.0; ATMO.Glare=0.5
+ATMO.Color=Color3.fromRGB(199,199,199); ATMO._inst=nil
 local function _atmoApply()
-    if not ATMO.Enabled then
-        if ATMO._inst then ATMO._inst.Parent=nil end; return
-    end
-    if not ATMO._inst then
-        ATMO._inst = Instance.new("Atmosphere")
-        ATMO._inst.Name = "UCAtmosphere"
-    end
-    ATMO._inst.Density = ATMO.Density
-    ATMO._inst.Offset  = ATMO.Offset
-    ATMO._inst.Haze    = ATMO.Haze
-    ATMO._inst.Glare   = ATMO.Glare
-    ATMO._inst.Color   = ATMO.Color
-    ATMO._inst.Parent  = Lighting
+    if not ATMO.Enabled then if ATMO._inst then ATMO._inst.Parent=nil end;return end
+    if not ATMO._inst then ATMO._inst=Instance.new("Atmosphere"); ATMO._inst.Name="UCAtmosphere" end
+    ATMO._inst.Density=ATMO.Density; ATMO._inst.Offset=ATMO.Offset
+    ATMO._inst.Haze=ATMO.Haze; ATMO._inst.Glare=ATMO.Glare
+    ATMO._inst.Color=ATMO.Color; ATMO._inst.Parent=Lighting
 end
 function ATMO.enable()  ATMO.Enabled=true;  _atmoApply() end
 function ATMO.disable() ATMO.Enabled=false; _atmoApply() end
+ATMO._apply=_atmoApply
+_UM.ATMO=ATMO
+end -- ATMO
 
--- ============================================================
--- [uncode] Lighting Override: 霧・時間・明度などを操作
--- ============================================================
-local LGHT = {}
-LGHT.Enabled    = false
-LGHT.FogEnabled = false
-LGHT.FogEnd     = 1000
-LGHT.FogStart   = 0
-LGHT.FogColor   = Color3.fromRGB(200,200,200)
-LGHT.ClockEnabled = false
-LGHT.ClockTime  = 12
-LGHT.Brightness = 2
-LGHT.BrightEnabled = false
-LGHT._orig      = {}
-
-local function _lghtSave(prop)
-    if LGHT._orig[prop] == nil then LGHT._orig[prop] = Lighting[prop] end
+do -- [uncode] Lighting Override: 霧・時間・明度などを操作
+local LGHT={}
+LGHT.Enabled=false; LGHT.FogEnabled=false; LGHT.FogEnd=1000; LGHT.FogStart=0
+LGHT.FogColor=Color3.fromRGB(200,200,200); LGHT.ClockEnabled=false; LGHT.ClockTime=12
+LGHT.Brightness=2; LGHT.BrightEnabled=false; LGHT._orig={}
+local function _lghtSave(p) if LGHT._orig[p]==nil then LGHT._orig[p]=Lighting[p] end end
+local function _lghtRestore(p)
+    if LGHT._orig[p]~=nil then pcall(function() Lighting[p]=LGHT._orig[p] end);LGHT._orig[p]=nil end
 end
-local function _lghtRestore(prop)
-    if LGHT._orig[prop] ~= nil then
-        pcall(function() Lighting[prop] = LGHT._orig[prop] end)
-        LGHT._orig[prop] = nil
-    end
-end
-
 local function _lghtApply()
     if not LGHT.Enabled then
-        _lghtRestore("FogEnd"); _lghtRestore("FogStart"); _lghtRestore("FogColor")
-        _lghtRestore("ClockTime"); _lghtRestore("Brightness"); return
+        _lghtRestore("FogEnd");_lghtRestore("FogStart");_lghtRestore("FogColor")
+        _lghtRestore("ClockTime");_lghtRestore("Brightness");return
     end
     if LGHT.FogEnabled then
-        _lghtSave("FogEnd"); _lghtSave("FogStart"); _lghtSave("FogColor")
-        pcall(function() Lighting.FogEnd=LGHT.FogEnd; Lighting.FogStart=LGHT.FogStart; Lighting.FogColor=LGHT.FogColor end)
-    else
-        _lghtRestore("FogEnd"); _lghtRestore("FogStart"); _lghtRestore("FogColor")
-    end
-    if LGHT.ClockEnabled then
-        _lghtSave("ClockTime")
-        pcall(function() Lighting.ClockTime=LGHT.ClockTime end)
+        _lghtSave("FogEnd");_lghtSave("FogStart");_lghtSave("FogColor")
+        pcall(function() Lighting.FogEnd=LGHT.FogEnd;Lighting.FogStart=LGHT.FogStart;Lighting.FogColor=LGHT.FogColor end)
+    else _lghtRestore("FogEnd");_lghtRestore("FogStart");_lghtRestore("FogColor") end
+    if LGHT.ClockEnabled then _lghtSave("ClockTime"); pcall(function() Lighting.ClockTime=LGHT.ClockTime end)
     else _lghtRestore("ClockTime") end
-    if LGHT.BrightEnabled then
-        _lghtSave("Brightness")
-        pcall(function() Lighting.Brightness=LGHT.Brightness end)
+    if LGHT.BrightEnabled then _lghtSave("Brightness"); pcall(function() Lighting.Brightness=LGHT.Brightness end)
     else _lghtRestore("Brightness") end
 end
-
 function LGHT.enable()  LGHT.Enabled=true;  _lghtApply() end
 function LGHT.disable() LGHT.Enabled=false; _lghtApply() end
+LGHT._apply=_lghtApply
+_UM.LGHT=LGHT
+end -- LGHT
 
--- ============================================================
--- [uncode] FOV Changer: 視野角を変更
--- ============================================================
-local WFOV = {}
-WFOV.Enabled  = false
-WFOV.FOV      = 90
-WFOV._origFOV = nil
-
+do -- [uncode] FOV Changer: 視野角を変更
+local WFOV={}; WFOV.Enabled=false; WFOV.FOV=90; WFOV._origFOV=nil
 function WFOV.enable()
-    WFOV.Enabled = true
-    if not WFOV._origFOV then WFOV._origFOV = Camera.FieldOfView end
-    _conn("WFOV", RunService.RenderStepped:Connect(function()
+    WFOV.Enabled=true
+    if not WFOV._origFOV then WFOV._origFOV=Camera.FieldOfView end
+    _ucConn("WFOV",RunService.RenderStepped:Connect(function()
         if not WFOV.Enabled then return end
-        pcall(function() Camera.FieldOfView = WFOV.FOV end)
+        pcall(function() Camera.FieldOfView=WFOV.FOV end)
     end))
 end
 function WFOV.disable()
-    WFOV.Enabled = false
-    _stop("WFOV")
+    WFOV.Enabled=false; _ucStop("WFOV")
     pcall(function() if WFOV._origFOV then Camera.FieldOfView=WFOV._origFOV end end)
-    WFOV._origFOV = nil
+    WFOV._origFOV=nil
 end
+_UM.WFOV=WFOV
+end -- WFOV
+
+
 
 AB("uc_proj",Enum.RenderPriority.Camera.Value+5,function()
     if not PB.enabled then return end
@@ -5359,6 +5163,19 @@ return {
         if _ucx_c[k] then pcall(function() _ucx_c[k]:Disconnect() end) end
         _ucx_c[k] = nil
     end
+
+    -- _UM モジュールのローカルエイリアス (do-endブロック外から参照するため)
+    local CS     = _UM.CS;    local AQ    = _UM.AQ;    local ANIM   = _UM.ANIM
+    local DESYNC = _UM.DESYNC; local VFXCFG= _UM.VFXCFG
+    local RSAI   = _UM.RSAI;  local PTP   = _UM.PTP;   local AKT    = _UM.AKT
+    local HESP   = _UM.HESP;  local OAPP  = _UM.OAPP;  local XRAY   = _UM.XRAY
+    local ATMO   = _UM.ATMO;  local LGHT  = _UM.LGHT;  local WFOV   = _UM.WFOV
+    -- VFX内部ヘルパーのエイリアス
+    local _vfxCC       = VFXCFG and VFXCFG.applyCC
+    local _vfxBloom    = VFXCFG and VFXCFG.applyBloom
+    local _vfxSunRays  = VFXCFG and VFXCFG.applySunRays
+    local _atmoApply   = ATMO  and ATMO._apply
+    local _lghtApply   = LGHT  and LGHT._apply
 
     task.wait()
 
