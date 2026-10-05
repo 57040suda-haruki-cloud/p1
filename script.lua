@@ -3073,6 +3073,34 @@ local function _closestEnemy(fov)
     return best
 end
 
+-- 3D距離ベースの敵検索 (viewport可視不要 — 1v1 KA/AutoShoot用)
+local function _closestEnemyWorld(maxDist)
+    local root = _root(); if not root then return nil end
+    local rpos = root.Position
+    local best, bestD = nil, maxDist or 9999
+    for _, p in ipairs(_enemies()) do
+        local hrp = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local d = (hrp.Position - rpos).Magnitude
+            if d < bestD then bestD = d; best = p end
+        end
+    end
+    return best
+end
+
+-- 複数の攻撃手段を試みる (Delta mouse1click → UIS SendMouseButtonEvent)
+local function _doAttack()
+    if mouse1click then pcall(mouse1click); return end
+    pcall(function()
+        UIS:SendMouseButtonEvent(0, 0, Enum.UserInputType.MouseButton1, true, false)
+    end)
+    task.defer(function()
+        pcall(function()
+            UIS:SendMouseButtonEvent(0, 0, Enum.UserInputType.MouseButton1, false, false)
+        end)
+    end)
+end
+
 local _BONE_ORDER = {"Head","UpperTorso","LowerTorso","HumanoidRootPart"}
 local function _getBone(char)
     if not char then return nil end
@@ -3286,11 +3314,18 @@ function AutoShoot.enable()
         local cam = WS_.CurrentCamera
         local c = _char()
         if not c or not cam then return end
+        -- まずviewportレイキャストを試み、失敗したら3D距離で近くの敵を確認
         local vp = cam.ViewportSize
         local cx, cy = vp.X/2, vp.Y/2
-        if _asHitEnemy(cam, c, cx, cy) then
+        local shouldShoot = _asHitEnemy(cam, c, cx, cy)
+        if not shouldShoot then
+            -- Viewportに映っていなくても近距離の敵がいれば発砲
+            local near = _closestEnemyWorld and _closestEnemyWorld(20)
+            shouldShoot = near ~= nil
+        end
+        if shouldShoot then
             _asFrames = 0
-            pcall(function() if mouse1click then mouse1click() end end)
+            _doAttack()
         end
     end))
 end
@@ -3729,8 +3764,8 @@ end
 
 local KA = {}
 KA.Enabled = false
-KA.Range   = 15
-KA.Delay   = 0.1
+KA.Range   = 25   -- 15→25: 1v1でも確実に反応するよう拡張
+KA.Delay   = 0.08 -- 0.1→0.08: 攻撃レスポンス向上
 local _kaAccum = 0
 
 function KA.enable()
@@ -3741,13 +3776,11 @@ function KA.enable()
         _kaAccum = _kaAccum + dt
         if _kaAccum < KA.Delay then return end
         if not _alive() then return end
-        local root = _root(); if not root then return end
-        local enemy = _closestEnemy(800)
+        -- viewport vis不要: 3D距離で最近敵を検索
+        local enemy = _closestEnemyWorld(KA.Range)
         if not enemy or not enemy.Character then return end
-        local eHRP = enemy.Character:FindFirstChild("HumanoidRootPart"); if not eHRP then return end
-        if (root.Position - eHRP.Position).Magnitude > KA.Range then return end
         _kaAccum = 0
-        pcall(function() if mouse1click then mouse1click() end end)
+        _doAttack()
     end))
 end
 
