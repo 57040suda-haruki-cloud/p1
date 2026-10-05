@@ -3764,8 +3764,7 @@ end
 
 local KA = {}
 KA.Enabled = false
-KA.Range   = 25   -- 15→25: 1v1でも確実に反応するよう拡張
-KA.Delay   = 0.08 -- 0.1→0.08: 攻撃レスポンス向上
+KA.Delay   = 0.08
 local _kaAccum = 0
 
 function KA.enable()
@@ -3776,8 +3775,8 @@ function KA.enable()
         _kaAccum = _kaAccum + dt
         if _kaAccum < KA.Delay then return end
         if not _alive() then return end
-        -- viewport vis不要: 3D距離で最近敵を検索
-        local enemy = _closestEnemyWorld(KA.Range)
+        -- 範囲チェックなし: 敵が存在すれば即攻撃
+        local enemy = _closestEnemyWorld(9999)
         if not enemy or not enemy.Character then return end
         _kaAccum = 0
         _doAttack()
@@ -3796,31 +3795,52 @@ AP.Range    = 20
 AP.MinSpeed = 40
 local _apCooldown = 0
 
+-- AP用プロジェクタイルキャッシュ (GetDescendants毎フレーム呼び出しを回避)
+local _apParts = {}
+local _apPartCount = 0
+local function _apTrackPart(obj)
+    if not obj:IsA("BasePart") then return end
+    if obj.Anchored then return end
+    -- キャラクターパーツは除外
+    local m = obj:FindFirstAncestorOfClass("Model")
+    if m and WS_.Players:FindFirstChild(m.Name) then return end
+    _apPartCount = _apPartCount + 1
+    _apParts[obj] = true
+    obj.AncestryChanged:Connect(function(_, p)
+        if not p then _apParts[obj] = nil end
+    end)
+end
+local _apInitialized = false
+local function _apInit()
+    if _apInitialized then return end
+    _apInitialized = true
+    for _, obj in ipairs(WS_:GetDescendants()) do _apTrackPart(obj) end
+    _conn("AP_track", WS_.DescendantAdded:Connect(_apTrackPart))
+end
+
 function AP.enable()
     AP.Enabled = true
     _apCooldown = 0
+    _apInit()
     _conn("AP", RN_.Heartbeat:Connect(function(dt)
         if not AP.Enabled then return end
         _apCooldown = math.max(0, _apCooldown - dt)
         if _apCooldown > 0 then return end
         local root = _root(); if not root then return end
         local rpos = root.Position
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and not obj.Anchored and obj.CanCollide then
-                local d = (obj.Position - rpos).Magnitude
-                if d < AP.Range then
-                    local vel = obj.AssemblyLinearVelocity
-                    if vel.Magnitude >= AP.MinSpeed then
-                        local toPlayer = (rpos - obj.Position)
-                        if toPlayer.Magnitude > 0 then
-                            local dot = toPlayer.Unit:Dot(vel.Unit)
-                            if dot > 0.65 then
-                                _apCooldown = 0.4
-                                pcall(function()
-                                    if mouse2click then mouse2click() end
-                                end)
-                                return
-                            end
+        for obj in pairs(_apParts) do
+            if not obj or not obj.Parent then _apParts[obj] = nil; continue end
+            local d = (obj.Position - rpos).Magnitude
+            if d < AP.Range then
+                local vel = obj.AssemblyLinearVelocity
+                if vel.Magnitude >= AP.MinSpeed then
+                    local toPlayer = (rpos - obj.Position)
+                    if toPlayer.Magnitude > 0 then
+                        local dot = toPlayer.Unit:Dot(vel.Unit)
+                        if dot > 0.65 then
+                            _apCooldown = 0.4
+                            pcall(function() if mouse2click then mouse2click() end end)
+                            return
                         end
                     end
                 end
