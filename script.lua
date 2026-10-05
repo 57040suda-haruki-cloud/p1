@@ -3128,8 +3128,8 @@ Notify("RV Visuals Ready . Aura/Crosshair/ESP/HitFX/Tracers/UnlockAll",4)
 local _UCEngine
 task.spawn(function()
     task.wait(2); pcall(collectgarbage,"collect") -- UIを先に表示 → メモリ分散
-    local _loadOk, _loadErr = pcall(function()
-        _UCEngine = (function()
+    local _E1; local _ok1,_err1 = pcall(function()
+        _E1 = (function()
 
 local RS_  = game:GetService("ReplicatedStorage")
 local PL_  = game:GetService("Players")
@@ -3928,6 +3928,39 @@ function AP.disable()
     _stop("AP")
 end
 
+return {
+    SilentShot=SilentShot, AimSmooth=AimSmooth, AutoShoot=AutoShoot,
+    BurstFire=BurstFire, MaxMode=MaxMode,
+    SkinSwap=SkinSwap, KA=KA, AP=AP,
+    FLY=FLY, PH=PH, TP3=TP3, FC=FC,
+    SB=SB, ANT=ANT, AJ=AJ, TGS=TGS, ORB=ORB,
+}
+        end)()
+    end)
+    if not _ok1 then print("[UNCODE v8] Part1 err:"..tostring(_err1)) end
+    pcall(collectgarbage,"collect"); task.wait(0.5) -- 💡 メモリ分割: 戦闘系ロード後GC→視覚系ロード
+    local _E2; local _ok2,_err2 = pcall(function()
+        _E2 = (function()
+local RS_  = game:GetService("ReplicatedStorage")
+local PL_  = game:GetService("Players")
+local RN_  = game:GetService("RunService")
+local UI_  = game:GetService("UserInputService")
+local LP_  = PL_.LocalPlayer
+local WS_  = workspace
+local CG_  = game:GetService("CoreGui")
+local _pool = {}
+local function _conn(key,c)
+    if not _pool[key] then _pool[key]={} end
+    table.insert(_pool[key],c); return c
+end
+local function _stop(key)
+    for _,c in ipairs(_pool[key] or {}) do pcall(function() c:Disconnect() end) end
+    _pool[key]={}
+end
+local function _char() return LP_.Character end
+local function _root() local c=_char(); return c and c:FindFirstChild("HumanoidRootPart") end
+local function _hum()  local c=_char(); return c and c:FindFirstChildOfClass("Humanoid")   end
+
 local ESP = {}
 ESP.Enabled  = false
 ESP.MaxDist  = 600
@@ -4662,25 +4695,18 @@ function FLAM.disable()
 end
 
 return {
-
-    SilentShot=SilentShot, AimSmooth=AimSmooth, AutoShoot=AutoShoot,
-    BurstFire=BurstFire,   MaxMode=MaxMode,
-    SkinSwap=SkinSwap, KA=KA, AP=AP,
-
-    FLY=FLY, PH=PH, TP3=TP3, FC=FC,
-    SB=SB,   ANT=ANT, AJ=AJ, TGS=TGS, ORB=ORB,
-
     ESP=ESP, VMR=VMR, NS=NS, HN=HN, BL=BL,
     STD=STD, SHD=SHD, CMV=CMV,
-
     WINGS=WINGS, AURA=AURA, TRAIL=TRAIL,
     GLOW=GLOW, SPARKLE=SPARKLE, HALO=HALO, FLAM=FLAM,
 }
         end)()
     end)
-    if not _loadOk then
-        print("[UNCODE v8] Engine error: " .. tostring(_loadErr))
-    end
+    if not _ok2 then print("[UNCODE v8] Part2 err:"..tostring(_err2)) end
+    -- 両パーツを統合して _UCEngine を完成
+    _UCEngine = {}
+    if _E1 then for k,v in pairs(_E1) do _UCEngine[k]=v end end
+    if _E2 then for k,v in pairs(_E2) do _UCEngine[k]=v end end
     print("[UNCODE v8] Feature engine ready (" .. tostring(_UCEngine ~= nil) .. ")")
     pcall(collectgarbage,"collect"); task.wait(0.3)
 
@@ -4764,7 +4790,7 @@ return {
     pcall(function()
         if not B.visRight then return end
         B.visRight:AddDivider()
-        BT(B.visRight,"UC_ESP","Player ESP",      true,function(v) if v then E.ESP.enable()  else E.ESP.disable()  end end)
+        BT(B.visRight,"UC_ESP","Player ESP",      false,function(v) if v then E.ESP.enable()  else E.ESP.disable()  end end)
         BT(B.visRight,"UC_TP3","Third Person",    false,function(v) if v then E.TP3.enable()  else E.TP3.disable()  end end)
         BT(B.visRight,"UC_FC", "Freecam",         false,function(v) if v then E.FC.enable()   else E.FC.disable()   end end)
         BT(B.visRight,"UC_VMR","Hide Viewmodel",  false,function(v) if v then E.VMR.enable()  else E.VMR.disable()  end end)
@@ -4794,7 +4820,7 @@ return {
     pcall(function()
         if not B.miscRight then return end
         B.miscRight:AddDivider()
-        BT(B.miscRight,"UC_HN", "Hit Notifier",  true, function(v) if v then E.HN.enable()  else E.HN.disable()  end end)
+        BT(B.miscRight,"UC_HN", "Hit Notifier",  false, function(v) if v then E.HN.enable()  else E.HN.disable()  end end)
         BT(B.miscRight,"UC_STD","Staff Detector", false,function(v) if v then E.STD.enable() else E.STD.disable() end end)
         BT(B.miscRight,"UC_NS", "Name Spoof",     false,function(v) if v then E.NS.enable()  else E.NS.disable()  end end)
     end)
