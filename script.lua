@@ -3900,7 +3900,7 @@ function AimSmooth.enable()
         dyaw = ((dyaw + math.pi) % (2*math.pi)) - math.pi
         local dpitch = math.asin(math.clamp(facing.Y,-1,1)) - math.asin(math.clamp(dir.Y,-1,1))
         local alpha  = 1 - math.exp(-AimSmooth.Speed * dt)
-        local angle  = Vector2.new(dyaw, dpitch) / (moveC * sens) * alpha
+        local angle  = Vector2.new(dyaw, dpitch) / (moveC * math.max(sens, 0.01)) * alpha
         pcall(mousemoverel, angle.X, angle.Y)
     end))
 end
@@ -4022,7 +4022,7 @@ local _rageCacheT  = 0
 function MaxMode.enable()
     MaxMode.Enabled = true
     SilentShot.FOV = 350; SilentShot.enable()
-    AutoShoot.Delay = 0.03; AutoShoot.enable()
+    -- AutoShootを外す: クリック連打になるため。SilentShotが自分で撃った弾をリダイレクト
     _mmBuildCH(); _rageTarget = nil; _rageCacheT = 0
     -- インスタントスナップ: AimSmoothを使わず毎フレームで直接スナップ
     _conn("MaxMode_snap", RN_.RenderStepped:Connect(function(dt)
@@ -4062,9 +4062,7 @@ function MaxMode.disable()
     pcall(_mmHideCH)
     _rageTarget = nil
     SilentShot.disable()
-    AutoShoot.disable()
     SilentShot.FOV = 120
-    AutoShoot.Delay = 0.08
 end
 
 local SkinSwap = {}
@@ -4630,9 +4628,10 @@ local function _removeEspFor(p)
     _espDrawings[p] = nil
 end
 
+local _espLT = 0
 local function _espLoop()
     if not ESP.Enabled then return end
-    do local _t=os.clock() if _t-(_espLT or 0)<0.05 then return end; _espLT=_t end
+    do local _t=os.clock() if _t-_espLT<0.05 then return end; _espLT=_t end
     local cam = WS_.CurrentCamera
     local vp  = cam.ViewportSize
     local screenBot = Vector2.new(vp.X/2, vp.Y)
@@ -5022,9 +5021,10 @@ function WINGS.enable()
         task.wait(0.5); if WINGS.Enabled then _setupWings(c) end
     end))
     local hue = 0
+    local _wingsT = 0
     _conn("WINGS_col", RN_.Heartbeat:Connect(function(dt)
         if not WINGS.Enabled then return end
-        do local _t=os.clock() if _t-(_wingsT or 0)<0.05 then return end; _wingsT=_t end
+        do local _t=os.clock() if _t-_wingsT<0.05 then return end; _wingsT=_t end
         hue = (hue + dt * 0.18) % 1
         for _, o in ipairs(_wingObjs) do
             if o:IsA("Beam") then
@@ -5050,12 +5050,13 @@ local AURA = {}
 AURA.Enabled = false
 local _auraBox = nil
 local _auraHue = 0
+local _auraT = 0
 
 function AURA.enable()
     AURA.Enabled = true
     _conn("AURA", RN_.Heartbeat:Connect(function(dt)
         if not AURA.Enabled then return end
-        do local _t=os.clock() if _t-(_auraT or 0)<0.05 then return end; _auraT=_t end
+        do local _t=os.clock() if _t-_auraT<0.05 then return end; _auraT=_t end
         local c = _char()
         if not c then
             if _auraBox then pcall(function() _auraBox:Destroy() end); _auraBox = nil end
@@ -5578,10 +5579,10 @@ return {
         if not B.miscRight then return end
         B.miscRight:AddDivider()
         BT(B.miscRight,"UC_CS","Chat Spam",false,function(v)
-            if v then CS.enable() else CS.disable() end
+            if v then _UM.CS.enable() else _UM.CS.disable() end
         end)
         B.miscRight:AddSlider("UC_CS_INT",{Text="Spam Interval (s)",Default=2,Min=0.5,Max=10,Rounding=1,
-            Callback=function(v) CS.Interval=v end})
+            Callback=function(v) _UM.CS.Interval=v end})
     end)
 
     -- ============================================================
@@ -5591,11 +5592,11 @@ return {
         if not B.miscLeft then return end
         B.miscLeft:AddDivider()
         BT(B.miscLeft,"UC_AQ","Auto Queue",false,function(v)
-            if v then AQ.enable() else AQ.disable() end
+            if v then _UM.AQ.enable() else _UM.AQ.disable() end
         end)
         B.miscLeft:AddDropdown("UC_AQ_MODE",{Text="Queue Mode",Default="1v1",
             Values={"1v1","2v2","3v3","4v4","Casual","Ranked"},
-            Callback=function(v) AQ.Mode=v end})
+            Callback=function(v) _UM.AQ.Mode=v end})
     end)
 
     -- ============================================================
@@ -5605,13 +5606,13 @@ return {
         if not B.miscRight then return end
         B.miscRight:AddDivider()
         BT(B.miscRight,"UC_ANIM","Animation Player",false,function(v)
-            if v then ANIM.enable() else ANIM.disable() end
+            if v then _UM.ANIM.enable() else _UM.ANIM.disable() end
         end)
         B.miscRight:AddDropdown("UC_ANIM_SEL",{Text="Emote",Default="Dance",
-            Values=ANIM.List,
-            Callback=function(v) ANIM.setAnim(v) end})
+            Values=_UM.ANIM.List,
+            Callback=function(v) _UM.ANIM.setAnim(v) end})
         B.miscRight:AddSlider("UC_ANIM_SPD",{Text="Anim Speed",Default=1,Min=0.1,Max=4,Rounding=1,
-            Callback=function(v) ANIM.Speed=v; if ANIM._track then pcall(function() ANIM._track:AdjustSpeed(v) end) end end})
+            Callback=function(v) _UM.ANIM.Speed=v; if _UM.ANIM._track then pcall(function() _UM.ANIM._track:AdjustSpeed(v) end) end end})
     end)
 
     -- ============================================================
@@ -5621,17 +5622,17 @@ return {
         if not B.miscLeft then return end
         B.miscLeft:AddDivider()
         BT(B.miscLeft,"UC_DESYNC","Desync / Anti-Aim",false,function(v)
-            if v then DESYNC.enable() else DESYNC.disable() end
+            if v then _UM.DESYNC.enable() else _UM.DESYNC.disable() end
         end)
         B.miscLeft:AddDropdown("UC_DS_PITCH",{Text="Pitch Mode",Default="disabled",
             Values={"disabled","up","down","zero","random"},
-            Callback=function(v) DESYNC.PitchMode=v end})
+            Callback=function(v) _UM.DESYNC.PitchMode=v end})
         B.miscLeft:AddDropdown("UC_DS_YAW",{Text="Yaw Mode",Default="disabled",
             Values={"disabled","backwards","spin","random"},
-            Callback=function(v) DESYNC.YawMode=v end})
+            Callback=function(v) _UM.DESYNC.YawMode=v end})
         B.miscLeft:AddSlider("UC_DS_SPD",{Text="Spin Speed",Default=5,Min=1,Max=30,Rounding=0,
-            Callback=function(v) DESYNC.SpinSpeed=v end})
-        BT(B.miscLeft,"UC_DS_UG","Underground",false,function(v) DESYNC.Underground=v end)
+            Callback=function(v) _UM.DESYNC.SpinSpeed=v end})
+        BT(B.miscLeft,"UC_DS_UG","Underground",false,function(v) _UM.DESYNC.Underground=v end)
     end)
 
     -- ============================================================
@@ -5674,26 +5675,26 @@ return {
         if not B.combatKX then return end
         B.combatKX:AddDivider()
         BT(B.combatKX,"UC_RSAI","Rage Silent",false,function(v)
-            if v then RSAI.enable() else RSAI.disable() end
+            if v then _UM.RSAI.enable() else _UM.RSAI.disable() end
         end)
         B.combatKX:AddSlider("UC_RSAI_PRED",{Text="Silent Prediction",Default=12,Min=0,Max=50,Rounding=0,
-            Callback=function(v) RSAI.Prediction=v/100 end})
+            Callback=function(v) _UM.RSAI.Prediction=v/100 end})
         B.combatKX:AddSlider("UC_RSAI_FOV",{Text="Silent FOV",Default=180,Min=10,Max=180,Rounding=0,
             Callback=function(v)
-                RSAI.FOV=v
-                if RSAI._circ then
-                    RSAI._circ.Visible = RSAI.Enabled and RSAI.ShowCircle and v<180
+                _UM.RSAI.FOV=v
+                if _UM.RSAI._circ then
+                    _UM.RSAI._circ.Visible = _UM.RSAI.Enabled and _UM.RSAI.ShowCircle and v<180
                 end
             end})
         BT(B.combatKX,"UC_RSAI_CIRC","Silent FOV Circle",true,function(v)
-            RSAI.ShowCircle=v
-            if RSAI._circ and (not v or not RSAI.Enabled) then
-                RSAI._circ.Visible=false
+            _UM.RSAI.ShowCircle=v
+            if _UM.RSAI._circ and (not v or not _UM.RSAI.Enabled) then
+                _UM.RSAI._circ.Visible=false
             end
         end)
         B.combatKX:AddDropdown("UC_RSAI_PART",{Text="Target Part",Default="Head",
             Values={"Head","HumanoidRootPart","closest"},
-            Callback=function(v) RSAI.Part=v end})
+            Callback=function(v) _UM.RSAI.Part=v end})
     end)
 
     -- ============================================================
@@ -5702,7 +5703,7 @@ return {
     pcall(function()
         if not B.combatKX then return end
         BT(B.combatKX,"UC_PTP","Projectile TP",false,function(v)
-            if v then PTP.enable() else PTP.disable() end
+            if v then _UM.PTP.enable() else _UM.PTP.disable() end
         end)
     end)
 
@@ -5712,7 +5713,7 @@ return {
     pcall(function()
         if not B.combatKX then return end
         BT(B.combatKX,"UC_AKT","Anti Katana",false,function(v)
-            if v then AKT.enable() else AKT.disable() end
+            if v then _UM.AKT.enable() else _UM.AKT.disable() end
         end)
     end)
 
@@ -5723,15 +5724,15 @@ return {
         if not B.visRight then return end
         B.visRight:AddDivider()
         BT(B.visRight,"UC_HESP","Highlight ESP",false,function(v)
-            if v then HESP.enable() else HESP.disable() end
+            if v then _UM.HESP.enable() else _UM.HESP.disable() end
         end)
         BT(B.visRight,"UC_HESP_TW","Through Walls",true,function(v)
-            HESP.ThroughWalls=v; HESP.refresh()
+            _UM.HESP.ThroughWalls=v; _UM.HESP.refresh()
         end)
         B.visRight:AddSlider("UC_HESP_FT",{Text="Fill Trans",Default=35,Min=0,Max=100,Rounding=0,
-            Callback=function(v) HESP.FillTrans=v/100; HESP.refresh() end})
+            Callback=function(v) _UM.HESP.FillTrans=v/100; _UM.HESP.refresh() end})
         B.visRight:AddSlider("UC_HESP_OT",{Text="Outline Trans",Default=0,Min=0,Max=100,Rounding=0,
-            Callback=function(v) HESP.OutlineTrans=v/100; HESP.refresh() end})
+            Callback=function(v) _UM.HESP.OutlineTrans=v/100; _UM.HESP.refresh() end})
     end)
 
     -- ============================================================
@@ -5741,17 +5742,17 @@ return {
         if not B.visLeft then return end
         B.visLeft:AddDivider()
         BT(B.visLeft,"UC_OAPP","Override Appearance",false,function(v)
-            if v then OAPP.enable() else OAPP.disable() end
+            if v then _UM.OAPP.enable() else _UM.OAPP.disable() end
         end)
         B.visLeft:AddDropdown("UC_OAPP_MAT",{Text="Material",Default="ForceField",
             Values={"ForceField","Neon","Glass","SmoothPlastic","Metal","Ice","Foil","Fabric"},
             Callback=function(v)
                 local ok, m = pcall(function() return Enum.Material[v] end)
-                if ok then OAPP.Material=m end
-                if OAPP.Enabled then OAPP.disable(); OAPP.enable() end
+                if ok then _UM.OAPP.Material=m end
+                if _UM.OAPP.Enabled then _UM.OAPP.disable(); _UM.OAPP.enable() end
             end})
         B.visLeft:AddSlider("UC_OAPP_TR",{Text="Transparency",Default=0,Min=0,Max=90,Rounding=0,
-            Callback=function(v) OAPP.Transparency=v/100; if OAPP.Enabled then OAPP.disable(); OAPP.enable() end end})
+            Callback=function(v) _UM.OAPP.Transparency=v/100; if _UM.OAPP.Enabled then _UM.OAPP.disable(); _UM.OAPP.enable() end end})
     end)
 
     -- ============================================================
@@ -5761,10 +5762,10 @@ return {
         if not B.visRight then return end
         B.visRight:AddDivider()
         BT(B.visRight,"UC_XRAY","X-Ray",false,function(v)
-            if v then XRAY.enable() else XRAY.disable() end
+            if v then _UM.XRAY.enable() else _UM.XRAY.disable() end
         end)
         B.visRight:AddSlider("UC_XRAY_TR",{Text="Wall Transparency",Default=85,Min=0,Max=100,Rounding=0,
-            Callback=function(v) XRAY.Transparency=v/100 end})
+            Callback=function(v) _UM.XRAY.Transparency=v/100 end})
     end)
 
     -- ============================================================
@@ -5774,14 +5775,14 @@ return {
         if not B.visLeft then return end
         B.visLeft:AddDivider()
         BT(B.visLeft,"UC_ATMO","Atmosphere",false,function(v)
-            if v then ATMO.enable() else ATMO.disable() end
+            if v then _UM.ATMO.enable() else _UM.ATMO.disable() end
         end)
         B.visLeft:AddSlider("UC_ATMO_DEN",{Text="Density",Default=30,Min=0,Max=100,Rounding=0,
-            Callback=function(v) ATMO.Density=v/100; if ATMO.Enabled then _atmoApply() end end})
+            Callback=function(v) _UM.ATMO.Density=v/100; if _UM.ATMO.Enabled then _UM.ATMO._apply() end end})
         B.visLeft:AddSlider("UC_ATMO_HZ",{Text="Haze",Default=10,Min=0,Max=100,Rounding=0,
-            Callback=function(v) ATMO.Haze=v/10; if ATMO.Enabled then _atmoApply() end end})
+            Callback=function(v) _UM.ATMO.Haze=v/10; if _UM.ATMO.Enabled then _UM.ATMO._apply() end end})
         B.visLeft:AddSlider("UC_ATMO_GL",{Text="Glare",Default=5,Min=0,Max=100,Rounding=0,
-            Callback=function(v) ATMO.Glare=v/10; if ATMO.Enabled then _atmoApply() end end})
+            Callback=function(v) _UM.ATMO.Glare=v/10; if _UM.ATMO.Enabled then _UM.ATMO._apply() end end})
     end)
 
     -- ============================================================
@@ -5791,23 +5792,23 @@ return {
         if not B.visLeft then return end
         B.visLeft:AddDivider()
         BT(B.visLeft,"UC_LGHT","Lighting Override",false,function(v)
-            if v then LGHT.enable() else LGHT.disable() end
+            if v then _UM.LGHT.enable() else _UM.LGHT.disable() end
         end)
         BT(B.visLeft,"UC_LGHT_FOG","Enable Fog",false,function(v)
-            LGHT.FogEnabled=v; if LGHT.Enabled then _lghtApply() end
+            _UM.LGHT.FogEnabled=v; if _UM.LGHT.Enabled then _UM.LGHT._apply() end
         end)
         B.visLeft:AddSlider("UC_LGHT_FE",{Text="Fog End",Default=1000,Min=0,Max=5000,Rounding=0,
-            Callback=function(v) LGHT.FogEnd=v; if LGHT.Enabled then _lghtApply() end end})
+            Callback=function(v) _UM.LGHT.FogEnd=v; if _UM.LGHT.Enabled then _UM.LGHT._apply() end end})
         BT(B.visLeft,"UC_LGHT_CLK","Override Time",false,function(v)
-            LGHT.ClockEnabled=v; if LGHT.Enabled then _lghtApply() end
+            _UM.LGHT.ClockEnabled=v; if _UM.LGHT.Enabled then _UM.LGHT._apply() end
         end)
         B.visLeft:AddSlider("UC_LGHT_TIME",{Text="Clock Time",Default=12,Min=0,Max=24,Rounding=1,
-            Callback=function(v) LGHT.ClockTime=v; if LGHT.Enabled then _lghtApply() end end})
+            Callback=function(v) _UM.LGHT.ClockTime=v; if _UM.LGHT.Enabled then _UM.LGHT._apply() end end})
         BT(B.visLeft,"UC_LGHT_BRT","Override Brightness",false,function(v)
-            LGHT.BrightEnabled=v; if LGHT.Enabled then _lghtApply() end
+            _UM.LGHT.BrightEnabled=v; if _UM.LGHT.Enabled then _UM.LGHT._apply() end
         end)
         B.visLeft:AddSlider("UC_LGHT_BV",{Text="Brightness",Default=20,Min=0,Max=100,Rounding=0,
-            Callback=function(v) LGHT.Brightness=v/10; if LGHT.Enabled then _lghtApply() end end})
+            Callback=function(v) _UM.LGHT.Brightness=v/10; if _UM.LGHT.Enabled then _UM.LGHT._apply() end end})
     end)
 
     -- ============================================================
@@ -5817,10 +5818,10 @@ return {
         if not B.visRight then return end
         B.visRight:AddDivider()
         BT(B.visRight,"UC_WFOV","FOV Changer",false,function(v)
-            if v then WFOV.enable() else WFOV.disable() end
+            if v then _UM.WFOV.enable() else _UM.WFOV.disable() end
         end)
         B.visRight:AddSlider("UC_WFOV_V",{Text="Field of View",Default=90,Min=30,Max=120,Rounding=0,
-            Callback=function(v) WFOV.FOV=v; if WFOV.Enabled then pcall(function() Camera.FieldOfView=v end) end end})
+            Callback=function(v) _UM.WFOV.FOV=v; if _UM.WFOV.Enabled then pcall(function() Camera.FieldOfView=v end) end end})
     end)
 
     print("[UNCODE v8] Features wired OK")
