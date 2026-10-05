@@ -624,6 +624,482 @@ local function _vfxSunRays()
     VFXCFG._sr.Intensity=VFXCFG.SRInt; VFXCFG._sr.Spread=VFXCFG.SRSpread
 end
 
+-- ============================================================
+-- [uncode] Rage Silent: UseItemリモートをフックして頭部に誘導
+-- ============================================================
+local RSAI = {}
+RSAI.Enabled    = false
+RSAI.Prediction = 0.12
+RSAI.HeadOffset = Vector3.new(0, 0.1, 0)
+RSAI._conn      = nil
+
+local function _rsaiClosestHead()
+    local myChar = LP.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+    local best, bestDist = nil, math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
+            local head = p.Character:FindFirstChild("Head")
+            local hum  = p.Character:FindFirstChildOfClass("Humanoid")
+            if head and hum and hum.Health > 0 then
+                -- チームメイト除外
+                if not head:FindFirstChild("TeammateLabel") and
+                   not (myRoot:FindFirstChild("TeammateLabel") and head:FindFirstAncestorOfClass("Model") == myChar) then
+                    local d = (head.Position - myRoot.Position).Magnitude
+                    if d < bestDist then bestDist=d; best=head end
+                end
+            end
+        end
+    end
+    return best
+end
+
+function RSAI.enable()
+    RSAI.Enabled = true
+    if RSAI._conn then RSAI._conn:Disconnect() end
+    RSAI._conn = RunService.Heartbeat:Connect(function()
+        if not RSAI.Enabled then return end
+        local myChar = LP.Character; if not myChar then return end
+        pcall(function()
+            local rs_  = RS:FindFirstChild("Remotes"); if not rs_ then return end
+            local repl = rs_:FindFirstChild("Replication"); if not repl then return end
+            local figh = repl:FindFirstChild("Fighter"); if not figh then return end
+            local useItem = figh:FindFirstChild("UseItem"); if not useItem then return end
+            local util    = require(RS.Modules.Utility)
+            local enumLib = require(RS.Modules.EnumLibrary)
+            local fc      = require(LP.PlayerScripts.Controllers.FighterController)
+            if not fc or not fc.LocalFighter then return end
+            local item = fc.LocalFighter.EquippedItem; if not item then return end
+            local head = _rsaiClosestHead(); if not head then return end
+            local vel     = head.Velocity or Vector3.zero
+            local predicted = head.Position + vel * RSAI.Prediction + RSAI.HeadOffset
+            local cam     = workspace.CurrentCamera.CFrame
+            local dir     = (predicted - cam.Position).Unit
+            local finalCF = CFrame.new(cam.Position, cam.Position + dir)
+            local cameradata = {}
+            cameradata[utf8.char(1)] = {
+                [utf8.char(0)] = util:EncodeCFrame(finalCF),
+                [utf8.char(1)] = util:EncodeCFrame(finalCF),
+                [utf8.char(2)] = head,
+                [utf8.char(3)] = util:EncodeCFrame(head.CFrame:ToObjectSpace(CFrame.new(predicted)))
+            }
+            useItem:FireServer(item:Get("ObjectID"), enumLib:ToEnum("StartShooting"), cameradata, nil)
+        end)
+    end)
+end
+function RSAI.disable()
+    RSAI.Enabled = false
+    if RSAI._conn then RSAI._conn:Disconnect(); RSAI._conn=nil end
+end
+
+-- ============================================================
+-- [uncode] Projectile TP: 飛び道具を最近敵の頭に吸着
+-- ============================================================
+local PTP = {}
+PTP.Enabled = false
+local _ptpConns  = {}
+local _ptpAttached = setmetatable({}, {__mode="k"})
+local _ptpFolders = {["Daggers"]=true, ["Bow"]=true, ["Slingshot"]=true, ["Arrow"]=true, ["Kunai"]=true}
+
+local function _ptpClosestHead()
+    local myChar = LP.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+    local best, bestDist = nil, math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
+            local head = p.Character:FindFirstChild("Head")
+            if head then
+                local d = (head.Position - myRoot.Position).Magnitude
+                if d < bestDist then bestDist=d; best=head end
+            end
+        end
+    end
+    return best
+end
+
+local function _ptpAttachPart(part)
+    if not PTP.Enabled then return end
+    if not part or not part:IsA("BasePart") then return end
+    if _ptpAttached[part] then return end
+    _ptpAttached[part] = true
+    pcall(function() part.CanCollide=false; part.Massless=true end)
+    task.spawn(function()
+        while part and part.Parent and PTP.Enabled do
+            local head = _ptpClosestHead()
+            if head and head.Parent then
+                pcall(function()
+                    part.AssemblyAngularVelocity = Vector3.zero
+                    part.CFrame = CFrame.new(head.Position + Vector3.new(0,0.25,0))
+                end)
+            end
+            RunService.Heartbeat:Wait()
+        end
+    end)
+end
+
+local function _ptpHookFolder(folder)
+    for _, d in ipairs(folder:GetDescendants()) do
+        if d:IsA("BasePart") then _ptpAttachPart(d) end
+    end
+    local c = folder.DescendantAdded:Connect(function(desc)
+        if desc:IsA("BasePart") then _ptpAttachPart(desc) end
+    end)
+    table.insert(_ptpConns, c)
+end
+
+function PTP.enable()
+    PTP.Enabled = true
+    for _, child in ipairs(workspace:GetChildren()) do
+        if _ptpFolders[child.Name] then _ptpHookFolder(child) end
+    end
+    local c = workspace.ChildAdded:Connect(function(child)
+        if _ptpFolders[child.Name] then _ptpHookFolder(child) end
+    end)
+    table.insert(_ptpConns, c)
+end
+function PTP.disable()
+    PTP.Enabled = false
+    for _, c in ipairs(_ptpConns) do pcall(function() c:Disconnect() end) end
+    _ptpConns = {}
+    table.clear(_ptpAttached)
+end
+
+-- ============================================================
+-- [uncode] Anti Katana: 刀デフレクト中は射撃をブロック
+-- ============================================================
+local AKT = {}
+AKT.Enabled = false
+AKT._deflecting = {}
+AKT._hooked = false
+AKT._origFS = nil
+
+local function _aktIsDeflecting(userId)
+    local now = tick()
+    if AKT._deflecting[userId] and AKT._deflecting[userId] > now then return true end
+    AKT._deflecting[userId] = nil
+    return false
+end
+
+function AKT.enable()
+    AKT.Enabled = true
+    if AKT._hooked then return end
+    pcall(function()
+        local useItem = RS.Remotes.Replication.Fighter.UseItem
+        local enumLib = require(RS.Modules.EnumLibrary)
+        local startShooting = enumLib:ToEnum("StartShooting")
+        AKT._origFS = hookfunction(useItem.FireServer, newcclosure(function(self, obj, action, cameradata, ...)
+            if AKT.Enabled and action == startShooting then
+                -- 最近敵がデフレクト中なら射撃をキャンセル
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= LP and _aktIsDeflecting(p.UserId) then
+                        return nil
+                    end
+                end
+            end
+            return AKT._origFS(self, obj, action, cameradata, ...)
+        end))
+        AKT._hooked = true
+        -- KatanaクラスのReplicateFromServerをフック
+        local ok, katana = pcall(function()
+            for _, item in ipairs(RS:GetDescendants()) do
+                if item.Name == "Katana" and item:IsA("ModuleScript") then
+                    return require(item)
+                end
+            end
+        end)
+        if ok and katana and katana.ReplicateFromServer then
+            local origRep = katana.ReplicateFromServer
+            hookfunction(katana.ReplicateFromServer, newcclosure(function(self, action, ...)
+                local actionStr = tostring(action):lower()
+                if actionStr:find("deflect") or actionStr == "startaiming" or actionStr == "startblocking" then
+                    local player = rawget(self,"ClientFighter") and rawget(self,"ClientFighter").Player
+                    if player and player ~= LP then
+                        AKT._deflecting[player.UserId] = tick() + 1.2
+                    end
+                end
+                return origRep(self, action, ...)
+            end))
+        end
+    end)
+end
+function AKT.disable()
+    AKT.Enabled = false
+    table.clear(AKT._deflecting)
+end
+
+-- ============================================================
+-- [uncode] Highlight ESP: Highlight インスタンスで敵を強調
+-- ============================================================
+local HESP = {}
+HESP.Enabled        = false
+HESP.FillColor      = Color3.fromRGB(255, 50, 50)
+HESP.OutlineColor   = Color3.fromRGB(255, 255, 255)
+HESP.FillTrans      = 0.35
+HESP.OutlineTrans   = 0.0
+HESP.ThroughWalls   = true
+HESP._highlights    = {}
+
+local function _hespApply(player)
+    if not HESP.Enabled then return end
+    local char = player.Character; if not char then return end
+    if HESP._highlights[player] then
+        if HESP._highlights[player].Parent then return end
+        HESP._highlights[player]:Destroy()
+    end
+    local h = Instance.new("Highlight")
+    h.FillColor         = HESP.FillColor
+    h.OutlineColor      = HESP.OutlineColor
+    h.FillTransparency  = HESP.FillTrans
+    h.OutlineTransparency = HESP.OutlineTrans
+    h.DepthMode         = HESP.ThroughWalls and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
+    h.Adornee           = char
+    h.Parent            = CoreGui
+    HESP._highlights[player] = h
+end
+local function _hespRemove(player)
+    local h = HESP._highlights[player]
+    if h then pcall(function() h:Destroy() end) end
+    HESP._highlights[player] = nil
+end
+local function _hespRefresh()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then _hespApply(p) end
+    end
+end
+
+function HESP.enable()
+    HESP.Enabled = true
+    _hespRefresh()
+    _conn("HESP_char", Players.PlayerAdded:Connect(function(p)
+        p.CharacterAdded:Connect(function() task.wait(0.5); _hespApply(p) end)
+    end))
+    _conn("HESP_rm", Players.PlayerRemoving:Connect(_hespRemove))
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then
+            p.CharacterAdded:Connect(function() task.wait(0.5); _hespApply(p) end)
+        end
+    end
+    _conn("HESP_hb", RunService.Heartbeat:Connect(function()
+        if not HESP.Enabled then return end
+        for p, h in pairs(HESP._highlights) do
+            if not h.Parent then _hespApply(p) end
+        end
+    end))
+end
+function HESP.disable()
+    HESP.Enabled = false
+    _stop("HESP_char"); _stop("HESP_rm"); _stop("HESP_hb")
+    for p in pairs(HESP._highlights) do _hespRemove(p) end
+end
+function HESP.refresh()
+    for p in pairs(HESP._highlights) do _hespRemove(p) end
+    if HESP.Enabled then _hespRefresh() end
+end
+
+-- ============================================================
+-- [uncode] Override Appearance: 敵キャラのマテリアル/透明度を上書き
+-- ============================================================
+local OAPP = {}
+OAPP.Enabled      = false
+OAPP.Material     = Enum.Material.ForceField
+OAPP.Transparency = 0.0
+OAPP.Color        = nil   -- nilのとき色変更なし
+OAPP._origProps   = {}    -- {[BasePart] = {Material, Transparency, Color}}
+
+local function _oappApplyChar(char)
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            if not OAPP._origProps[part] then
+                OAPP._origProps[part] = {
+                    Material     = part.Material,
+                    Transparency = part.Transparency,
+                    Color        = part.Color,
+                }
+            end
+            pcall(function()
+                part.Material     = OAPP.Material
+                part.Transparency = OAPP.Transparency
+                if OAPP.Color then part.Color = OAPP.Color end
+            end)
+        end
+    end
+end
+local function _oappRestoreChar(char)
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") and OAPP._origProps[part] then
+            local orig = OAPP._origProps[part]
+            pcall(function()
+                part.Material     = orig.Material
+                part.Transparency = orig.Transparency
+                part.Color        = orig.Color
+            end)
+            OAPP._origProps[part] = nil
+        end
+    end
+end
+
+function OAPP.enable()
+    OAPP.Enabled = true
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then _oappApplyChar(p.Character) end
+    end
+    _conn("OAPP_pa", Players.PlayerAdded:Connect(function(p)
+        p.CharacterAdded:Connect(function(c) task.wait(0.5); if OAPP.Enabled then _oappApplyChar(c) end end)
+    end))
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then
+            p.CharacterAdded:Connect(function(c) task.wait(0.5); if OAPP.Enabled then _oappApplyChar(c) end end)
+        end
+    end
+end
+function OAPP.disable()
+    OAPP.Enabled = false
+    _stop("OAPP_pa")
+    for _, p in ipairs(Players:GetPlayers()) do _oappRestoreChar(p.Character) end
+    table.clear(OAPP._origProps)
+end
+
+-- ============================================================
+-- [uncode] XRay: 全オブジェクトを半透明にして透視
+-- ============================================================
+local XRAY = {}
+XRAY.Enabled      = false
+XRAY.Transparency = 0.85
+XRAY._modified    = setmetatable({}, {__mode="k"})
+
+local function _xrayMod(obj)
+    if not obj or not obj:IsA("BasePart") then return end
+    if obj.Anchored then return end
+    -- キャラクターはスキップ
+    if Players:GetPlayerFromCharacter(obj.Parent) then return end
+    if Players:GetPlayerFromCharacter(obj.Parent and obj.Parent.Parent) then return end
+    XRAY._modified[obj] = true
+    pcall(function() obj.LocalTransparencyModifier = 1 - XRAY.Transparency end)
+end
+local function _xrayClear()
+    for obj in pairs(XRAY._modified) do
+        pcall(function() if obj and obj.Parent then obj.LocalTransparencyModifier = 0 end end)
+    end
+    table.clear(XRAY._modified)
+end
+
+function XRAY.enable()
+    XRAY.Enabled = true
+    for _, v in ipairs(workspace:GetDescendants()) do _xrayMod(v) end
+    _conn("XRAY_add", workspace.DescendantAdded:Connect(_xrayMod))
+end
+function XRAY.disable()
+    XRAY.Enabled = false
+    _stop("XRAY_add")
+    _xrayClear()
+end
+
+-- ============================================================
+-- [uncode] Atmosphere: カスタム大気エフェクト
+-- ============================================================
+local ATMO = {}
+ATMO.Enabled = false
+ATMO.Density = 0.3
+ATMO.Offset  = 0.2
+ATMO.Haze    = 1.0
+ATMO.Glare   = 0.5
+ATMO.Color   = Color3.fromRGB(199, 199, 199)
+ATMO._inst   = nil
+
+local function _atmoApply()
+    if not ATMO.Enabled then
+        if ATMO._inst then ATMO._inst.Parent=nil end; return
+    end
+    if not ATMO._inst then
+        ATMO._inst = Instance.new("Atmosphere")
+        ATMO._inst.Name = "UCAtmosphere"
+    end
+    ATMO._inst.Density = ATMO.Density
+    ATMO._inst.Offset  = ATMO.Offset
+    ATMO._inst.Haze    = ATMO.Haze
+    ATMO._inst.Glare   = ATMO.Glare
+    ATMO._inst.Color   = ATMO.Color
+    ATMO._inst.Parent  = Lighting
+end
+function ATMO.enable()  ATMO.Enabled=true;  _atmoApply() end
+function ATMO.disable() ATMO.Enabled=false; _atmoApply() end
+
+-- ============================================================
+-- [uncode] Lighting Override: 霧・時間・明度などを操作
+-- ============================================================
+local LGHT = {}
+LGHT.Enabled    = false
+LGHT.FogEnabled = false
+LGHT.FogEnd     = 1000
+LGHT.FogStart   = 0
+LGHT.FogColor   = Color3.fromRGB(200,200,200)
+LGHT.ClockEnabled = false
+LGHT.ClockTime  = 12
+LGHT.Brightness = 2
+LGHT.BrightEnabled = false
+LGHT._orig      = {}
+
+local function _lghtSave(prop)
+    if LGHT._orig[prop] == nil then LGHT._orig[prop] = Lighting[prop] end
+end
+local function _lghtRestore(prop)
+    if LGHT._orig[prop] ~= nil then
+        pcall(function() Lighting[prop] = LGHT._orig[prop] end)
+        LGHT._orig[prop] = nil
+    end
+end
+
+local function _lghtApply()
+    if not LGHT.Enabled then
+        _lghtRestore("FogEnd"); _lghtRestore("FogStart"); _lghtRestore("FogColor")
+        _lghtRestore("ClockTime"); _lghtRestore("Brightness"); return
+    end
+    if LGHT.FogEnabled then
+        _lghtSave("FogEnd"); _lghtSave("FogStart"); _lghtSave("FogColor")
+        pcall(function() Lighting.FogEnd=LGHT.FogEnd; Lighting.FogStart=LGHT.FogStart; Lighting.FogColor=LGHT.FogColor end)
+    else
+        _lghtRestore("FogEnd"); _lghtRestore("FogStart"); _lghtRestore("FogColor")
+    end
+    if LGHT.ClockEnabled then
+        _lghtSave("ClockTime")
+        pcall(function() Lighting.ClockTime=LGHT.ClockTime end)
+    else _lghtRestore("ClockTime") end
+    if LGHT.BrightEnabled then
+        _lghtSave("Brightness")
+        pcall(function() Lighting.Brightness=LGHT.Brightness end)
+    else _lghtRestore("Brightness") end
+end
+
+function LGHT.enable()  LGHT.Enabled=true;  _lghtApply() end
+function LGHT.disable() LGHT.Enabled=false; _lghtApply() end
+
+-- ============================================================
+-- [uncode] FOV Changer: 視野角を変更
+-- ============================================================
+local WFOV = {}
+WFOV.Enabled  = false
+WFOV.FOV      = 90
+WFOV._origFOV = nil
+
+function WFOV.enable()
+    WFOV.Enabled = true
+    if not WFOV._origFOV then WFOV._origFOV = Camera.FieldOfView end
+    _conn("WFOV", RunService.RenderStepped:Connect(function()
+        if not WFOV.Enabled then return end
+        pcall(function() Camera.FieldOfView = WFOV.FOV end)
+    end))
+end
+function WFOV.disable()
+    WFOV.Enabled = false
+    _stop("WFOV")
+    pcall(function() if WFOV._origFOV then Camera.FieldOfView=WFOV._origFOV end end)
+    WFOV._origFOV = nil
+end
+
 AB("uc_proj",Enum.RenderPriority.Camera.Value+5,function()
     if not PB.enabled then return end
     local t=getClosest(); local orig=Camera.CFrame.Position
@@ -5182,6 +5658,146 @@ return {
             Callback=function(v) VFXCFG.SRInt=v/100; if VFXCFG.SunRays then _vfxSunRays() end end})
         B.visLeft:AddSlider("UC_SR_SPR",{Text="Sun Rays Spread",Default=50,Min=1,Max=100,Rounding=0,
             Callback=function(v) VFXCFG.SRSpread=v/100; if VFXCFG.SunRays then _vfxSunRays() end end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Rage: Rage Silent UI
+    -- ============================================================
+    pcall(function()
+        if not B.combatKX then return end
+        B.combatKX:AddDivider()
+        BT(B.combatKX,"UC_RSAI","Rage Silent",false,function(v)
+            if v then RSAI.enable() else RSAI.disable() end
+        end)
+        B.combatKX:AddSlider("UC_RSAI_PRED",{Text="Prediction (s)",Default=12,Min=0,Max=50,Rounding=0,
+            Callback=function(v) RSAI.Prediction=v/100 end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Rage: Projectile TP UI
+    -- ============================================================
+    pcall(function()
+        if not B.combatKX then return end
+        BT(B.combatKX,"UC_PTP","Projectile TP",false,function(v)
+            if v then PTP.enable() else PTP.disable() end
+        end)
+    end)
+
+    -- ============================================================
+    -- [uncode] Rage: Anti Katana UI
+    -- ============================================================
+    pcall(function()
+        if not B.combatKX then return end
+        BT(B.combatKX,"UC_AKT","Anti Katana",false,function(v)
+            if v then AKT.enable() else AKT.disable() end
+        end)
+    end)
+
+    -- ============================================================
+    -- [uncode] Visual: Highlight ESP UI
+    -- ============================================================
+    pcall(function()
+        if not B.visRight then return end
+        B.visRight:AddDivider()
+        BT(B.visRight,"UC_HESP","Highlight ESP",false,function(v)
+            if v then HESP.enable() else HESP.disable() end
+        end)
+        BT(B.visRight,"UC_HESP_TW","Through Walls",true,function(v)
+            HESP.ThroughWalls=v; HESP.refresh()
+        end)
+        B.visRight:AddSlider("UC_HESP_FT",{Text="Fill Trans",Default=35,Min=0,Max=100,Rounding=0,
+            Callback=function(v) HESP.FillTrans=v/100; HESP.refresh() end})
+        B.visRight:AddSlider("UC_HESP_OT",{Text="Outline Trans",Default=0,Min=0,Max=100,Rounding=0,
+            Callback=function(v) HESP.OutlineTrans=v/100; HESP.refresh() end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Visual: Override Appearance UI
+    -- ============================================================
+    pcall(function()
+        if not B.visLeft then return end
+        B.visLeft:AddDivider()
+        BT(B.visLeft,"UC_OAPP","Override Appearance",false,function(v)
+            if v then OAPP.enable() else OAPP.disable() end
+        end)
+        B.visLeft:AddDropdown("UC_OAPP_MAT",{Text="Material",Default="ForceField",
+            Values={"ForceField","Neon","Glass","SmoothPlastic","Metal","Ice","Foil","Fabric"},
+            Callback=function(v)
+                local ok, m = pcall(function() return Enum.Material[v] end)
+                if ok then OAPP.Material=m end
+                if OAPP.Enabled then OAPP.disable(); OAPP.enable() end
+            end})
+        B.visLeft:AddSlider("UC_OAPP_TR",{Text="Transparency",Default=0,Min=0,Max=90,Rounding=0,
+            Callback=function(v) OAPP.Transparency=v/100; if OAPP.Enabled then OAPP.disable(); OAPP.enable() end end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Visual: XRay UI
+    -- ============================================================
+    pcall(function()
+        if not B.visRight then return end
+        B.visRight:AddDivider()
+        BT(B.visRight,"UC_XRAY","X-Ray",false,function(v)
+            if v then XRAY.enable() else XRAY.disable() end
+        end)
+        B.visRight:AddSlider("UC_XRAY_TR",{Text="Wall Transparency",Default=85,Min=0,Max=100,Rounding=0,
+            Callback=function(v) XRAY.Transparency=v/100 end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Visual: Atmosphere UI
+    -- ============================================================
+    pcall(function()
+        if not B.visLeft then return end
+        B.visLeft:AddDivider()
+        BT(B.visLeft,"UC_ATMO","Atmosphere",false,function(v)
+            if v then ATMO.enable() else ATMO.disable() end
+        end)
+        B.visLeft:AddSlider("UC_ATMO_DEN",{Text="Density",Default=30,Min=0,Max=100,Rounding=0,
+            Callback=function(v) ATMO.Density=v/100; if ATMO.Enabled then _atmoApply() end end})
+        B.visLeft:AddSlider("UC_ATMO_HZ",{Text="Haze",Default=10,Min=0,Max=100,Rounding=0,
+            Callback=function(v) ATMO.Haze=v/10; if ATMO.Enabled then _atmoApply() end end})
+        B.visLeft:AddSlider("UC_ATMO_GL",{Text="Glare",Default=5,Min=0,Max=100,Rounding=0,
+            Callback=function(v) ATMO.Glare=v/10; if ATMO.Enabled then _atmoApply() end end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Visual: Lighting Override UI
+    -- ============================================================
+    pcall(function()
+        if not B.visLeft then return end
+        B.visLeft:AddDivider()
+        BT(B.visLeft,"UC_LGHT","Lighting Override",false,function(v)
+            if v then LGHT.enable() else LGHT.disable() end
+        end)
+        BT(B.visLeft,"UC_LGHT_FOG","Enable Fog",false,function(v)
+            LGHT.FogEnabled=v; if LGHT.Enabled then _lghtApply() end
+        end)
+        B.visLeft:AddSlider("UC_LGHT_FE",{Text="Fog End",Default=1000,Min=0,Max=5000,Rounding=0,
+            Callback=function(v) LGHT.FogEnd=v; if LGHT.Enabled then _lghtApply() end end})
+        BT(B.visLeft,"UC_LGHT_CLK","Override Time",false,function(v)
+            LGHT.ClockEnabled=v; if LGHT.Enabled then _lghtApply() end
+        end)
+        B.visLeft:AddSlider("UC_LGHT_TIME",{Text="Clock Time",Default=12,Min=0,Max=24,Rounding=1,
+            Callback=function(v) LGHT.ClockTime=v; if LGHT.Enabled then _lghtApply() end end})
+        BT(B.visLeft,"UC_LGHT_BRT","Override Brightness",false,function(v)
+            LGHT.BrightEnabled=v; if LGHT.Enabled then _lghtApply() end
+        end)
+        B.visLeft:AddSlider("UC_LGHT_BV",{Text="Brightness",Default=20,Min=0,Max=100,Rounding=0,
+            Callback=function(v) LGHT.Brightness=v/10; if LGHT.Enabled then _lghtApply() end end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Visual: FOV Changer UI
+    -- ============================================================
+    pcall(function()
+        if not B.visRight then return end
+        B.visRight:AddDivider()
+        BT(B.visRight,"UC_WFOV","FOV Changer",false,function(v)
+            if v then WFOV.enable() else WFOV.disable() end
+        end)
+        B.visRight:AddSlider("UC_WFOV_V",{Text="Field of View",Default=90,Min=30,Max=120,Rounding=0,
+            Callback=function(v) WFOV.FOV=v; if WFOV.Enabled then pcall(function() Camera.FieldOfView=v end) end end})
     end)
 
     print("[UNCODE v8] Features wired OK")
