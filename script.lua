@@ -1,12 +1,12 @@
 
-print("[UNCODE v8] Script loaded OK -- starting")
+print("[UNCODE v1] Script loaded OK -- starting")
 task.wait(0.1)
 do
 
     if not getgenv().__UC_HooksApplied then
         getgenv().__UC_HooksApplied = true
         pcall(function() if setthreadidentity then setthreadidentity(8) end end)
-        print("[UNCODE v8] Hooks applied (safe mode)")
+        print("[UNCODE v1] Hooks applied (safe mode)")
     end
 end
 
@@ -28,7 +28,7 @@ do
                 end
                 if i % 500 == 0 then task.wait() end
             end
-            print("[UNCODE v8] Kicia bypass done")
+            print("[UNCODE v1] Kicia bypass done")
         end)
     end)
 end
@@ -1051,8 +1051,33 @@ end
 
 function WPK.pickOnce() pcall(_wpkFire) end
 
+-- マッチ開始直後(CharacterAdded)に連打してピックフェーズを確実に取る
+local _wpkCharConn = nil
+local function _wpkBurst()
+    task.spawn(function()
+        -- PickWeapons はスポーン後 ~3秒が受付ウィンドウ
+        -- 0.2s間隔で10回連打 → 計2秒カバー
+        for i = 1, 10 do
+            if not WPK.Enabled then break end
+            pcall(_wpkFire)
+            task.wait(0.2)
+        end
+    end)
+end
+
 function WPK.enable()
     WPK.Enabled = true
+    -- CharacterAdded フック: スポーン直後バースト
+    if _wpkCharConn then pcall(function() _wpkCharConn:Disconnect() end) end
+    _wpkCharConn = cloneref(game:GetService("Players")).LocalPlayer.CharacterAdded:Connect(function()
+        if WPK.Enabled then
+            task.wait(0.05) -- 1フレーム待ってからバースト
+            _wpkBurst()
+        end
+    end)
+    -- 今すぐも1回バースト (既にマッチ中の場合)
+    _wpkBurst()
+    -- 0.5s バックグラウンドループ (継続ピック)
     if WPK._loopRunning then return end
     WPK._loopRunning = true
     task.spawn(function()
@@ -1063,6 +1088,10 @@ end
 
 function WPK.disable()
     WPK.Enabled = false
+    if _wpkCharConn then
+        pcall(function() _wpkCharConn:Disconnect() end)
+        _wpkCharConn = nil
+    end
 end
 
 task.spawn(_wpkBuildList)
@@ -1201,7 +1230,7 @@ local function _wpnInstall()
         end
 
         _wst.Installed = true
-        print("[UNCODE v8] WeaponMods hooks installed")
+        print("[UNCODE v1] WeaponMods hooks installed")
     end)
 end
 
@@ -1830,7 +1859,7 @@ local function fetch(path)
     return ok and r or nil
 end
 
-print("[UNCODE v8] Starting - loading UI library...")
+print("[UNCODE v1] Starting - loading UI library...")
 
 local Library,ThemeManager,SaveManager
 local Toggles={} local Options={}
@@ -1843,7 +1872,7 @@ do
     end)
     if not Library then
         -- Fallback: HTTP download
-        print("[UNCODE v8] Fetching Obsidian from network...")
+        print("[UNCODE v1] Fetching Obsidian from network...")
         libSrc=fetch("Library.lua")
         if not libSrc then
             pcall(function()
@@ -1894,7 +1923,7 @@ do
         Toggles=fakeToggles; Options=fakeOptions
         warn("[UNCODE] Running in headless mode (Obsidian unavailable)")
     else
-        print("[UNCODE v8] UI library loaded - building interface...")
+        print("[UNCODE v1] UI library loaded - building interface...")
     end
 
     task.wait()
@@ -2292,7 +2321,7 @@ pcall(function() if setfpscap then setfpscap(0) end end)
 Lighting.FogEnd=100000; Lighting.FogStart=100000
 
 Notify("uncode v4 loaded . RShift to toggle . AC bypass active",5)
-print("[UNCODE v8] Loaded - RightShift to toggle menu")
+print("[UNCODE v1] Loaded - RightShift to toggle menu")
 
 local Debris      = game:GetService("Debris")
 local SoundSvc    = game:GetService("SoundService")
@@ -2872,7 +2901,7 @@ pcall(function()
 end)
 
 Notify("Rivals Visuals V2 Ready",4)
-print("[UNCODE v8] Rivals Visuals V2 integrated")
+print("[UNCODE v1] Rivals Visuals V2 integrated")
 
 local _RV_SRC=[==[
 
@@ -4870,7 +4899,7 @@ return {
 }
         end)()
     end)
-    if not _ok1 then print("[UNCODE v8] Part1 err:"..tostring(_err1)) end
+    if not _ok1 then print("[UNCODE v1] Part1 err:"..tostring(_err1)) end
     pcall(collectgarbage,"collect")
     task.wait(0.8) -- ← 延長: iOS GCがクロージャを回収する時間を確保
     pcall(collectgarbage,"collect")
@@ -5200,7 +5229,7 @@ function STD.enable()
             if p ~= LP_ and not _stdKnown[p] and _isStaff(p) then
                 _stdKnown[p] = true
                 pcall(function() if Notify then Notify("Staff detected: "..p.Name, 6) end end)
-                print("[UNCODE v8] Staff detected:", p.Name)
+                print("[UNCODE v1] Staff detected:", p.Name)
             end
         end
     end))
@@ -5640,12 +5669,12 @@ return {
 }
         end)()
     end)
-    if not _ok2 then print("[UNCODE v8] Part2 err:"..tostring(_err2)) end
+    if not _ok2 then print("[UNCODE v1] Part2 err:"..tostring(_err2)) end
     -- 両パーツを統合して _UCEngine を完成
     _UCEngine = {}
     if _E1 then for k,v in pairs(_E1) do _UCEngine[k]=v end end
     if _E2 then for k,v in pairs(_E2) do _UCEngine[k]=v end end
-    print("[UNCODE v8] Feature engine ready (" .. tostring(_UCEngine ~= nil) .. ")")
+    print("[UNCODE v1] Feature engine ready (" .. tostring(_UCEngine ~= nil) .. ")")
     pcall(collectgarbage,"collect"); task.wait(0.3)
 
     pcall(function()
@@ -5853,7 +5882,7 @@ return {
                     c:SetAttribute("_uc_tracked", true)
                     hum.Died:Connect(function()
                         _kills = _kills + 1
-                        print("[UNCODE v8] Kill #".._kills.." D:"..tostring(_deaths))
+                        print("[UNCODE v1] Kill #".._kills.." D:"..tostring(_deaths))
                     end)
                 end
             end
@@ -5864,7 +5893,7 @@ return {
         LP.CharacterAdded:Connect(function()
             task.wait(2)
             _deaths = _deaths + 1
-            print("[UNCODE v8] Death #".._deaths.." K:"..tostring(_kills))
+            print("[UNCODE v1] Death #".._deaths.." K:"..tostring(_kills))
         end)
         task.spawn(function() task.wait(2); _trackPlayers() end)
         -- ミッションタブ / miscRightにキルカウント表示
@@ -6176,12 +6205,12 @@ return {
             Callback=function(v) _UM.WFOV.FOV=v; if _UM.WFOV.Enabled then pcall(function() Camera.FieldOfView=v end) end end})
     end)
 
-    print("[UNCODE v8] Features wired OK")
+    print("[UNCODE v1] Features wired OK")
     end)
 
     pcall(collectgarbage,"collect"); task.delay(1,function() pcall(collectgarbage,"collect") end)
     GE.UC4_Loaded=true; pcall(function() _G.UC4_Loaded=true end)
     GE.UC4_Running=nil;  pcall(function() _G.UC4_Running=nil end)
     pcall(function() if Notify then Notify("uncode v8 ready", 5) end end)
-    print("[UNCODE v8] Ready")
+    print("[UNCODE v1] Ready")
 end) -- task.spawn: エンジン遅延ロード完了
