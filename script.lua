@@ -1727,7 +1727,6 @@ pcall(function()
     local CL3=Tabs.Combat:AddLeftGroupbox("Weapon Mods"); _ucBoxes.combatWP=CL3
     BT(CL3,"WP_NoSpread","No Spread",false)
     BT(CL3,"WP_FullAuto","Full Auto",false)
-    BT(CL3,"WP_Rapid","Rapid Fire",false)
     BT(CL3,"WP_InfAmmo","Infinite Ammo",false)
     BT(CL3,"WP_AutoReload","Auto Reload",false)
     BT(CL3,"WP_NoRecoil","No Recoil",false)
@@ -3933,29 +3932,6 @@ function AutoShoot.disable()
     _stop("AutoShoot")
 end
 
-local BurstFire = {}
-BurstFire.Enabled = false
-BurstFire.Rate    = 0.05
-
-local _bfAccum = 0
-
-function BurstFire.enable()
-    BurstFire.Enabled = true
-    _bfAccum = 0
-    _conn("BurstFire", RN_.Heartbeat:Connect(function(dt)
-        if not BurstFire.Enabled then return end
-        _bfAccum = _bfAccum + dt
-        if _bfAccum < BurstFire.Rate then return end
-        _bfAccum = 0
-        pcall(function() if mouse1click then mouse1click() end end)
-    end))
-end
-
-function BurstFire.disable()
-    BurstFire.Enabled = false
-    _bfAccum = 0
-    _stop("BurstFire")
-end
 
 local MaxMode = {}
 MaxMode.Enabled = false
@@ -3965,7 +3941,6 @@ function MaxMode.enable()
     SilentShot.FOV = 350;  SilentShot.enable()
     AimSmooth.Speed = 12; AimSmooth.FOV = 350; AimSmooth.enable()
     AutoShoot.Delay = 0.03; AutoShoot.enable()
-    BurstFire.Rate  = 0.03; BurstFire.enable()
 end
 
 function MaxMode.disable()
@@ -3973,11 +3948,9 @@ function MaxMode.disable()
     SilentShot.disable()
     AimSmooth.disable()
     AutoShoot.disable()
-    BurstFire.disable()
     SilentShot.FOV = 120
     AimSmooth.Speed = 6; AimSmooth.FOV = 150
     AutoShoot.Delay = 0.08
-    BurstFire.Rate  = 0.05
 end
 
 local SkinSwap = {}
@@ -4470,7 +4443,7 @@ end
 
 return {
     SilentShot=SilentShot, AimSmooth=AimSmooth, AutoShoot=AutoShoot,
-    BurstFire=BurstFire, MaxMode=MaxMode,
+    MaxMode=MaxMode,
     SkinSwap=SkinSwap, KA=KA, AP=AP,
     FLY=FLY, PH=PH, TP3=TP3, FC=FC,
     SB=SB, ANT=ANT, AJ=AJ, TGS=TGS, ORB=ORB,
@@ -5316,15 +5289,6 @@ return {
         BT(B.combatKX,"UC_MaxMode",  "Max Mode",     false,function(v) if v then E.MaxMode.enable()   else E.MaxMode.disable()   end end)
     end)
 
-    pcall(function()
-        if Toggles.WP_Rapid then
-            local _orig = Toggles.WP_Rapid.Callback
-            Toggles.WP_Rapid.Callback = function(v)
-                if v then E.BurstFire.enable() else E.BurstFire.disable() end
-                if _orig then pcall(_orig, v) end
-            end
-        end
-    end)
 
     task.wait()
 
