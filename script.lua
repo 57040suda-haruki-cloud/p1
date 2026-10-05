@@ -520,8 +520,10 @@ local function _dsFireCam(pitch,yaw)
 end
 function DESYNC.enable()
     DESYNC.Enabled=true
-    _ucConn("DESYNC",RunService.Heartbeat:Connect(function()
+    local _dsT=0
+    _ucConn("DESYNC",RunService.Heartbeat:Connect(function(dt)
         if not DESYNC.Enabled then return end
+        _dsT=_dsT+dt; if _dsT<0.05 then return end; _dsT=0 -- 20 Hz throttle (was every frame)
         local pitch=0
         if     DESYNC.PitchMode=="up"     then pitch=-89
         elseif DESYNC.PitchMode=="down"   then pitch=89
@@ -657,6 +659,9 @@ local function _rsaiClosestPart()
     return best
 end
 
+-- キャッシュ: require()は初回のみ実行、以後は再利用
+local _rsaiUtil=nil; local _rsaiEnums=nil; local _rsaiFc=nil
+local _rsaiUseItem=nil; local _rsaiFire_t=0
 function RSAI.enable()
     RSAI.Enabled = true
     if RSAI._conn then RSAI._conn:Disconnect() end
@@ -669,9 +674,10 @@ function RSAI.enable()
         RSAI._circ.Radius   = math.max(1, r)
         RSAI._circ.Visible  = RSAI.FOV < 180
     end
-    RSAI._conn = RunService.Heartbeat:Connect(function()
+    _rsaiFire_t = 0
+    RSAI._conn = RunService.Heartbeat:Connect(function(dt)
         if not RSAI.Enabled then return end
-        -- FOVサークル位置更新
+        -- FOVサークル位置更新 (毎フレーム・軽量)
         pcall(function()
             if RSAI._circ and RSAI.ShowCircle and RSAI.FOV < 180 then
                 local cam = workspace.CurrentCamera
@@ -684,17 +690,26 @@ function RSAI.enable()
                 RSAI._circ.Visible = false
             end
         end)
+        -- UseItemは15Hz上限 (毎フレーム送信による負荷軽減)
+        _rsaiFire_t = _rsaiFire_t + dt
+        if _rsaiFire_t < 0.067 then return end
+        _rsaiFire_t = 0
         local myChar = LP.Character; if not myChar then return end
         pcall(function()
-            local rs_    = RS:FindFirstChild("Remotes"); if not rs_ then return end
-            local repl   = rs_:FindFirstChild("Replication"); if not repl then return end
-            local figh   = repl:FindFirstChild("Fighter"); if not figh then return end
-            local useItem= figh:FindFirstChild("UseItem"); if not useItem then return end
-            local util   = require(RS.Modules.Utility)
-            local enumLib= require(RS.Modules.EnumLibrary)
-            local fc     = require(LP.PlayerScripts.Controllers.FighterController)
-            if not fc or not fc.LocalFighter then return end
-            local item   = fc.LocalFighter.EquippedItem; if not item then return end
+            -- requireをキャッシュ: 初回のみ取得
+            if not _rsaiUseItem then
+                local rs_  = RS:FindFirstChild("Remotes"); if not rs_ then return end
+                local repl = rs_:FindFirstChild("Replication"); if not repl then return end
+                local figh = repl:FindFirstChild("Fighter"); if not figh then return end
+                _rsaiUseItem = figh:FindFirstChild("UseItem")
+            end
+            if not _rsaiUseItem then return end
+            if not _rsaiUtil  then pcall(function() _rsaiUtil  = require(RS.Modules.Utility) end) end
+            if not _rsaiEnums then pcall(function() _rsaiEnums = require(RS.Modules.EnumLibrary) end) end
+            if not _rsaiFc    then pcall(function() _rsaiFc    = require(LP.PlayerScripts.Controllers.FighterController) end) end
+            if not (_rsaiUtil and _rsaiEnums and _rsaiFc) then return end
+            if not _rsaiFc.LocalFighter then return end
+            local item   = _rsaiFc.LocalFighter.EquippedItem; if not item then return end
             local part   = _rsaiClosestPart(); if not part then return end
             local vel     = part.Velocity or Vector3.zero
             local predicted = part.Position + vel * RSAI.Prediction + RSAI.HeadOffset
@@ -702,12 +717,12 @@ function RSAI.enable()
             local finalCF = CFrame.new(cam.Position, cam.Position + (predicted - cam.Position).Unit)
             local cameradata = {}
             cameradata[utf8.char(1)] = {
-                [utf8.char(0)] = util:EncodeCFrame(finalCF),
-                [utf8.char(1)] = util:EncodeCFrame(finalCF),
+                [utf8.char(0)] = _rsaiUtil:EncodeCFrame(finalCF),
+                [utf8.char(1)] = _rsaiUtil:EncodeCFrame(finalCF),
                 [utf8.char(2)] = part,
-                [utf8.char(3)] = util:EncodeCFrame(part.CFrame:ToObjectSpace(CFrame.new(predicted)))
+                [utf8.char(3)] = _rsaiUtil:EncodeCFrame(part.CFrame:ToObjectSpace(CFrame.new(predicted)))
             }
-            useItem:FireServer(item:Get("ObjectID"), enumLib:ToEnum("StartShooting"), cameradata, nil)
+            _rsaiUseItem:FireServer(item:Get("ObjectID"), _rsaiEnums:ToEnum("StartShooting"), cameradata, nil)
         end)
     end)
 end
@@ -839,8 +854,10 @@ function HESP.enable()
     for _,p in ipairs(Players:GetPlayers()) do
         if p~=LP then p.CharacterAdded:Connect(function() task.wait(0.5);_hespApply(p) end) end
     end
-    _ucConn("HESP_hb",RunService.Heartbeat:Connect(function()
+    local _hespT=0
+    _ucConn("HESP_hb",RunService.Heartbeat:Connect(function(dt)
         if not HESP.Enabled then return end
+        _hespT=_hespT+dt; if _hespT<0.2 then return end; _hespT=0 -- 5 Hz十分 (Highlightの復元確認)
         for p,h in pairs(HESP._highlights) do if not h.Parent then _hespApply(p) end end
     end))
 end
@@ -3795,8 +3812,10 @@ function SilentShot.enable()
     if _saHooked then SilentShot.Enabled = true; return end
     local remote = _getRemote()
     if not remote or not hookfunction or not newcclosure then return end
-    _conn("SilentShot_vel", RN_.Heartbeat:Connect(function()
+    local _ssVT = 0
+    _conn("SilentShot_vel", RN_.Heartbeat:Connect(function(dt)
         if not SilentShot.Enabled then return end
+        _ssVT = _ssVT + dt; if _ssVT < 0.05 then return end; _ssVT = 0 -- 20 Hz (was every frame)
         local enemy = _closestEnemy(SilentShot.FOV)
         if enemy then _recordEnemy(enemy) end
     end))
@@ -3836,12 +3855,19 @@ AimSmooth.Enabled = false
 AimSmooth.Speed   = 6
 AimSmooth.FOV     = 150
 
+local _asEnemyCache = nil  -- 10 Hzでキャッシュ更新
+local _asCacheT     = 0
+
 function AimSmooth.enable()
     AimSmooth.Enabled = true
+    _asEnemyCache = nil; _asCacheT = 0
     _conn("AimSmooth", RN_.RenderStepped:Connect(function(dt)
         if not AimSmooth.Enabled then return end
         if not mousemoverel then return end
-        local enemy = _closestEnemy(AimSmooth.FOV)
+        -- ターゲット検索は10Hz (毎フレーム検索から削減)
+        _asCacheT = _asCacheT + dt
+        if _asCacheT >= 0.10 then _asCacheT = 0; _asEnemyCache = _closestEnemy(AimSmooth.FOV) end
+        local enemy = _asEnemyCache
         if not enemy or not enemy.Character then return end
         local bone = _getBone(enemy.Character)
         if not bone then return end
