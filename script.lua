@@ -875,8 +875,10 @@ do
         end
         if libSrc then
             local fnOk,fn=pcall(loadstring,libSrc)
+            libSrc=nil; pcall(collectgarbage,"collect") -- GC: ソース文字列を解放
             if fnOk and fn then
                 local ok2,res=pcall(fn)
+                fn=nil; pcall(collectgarbage,"collect")
                 if ok2 and type(res)=="table" then
                     Library=res
                 else
@@ -3124,7 +3126,8 @@ end)
 Notify("RV Visuals Ready . Aura/Crosshair/ESP/HitFX/Tracers/UnlockAll",4)
 
 local _UCEngine
-do
+task.spawn(function()
+    task.wait(2); pcall(collectgarbage,"collect") -- UIを先に表示 → メモリ分散
     local _loadOk, _loadErr = pcall(function()
         _UCEngine = (function()
 
@@ -4678,11 +4681,11 @@ return {
     if not _loadOk then
         print("[UNCODE v8] Engine error: " .. tostring(_loadErr))
     end
-end
-print("[UNCODE v8] Feature engine ready (" .. tostring(_UCEngine ~= nil) .. ")")
+    print("[UNCODE v8] Feature engine ready (" .. tostring(_UCEngine ~= nil) .. ")")
+    pcall(collectgarbage,"collect"); task.wait(0.3)
 
-pcall(function()
-    local E = _UCEngine
+    pcall(function()
+        local E = _UCEngine
     if not E then return end
     local B = _ucBoxes
 
@@ -4923,9 +4926,11 @@ pcall(function()
     end)
 
     print("[UNCODE v8] Features wired OK")
-end)
+    end)
 
-pcall(collectgarbage,"collect"); task.delay(1,function() pcall(collectgarbage,"collect") end) GE.UC4_Loaded=true; pcall(function() _G.UC4_Loaded=true end)
-GE.UC4_Running=nil;  pcall(function() _G.UC4_Running=nil end)
-pcall(function() if Notify then Notify("uncode v8 ready — crash fixed", 5) end end)
-print("[UNCODE v8] Ready")
+    pcall(collectgarbage,"collect"); task.delay(1,function() pcall(collectgarbage,"collect") end)
+    GE.UC4_Loaded=true; pcall(function() _G.UC4_Loaded=true end)
+    GE.UC4_Running=nil;  pcall(function() _G.UC4_Running=nil end)
+    pcall(function() if Notify then Notify("uncode v8 ready", 5) end end)
+    print("[UNCODE v8] Ready")
+end) -- task.spawn: エンジン遅延ロード完了
