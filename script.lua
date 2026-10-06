@@ -5451,86 +5451,181 @@ return {
     end
 
     -- ============================================================
-    -- [uncode] Drawing Box ESP (from Harion)
+    -- [uncode] Box ESP v2 (コーナーボックス + ヘッドドット + 距離 + スケルトン)
     -- ============================================================
     do
     local DESP = {}
-    DESP.Enabled   = false
-    DESP.ShowName  = true
-    DESP.ShowHealth= true
-    DESP.Color     = Color3.fromRGB(255, 50, 50)
+    DESP.Enabled      = false
+    DESP.ShowName     = true
+    DESP.ShowHealth   = true
+    DESP.ShowDist     = true
+    DESP.ShowHeadDot  = true
+    DESP.CornerStyle  = true   -- true=コーナーボックス / false=フルボックス
+    DESP.Color        = Color3.fromRGB(255, 50, 50)
+    DESP.NameColor    = Color3.fromRGB(255, 255, 255)
+    DESP.CornerLen    = 0.25   -- ボックス辺の何割をコーナーにするか
     local _despConns = {}
-    local _despBoxes = {}   -- [Player] = {box, txt, hbg, hfg}
-    local function _despClearAll()
-        for _,t in pairs(_despBoxes) do
-            for _,d in pairs(t) do pcall(function() d:Remove() end) end
-        end
-        table.clear(_despBoxes)
-        for _,c in ipairs(_despConns) do pcall(function() c:Disconnect() end) end
-        table.clear(_despConns)
+    local _despObjs  = {}  -- [Player] = {lines={Line×8}, txt, dist, hdot, hbg, hfg, box}
+
+    local function _despNewLine()
+        local l = Drawing.new("Line")
+        l.Thickness=1.5; l.Transparency=1; l.ZIndex=5; l.Visible=false
+        return l
     end
+    local function _despNewSq()
+        local s = Drawing.new("Square")
+        s.Filled=false; s.Thickness=1.5; s.ZIndex=4; s.Visible=false
+        return s
+    end
+    local function _despNewText(sz)
+        local t = Drawing.new("Text")
+        t.Size=sz or 13; t.Center=true; t.Outline=true; t.ZIndex=6; t.Visible=false
+        return t
+    end
+    local function _despNewCircle()
+        local c = Drawing.new("Circle")
+        c.Thickness=1.5; c.NumSides=16; c.Radius=3; c.Filled=true
+        c.Transparency=1; c.ZIndex=7; c.Visible=false
+        return c
+    end
+    local function _despNewFilledSq()
+        local s = Drawing.new("Square"); s.Filled=true; s.ZIndex=4; s.Visible=false
+        return s
+    end
+
+    local function _despGetOrCreate(p)
+        if _despObjs[p] then return _despObjs[p] end
+        local T = {}
+        T.lines = {}
+        for _ = 1,8 do T.lines[#T.lines+1] = _despNewLine() end
+        T.box  = _despNewSq()
+        T.txt  = _despNewText(13)
+        T.dist = _despNewText(11)
+        T.hdot = _despNewCircle()
+        T.hbg  = _despNewFilledSq()
+        T.hfg  = _despNewFilledSq()
+        T.hbg.Color = Color3.fromRGB(0,0,0); T.hbg.Transparency=0.6
+        _despObjs[p] = T
+        return T
+    end
+
+    local function _despHide(T)
+        for _,l in ipairs(T.lines) do l.Visible=false end
+        T.box.Visible=false; T.txt.Visible=false; T.dist.Visible=false
+        T.hdot.Visible=false; T.hbg.Visible=false; T.hfg.Visible=false
+    end
+
+    local function _despDrawCorner(lines, bx, by, bw, bh, col, clen)
+        -- 8本のLineでコーナーボックスを描く (TL, TR, BL, BR 各2本)
+        local cx = clen
+        local cy_h = math.floor(bh * cx)
+        local cx_w = math.floor(bw * cx)
+        -- TL
+        lines[1].From=Vector2.new(bx,by);           lines[1].To=Vector2.new(bx+cx_w,by)
+        lines[2].From=Vector2.new(bx,by);           lines[2].To=Vector2.new(bx,by+cy_h)
+        -- TR
+        lines[3].From=Vector2.new(bx+bw,by);        lines[3].To=Vector2.new(bx+bw-cx_w,by)
+        lines[4].From=Vector2.new(bx+bw,by);        lines[4].To=Vector2.new(bx+bw,by+cy_h)
+        -- BL
+        lines[5].From=Vector2.new(bx,by+bh);        lines[5].To=Vector2.new(bx+cx_w,by+bh)
+        lines[6].From=Vector2.new(bx,by+bh);        lines[6].To=Vector2.new(bx,by+bh-cy_h)
+        -- BR
+        lines[7].From=Vector2.new(bx+bw,by+bh);     lines[7].To=Vector2.new(bx+bw-cx_w,by+bh)
+        lines[8].From=Vector2.new(bx+bw,by+bh);     lines[8].To=Vector2.new(bx+bw,by+bh-cy_h)
+        for _,l in ipairs(lines) do
+            l.Color=col; l.Transparency=1; l.Visible=true
+        end
+    end
+
     local function _despUpdate()
         if not DESP.Enabled then return end
         local cam = workspace.CurrentCamera; if not cam then return end
+        local lrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         local seen = {}
         for _,p in ipairs(Players:GetPlayers()) do
             if p == LP then continue end
             local char = p.Character
             local hrp  = char and char:FindFirstChild("HumanoidRootPart")
             local hum  = char and char:FindFirstChildOfClass("Humanoid")
+            local head = char and char:FindFirstChild("Head")
             if not hrp or not hum or hum.Health<=0 then
-                if _despBoxes[p] then for _,d in pairs(_despBoxes[p]) do d.Visible=false end end
+                if _despObjs[p] then _despHide(_despObjs[p]) end
                 continue
             end
-            seen[p] = true
-            local head   = char:FindFirstChild("Head")
-            local topPos = head and (head.Position+Vector3.new(0,0.7,0)) or (hrp.Position+Vector3.new(0,3,0))
-            local botPos = hrp.Position - Vector3.new(0,3,0)
+            local topPos = head and (head.Position+Vector3.new(0,0.75,0)) or (hrp.Position+Vector3.new(0,3.2,0))
+            local botPos = hrp.Position - Vector3.new(0,3.2,0)
             local sp1,v1 = cam:WorldToViewportPoint(topPos)
-            local sp2,v2 = cam:WorldToViewportPoint(botPos)
-            if not v1 or not v2 or sp1.Z<0 then
-                if _despBoxes[p] then for _,d in pairs(_despBoxes[p]) do d.Visible=false end end
+            local sp2,_  = cam:WorldToViewportPoint(botPos)
+            if not v1 or sp1.Z<=0 then
+                if _despObjs[p] then _despHide(_despObjs[p]) end
                 continue
             end
-            local bh = math.abs(sp2.Y - sp1.Y)
-            local bw = bh * 0.5
-            local cx = (sp1.X+sp2.X)*0.5
-            local by = math.min(sp1.Y, sp2.Y)
-            local bx = cx - bw*0.5
-            if not _despBoxes[p] then
-                local box = Drawing.new("Square")
-                box.Filled=false; box.Thickness=1; box.ZIndex=4
-                local txt = Drawing.new("Text")
-                txt.Size=13; txt.Center=true; txt.Outline=true; txt.ZIndex=5
-                local hbg = Drawing.new("Square")
-                hbg.Filled=true; hbg.Color=Color3.fromRGB(0,0,0); hbg.Transparency=0.5; hbg.ZIndex=3
-                local hfg = Drawing.new("Square")
-                hfg.Filled=true; hfg.Transparency=1; hfg.ZIndex=4
-                _despBoxes[p] = {box=box,txt=txt,hbg=hbg,hfg=hfg}
-            end
-            local T = _despBoxes[p]
+            seen[p]=true
+            local T  = _despGetOrCreate(p)
             local col = DESP.Color
-            T.box.Position = Vector2.new(bx,by); T.box.Size=Vector2.new(bw,bh)
-            T.box.Color=col; T.box.Transparency=1; T.box.Visible=true
+            local bh = math.abs(sp2.Y - sp1.Y)
+            local bw = math.max(bh * 0.45, 10)
+            local cx_scr = (sp1.X+sp2.X)*0.5
+            local by = math.min(sp1.Y, sp2.Y)
+            local bx = cx_scr - bw*0.5
+            -- Box
+            if DESP.CornerStyle then
+                for _,l in ipairs(T.lines) do l.Visible=false end
+                T.box.Visible=false
+                _despDrawCorner(T.lines, bx, by, bw, bh, col, DESP.CornerLen)
+            else
+                for _,l in ipairs(T.lines) do l.Visible=false end
+                T.box.Position=Vector2.new(bx,by); T.box.Size=Vector2.new(bw,bh)
+                T.box.Color=col; T.box.Transparency=1; T.box.Visible=true
+            end
+            -- Head dot
+            if DESP.ShowHeadDot and head then
+                local hsp,hv = cam:WorldToViewportPoint(head.Position)
+                if hv and hsp.Z>0 then
+                    T.hdot.Position=Vector2.new(hsp.X,hsp.Y)
+                    T.hdot.Color=col; T.hdot.Visible=true
+                else T.hdot.Visible=false end
+            else T.hdot.Visible=false end
+            -- Name
             if DESP.ShowName then
-                T.txt.Position = Vector2.new(cx, by-14); T.txt.Text=p.Name
-                T.txt.Color=col; T.txt.Transparency=1; T.txt.Visible=true
+                T.txt.Position=Vector2.new(cx_scr, by-15)
+                T.txt.Text=p.Name; T.txt.Color=DESP.NameColor; T.txt.Transparency=1; T.txt.Visible=true
             else T.txt.Visible=false end
+            -- Distance
+            if DESP.ShowDist and lrp then
+                local dist = math.floor((hrp.Position-lrp.Position).Magnitude)
+                T.dist.Position=Vector2.new(cx_scr, by+bh+2)
+                T.dist.Text=tostring(dist).."m"; T.dist.Color=col; T.dist.Transparency=1; T.dist.Visible=true
+            else T.dist.Visible=false end
+            -- Health bar (left)
             if DESP.ShowHealth then
-                local hp = math.clamp(hum.Health/hum.MaxHealth,0,1)
-                local barH = bh*hp
-                T.hbg.Position=Vector2.new(bx-5,by); T.hbg.Size=Vector2.new(3,bh); T.hbg.Visible=true
-                T.hfg.Position=Vector2.new(bx-5,by+bh-barH); T.hfg.Size=Vector2.new(3,barH)
-                T.hfg.Color=Color3.fromRGB(math.floor((1-hp)*255),math.floor(hp*255),0); T.hfg.Visible=true
+                local hp = math.clamp(hum.Health/math.max(hum.MaxHealth,1), 0, 1)
+                local barH = bh * hp
+                local barX = bx - 5
+                local hcol = Color3.fromRGB(math.floor((1-hp)*255), math.floor(hp*220), 0)
+                T.hbg.Position=Vector2.new(barX-1,by-1); T.hbg.Size=Vector2.new(4,bh+2); T.hbg.Visible=true
+                T.hfg.Position=Vector2.new(barX,by+bh-barH); T.hfg.Size=Vector2.new(2,barH)
+                T.hfg.Color=hcol; T.hfg.Transparency=1; T.hfg.Filled=true; T.hfg.Visible=true
             else T.hbg.Visible=false; T.hfg.Visible=false end
         end
-        for p,T in pairs(_despBoxes) do
-            if not seen[p] then for _,d in pairs(T) do d.Visible=false end end
-        end
+        for p,T in pairs(_despObjs) do if not seen[p] then _despHide(T) end end
     end
+
+    local function _despClearAll()
+        for _,T in pairs(_despObjs) do
+            for _,l in ipairs(T.lines) do pcall(function() l:Remove() end) end
+            for _,k in ipairs({"box","txt","dist","hdot","hbg","hfg"}) do
+                pcall(function() T[k]:Remove() end)
+            end
+        end
+        table.clear(_despObjs)
+        for _,c in ipairs(_despConns) do pcall(function() c:Disconnect() end) end
+        table.clear(_despConns)
+    end
+
     function DESP.enable()
         DESP.Enabled = true
-        table.insert(_despConns, RunService.RenderStepped:Connect(_despUpdate))
+        _despConns[#_despConns+1] = RunService.RenderStepped:Connect(_despUpdate)
     end
     function DESP.disable()
         DESP.Enabled = false
@@ -5540,54 +5635,84 @@ return {
     end
 
     -- ============================================================
-    -- [uncode] Tracers (from Harion)
+    -- [uncode] Tracers v2 (起点選択 + 太さ + 距離フェード)
     -- ============================================================
     do
     local TRAC = {}
-    TRAC.Enabled = false
-    TRAC.Color   = Color3.fromRGB(255, 50, 50)
+    TRAC.Enabled   = false
+    TRAC.Color     = Color3.fromRGB(255, 50, 50)
+    TRAC.Thickness = 1.5
+    TRAC.Origin    = "bottom"  -- "bottom" | "center" | "crosshair"
+    TRAC.DistFade  = false     -- 距離が遠いほど透明に
     local _tracConns = {}
-    local _tracLines = {}
+    local _tracLines = {}   -- [Player] = Line
+
+    local function _tracGetLine(p)
+        if _tracLines[p] then return _tracLines[p] end
+        local l = Drawing.new("Line")
+        l.Thickness=TRAC.Thickness; l.Transparency=1; l.ZIndex=5; l.Visible=false
+        _tracLines[p] = l
+        return l
+    end
+
     local function _tracClearAll()
-        for _,l in ipairs(_tracLines) do pcall(function() l:Remove() end) end
+        for _,l in pairs(_tracLines) do pcall(function() l:Remove() end) end
         table.clear(_tracLines)
         for _,c in ipairs(_tracConns) do pcall(function() c:Disconnect() end) end
         table.clear(_tracConns)
     end
+
     function TRAC.enable()
         TRAC.Enabled = true
-        table.insert(_tracConns, RunService.RenderStepped:Connect(function()
+        local lrp_cache = nil
+        _tracConns[#_tracConns+1] = RunService.RenderStepped:Connect(function()
             if not TRAC.Enabled then return end
             local cam = workspace.CurrentCamera; if not cam then return end
-            local vp = cam.ViewportSize
-            local origin = Vector2.new(vp.X*0.5, vp.Y)
-            local plrs = Players:GetPlayers()
-            -- ensure enough line objects
-            while #_tracLines < #plrs do
-                local l = Drawing.new("Line")
-                l.Thickness=1; l.Transparency=1; l.ZIndex=5; l.Visible=false
-                table.insert(_tracLines, l)
+            local vp  = cam.ViewportSize
+            local orig
+            if TRAC.Origin == "center" then
+                orig = Vector2.new(vp.X*0.5, vp.Y*0.5)
+            elseif TRAC.Origin == "crosshair" then
+                orig = Vector2.new(vp.X*0.5, vp.Y*0.5)
+            else
+                orig = Vector2.new(vp.X*0.5, vp.Y)
             end
-            local idx = 0
-            for _,p in ipairs(plrs) do
+            local lChar = LP.Character
+            lrp_cache = lChar and lChar:FindFirstChild("HumanoidRootPart")
+            local seen = {}
+            for _,p in ipairs(Players:GetPlayers()) do
                 if p==LP then continue end
-                idx = idx+1
-                local line = _tracLines[idx]
-                if not line then continue end
                 local char = p.Character
                 local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-                if not hrp then line.Visible=false; continue end
-                local sp, vis = cam:WorldToViewportPoint(hrp.Position)
-                if not vis or sp.Z<0 then line.Visible=false; continue end
-                line.From  = origin
+                if not hrp then
+                    if _tracLines[p] then _tracLines[p].Visible=false end
+                    continue
+                end
+                local sp,vis = cam:WorldToViewportPoint(hrp.Position)
+                if not vis or sp.Z<=0 then
+                    if _tracLines[p] then _tracLines[p].Visible=false end
+                    continue
+                end
+                seen[p]=true
+                local line = _tracGetLine(p)
+                line.From  = orig
                 line.To    = Vector2.new(sp.X, sp.Y)
                 line.Color = TRAC.Color
+                line.Thickness = TRAC.Thickness
+                if TRAC.DistFade and lrp_cache then
+                    local dist = (hrp.Position - lrp_cache.Position).Magnitude
+                    line.Transparency = math.clamp(1 - dist/200, 0.1, 1)
+                else
+                    line.Transparency = 1
+                end
                 line.Visible = true
             end
-            -- hide unused lines
-            for i = idx+1, #_tracLines do _tracLines[i].Visible=false end
-        end))
+            for p,l in pairs(_tracLines) do
+                if not seen[p] then l.Visible=false end
+            end
+        end)
     end
+
     function TRAC.disable()
         TRAC.Enabled = false
         _tracClearAll()
@@ -5596,94 +5721,142 @@ return {
     end
 
     -- ============================================================
-    -- [uncode] FOV Circle (from Harion)
+    -- [uncode] FOV Circle v2 (二重リング + 塗り + 透明度)
     -- ============================================================
     do
     local FOVC = {}
-    FOVC.Enabled = false; FOVC.Radius = 120; FOVC.Color = Color3.fromRGB(255,255,255)
-    local _fovcCircle = nil; local _fovcConns = {}
-    local function _fovcMake()
+    FOVC.Enabled      = false
+    FOVC.Radius       = 120
+    FOVC.Color        = Color3.fromRGB(255, 255, 255)
+    FOVC.Thickness    = 1.5
+    FOVC.DoubleRing   = false   -- 外側に薄いリングを追加
+    FOVC.RingGap      = 4       -- 二重リングのギャップ
+    local _fovcInner  = nil
+    local _fovcOuter  = nil
+    local _fovcConns  = {}
+    local function _fovcMakeCircle(th)
         local c = Drawing.new("Circle")
-        c.Thickness = 1.5; c.NumSides = 64; c.Radius = FOVC.Radius
-        c.Filled = false; c.Color = FOVC.Color; c.Transparency = 1; c.Visible = false
+        c.NumSides=72; c.Filled=false
+        c.Thickness=th; c.Transparency=1; c.Visible=false
         return c
     end
     function FOVC.enable()
         FOVC.Enabled = true
-        if not _fovcCircle then _fovcCircle = _fovcMake() end
-        local _fovcCam = workspace.CurrentCamera
+        if not _fovcInner then _fovcInner = _fovcMakeCircle(FOVC.Thickness) end
+        if not _fovcOuter  then _fovcOuter  = _fovcMakeCircle(1) end
+        local cam = workspace.CurrentCamera
         local c = RunService.RenderStepped:Connect(function()
-            if not FOVC.Enabled or not _fovcCircle then return end
-            local vp = _fovcCam.ViewportSize
-            _fovcCircle.Position = Vector2.new(vp.X*0.5, vp.Y*0.5)
-            _fovcCircle.Radius   = FOVC.Radius
-            _fovcCircle.Color    = FOVC.Color
-            _fovcCircle.Visible  = true
+            if not FOVC.Enabled then return end
+            local vp  = cam.ViewportSize
+            local cen = Vector2.new(vp.X*0.5, vp.Y*0.5)
+            _fovcInner.Position    = cen
+            _fovcInner.Radius      = FOVC.Radius
+            _fovcInner.Color       = FOVC.Color
+            _fovcInner.Thickness   = FOVC.Thickness
+            _fovcInner.Visible     = true
+            if FOVC.DoubleRing then
+                _fovcOuter.Position   = cen
+                _fovcOuter.Radius     = FOVC.Radius + FOVC.RingGap
+                _fovcOuter.Color      = FOVC.Color
+                _fovcOuter.Transparency = 0.4
+                _fovcOuter.Visible    = true
+            else
+                _fovcOuter.Visible = false
+            end
         end)
         _fovcConns[#_fovcConns+1] = c
     end
     function FOVC.disable()
         FOVC.Enabled = false
-        if _fovcCircle then _fovcCircle.Visible = false end
-        for _, c in ipairs(_fovcConns) do pcall(function() c:Disconnect() end) end
+        if _fovcInner then _fovcInner.Visible=false end
+        if _fovcOuter  then _fovcOuter.Visible=false end
+        for _,c in ipairs(_fovcConns) do pcall(function() c:Disconnect() end) end
         _fovcConns = {}
     end
     _UM.FOVC = FOVC
     end
 
     -- ============================================================
-    -- [uncode] Chams / Highlight ESP (from Harion)
+    -- [uncode] Chams v2 (HP連動 + アウトラインのみモード + 自動リフレッシュ)
     -- ============================================================
     do
     local CHMS = {}
-    CHMS.Enabled = false
-    CHMS.FillColor        = Color3.fromRGB(255,50,50)
-    CHMS.OutlineColor     = Color3.fromRGB(255,255,255)
+    CHMS.Enabled          = false
+    CHMS.FillColor        = Color3.fromRGB(255, 50, 50)
+    CHMS.OutlineColor     = Color3.fromRGB(255, 255, 255)
     CHMS.FillTransparency = 0.5
     CHMS.ThroughWall      = true
-    local _chmsHLs   = {}; local _chmsConns = {}
-    local function _chmsApply(char, hl)
+    CHMS.HPTint           = false  -- HPに応じて赤→緑でFillColorを変化
+    CHMS.OutlineOnly      = false  -- 塗り無し輪郭のみ
+    local _chmsHLs   = {}  -- [Player] = Highlight
+    local _chmsConns = {}
+
+    local function _chmsGetHP(char)
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.MaxHealth<=0 then return 1 end
+        return math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+    end
+
+    local function _chmsApply(p, char)
+        local hl = _chmsHLs[p]
         if not hl or not hl.Parent then
             hl = Instance.new("Highlight")
             hl.Adornee = char; hl.Parent = char
+            _chmsHLs[p] = hl
         end
-        hl.FillColor        = CHMS.FillColor
+        local hp   = CHMS.HPTint and _chmsGetHP(char) or 1
+        local fill = CHMS.HPTint
+            and Color3.fromRGB(math.floor((1-hp)*255), math.floor(hp*200), 0)
+            or  CHMS.FillColor
+        hl.FillColor        = fill
         hl.OutlineColor     = CHMS.OutlineColor
-        hl.FillTransparency = CHMS.FillTransparency
+        hl.FillTransparency = CHMS.OutlineOnly and 1 or CHMS.FillTransparency
         hl.DepthMode        = CHMS.ThroughWall
             and Enum.HighlightDepthMode.AlwaysOnTop
             or  Enum.HighlightDepthMode.Occluded
-        return hl
     end
+
+    local function _chmsClean(p)
+        if _chmsHLs[p] then
+            pcall(function() _chmsHLs[p]:Destroy() end)
+            _chmsHLs[p] = nil
+        end
+    end
+
     local function _chmsUpdate()
         if not CHMS.Enabled then return end
         for _, p in ipairs(Players:GetPlayers()) do
             if p == LP then continue end
             local char = p.Character
-            if char then
-                _chmsHLs[p] = _chmsApply(char, _chmsHLs[p])
+            local hum  = char and char:FindFirstChildOfClass("Humanoid")
+            if char and hum and hum.Health>0 then
+                _chmsApply(p, char)
             else
-                if _chmsHLs[p] then
-                    pcall(function() _chmsHLs[p]:Destroy() end)
-                    _chmsHLs[p] = nil
-                end
+                _chmsClean(p)
             end
         end
+        -- 孤立ハイライトを削除
+        for p in pairs(_chmsHLs) do
+            if not p.Character then _chmsClean(p) end
+        end
     end
+
     function CHMS.enable()
-        CHMS.Enabled = true; _chmsUpdate()
-        local c = RunService.Heartbeat:Connect(function()
+        CHMS.Enabled = true
+        _chmsUpdate()
+        -- キャラ変更時に即再適用
+        local c1 = Players.PlayerRemoving:Connect(function(p) _chmsClean(p) end)
+        local c2 = RunService.Heartbeat:Connect(function()
             if CHMS.Enabled then _chmsUpdate() end
         end)
-        _chmsConns[#_chmsConns+1] = c
+        _chmsConns[#_chmsConns+1] = c1
+        _chmsConns[#_chmsConns+1] = c2
     end
+
     function CHMS.disable()
         CHMS.Enabled = false
-        for _, hl in pairs(_chmsHLs) do
-            pcall(function() if hl and hl.Parent then hl:Destroy() end end)
-        end
-        _chmsHLs = {}
-        for _, c in ipairs(_chmsConns) do pcall(function() c:Disconnect() end) end
+        for p in pairs(_chmsHLs) do _chmsClean(p) end
+        for _,c in ipairs(_chmsConns) do pcall(function() c:Disconnect() end) end
         _chmsConns = {}
     end
     _UM.CHMS = CHMS
@@ -5911,39 +6084,81 @@ return {
     _UM.CDROP = CDROP
     end -- CDROP
 
-    do -- [uncode] Custom Crosshair v1 (Drawing API 4-line crosshair)
+    do -- [uncode] Custom Crosshair v2 (スタイル選択 + センタードット + アウトライン + 動的展開)
     local CXHR = {}
-    CXHR.Enabled = false; CXHR.Size = 12; CXHR.Gap = 4
-    CXHR.Thickness = 2; CXHR.Color = Color3.fromRGB(255,255,255)
-    local _cxhrLines = {}; local _cxhrConns = {}
-    local function _cxhrMakeLine()
+    CXHR.Enabled   = false
+    CXHR.Size      = 12
+    CXHR.Gap       = 4
+    CXHR.Thickness = 2
+    CXHR.Color     = Color3.fromRGB(255, 255, 255)
+    CXHR.OutlineColor = Color3.fromRGB(0, 0, 0)
+    CXHR.Outline   = true    -- 黒縁
+    CXHR.CenterDot = true    -- 中心ドット
+    CXHR.TStyle    = false   -- T字型 (上線なし)
+    CXHR.Dynamic   = false   -- 移動で展開
+    local _cxhrLines = {}    -- 4 inner + 4 outline + 2 center dot
+    local _cxhrConns = {}
+    local function _cxhrMakeLine(th, zi)
         local l = Drawing.new("Line")
-        l.Thickness = CXHR.Thickness; l.Color = CXHR.Color
-        l.Transparency = 1; l.Visible = false
+        l.Thickness=th; l.ZIndex=zi or 8; l.Transparency=1; l.Visible=false
         return l
+    end
+    local function _cxhrMakeDot(col, r)
+        local d = Drawing.new("Circle")
+        d.NumSides=12; d.Filled=true; d.Radius=r or 2.5
+        d.Color=col; d.Transparency=1; d.ZIndex=9; d.Visible=false
+        return d
+    end
+    local function _cxhrInit()
+        if #_cxhrLines > 0 then return end
+        for _ = 1, 4 do _cxhrLines[#_cxhrLines+1] = _cxhrMakeLine(CXHR.Thickness+2, 7) end  -- outline
+        for _ = 1, 4 do _cxhrLines[#_cxhrLines+1] = _cxhrMakeLine(CXHR.Thickness, 8) end     -- inner
+        _cxhrLines[9]  = _cxhrMakeDot(Color3.fromRGB(0,0,0), 3.5)  -- dot outline
+        _cxhrLines[10] = _cxhrMakeDot(CXHR.Color, 2.5)              -- dot fill
+    end
+    local function _cxhrDynGap(cam)
+        if not CXHR.Dynamic then return CXHR.Gap end
+        local char = LP.Character; if not char then return CXHR.Gap end
+        local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return CXHR.Gap end
+        local vel  = hrp.AssemblyLinearVelocity
+        local speed = Vector3.new(vel.X,0,vel.Z).Magnitude
+        return CXHR.Gap + math.clamp(speed*0.15, 0, 20)
+    end
+    local function _cxhrSet(l, from, to, col, th)
+        l.From=from; l.To=to; l.Color=col; l.Thickness=th; l.Visible=true
     end
     local function _cxhrDraw(vp)
         local cx = vp.X*0.5; local cy = vp.Y*0.5
-        local s = CXHR.Size; local g = CXHR.Gap
-        local col = CXHR.Color; local th = CXHR.Thickness
+        local s  = CXHR.Size; local g = _cxhrDynGap(nil)
+        local col = CXHR.Color; local oc = CXHR.OutlineColor
+        local th  = CXHR.Thickness; local oth = th+2
+        -- 4方向の From/To (left, right, top, bottom)
         local pts = {
-            {Vector2.new(cx-g-s,cy), Vector2.new(cx-g,cy)},
-            {Vector2.new(cx+g,cy),   Vector2.new(cx+g+s,cy)},
-            {Vector2.new(cx,cy-g-s), Vector2.new(cx,cy-g)},
-            {Vector2.new(cx,cy+g),   Vector2.new(cx,cy+g+s)},
+            {Vector2.new(cx-g-s,cy), Vector2.new(cx-g,cy)},   -- L
+            {Vector2.new(cx+g,cy),   Vector2.new(cx+g+s,cy)},  -- R
+            {Vector2.new(cx,cy-g-s), Vector2.new(cx,cy-g)},    -- U
+            {Vector2.new(cx,cy+g),   Vector2.new(cx,cy+g+s)},  -- D
         }
-        for i, pt in ipairs(pts) do
-            local l = _cxhrLines[i]; if not l then return end
-            l.From = pt[1]; l.To = pt[2]
-            l.Color = col; l.Thickness = th; l.Visible = true
+        for i=1,4 do
+            local skip = CXHR.TStyle and i==3  -- T字型=上線を消す
+            local ol = _cxhrLines[i]; local il = _cxhrLines[i+4]
+            if skip then ol.Visible=false; il.Visible=false; continue end
+            if CXHR.Outline then _cxhrSet(ol, pts[i][1], pts[i][2], oc, oth)
+            else ol.Visible=false end
+            _cxhrSet(il, pts[i][1], pts[i][2], col, th)
+        end
+        -- center dot
+        local cen = Vector2.new(cx,cy)
+        if CXHR.CenterDot then
+            _cxhrLines[9].Position=cen;  _cxhrLines[9].Color=oc;  _cxhrLines[9].Visible=CXHR.Outline
+            _cxhrLines[10].Position=cen; _cxhrLines[10].Color=col; _cxhrLines[10].Visible=true
+        else
+            _cxhrLines[9].Visible=false; _cxhrLines[10].Visible=false
         end
     end
     function CXHR.enable()
         CXHR.Enabled = true
-        if #_cxhrLines < 4 then
-            _cxhrLines = {}
-            for _ = 1, 4 do _cxhrLines[#_cxhrLines+1] = _cxhrMakeLine() end
-        end
+        _cxhrInit()
         local cam = workspace.CurrentCamera
         local c = RunService.RenderStepped:Connect(function()
             if not CXHR.Enabled then return end
@@ -5953,7 +6168,7 @@ return {
     end
     function CXHR.disable()
         CXHR.Enabled = false
-        for _, l in ipairs(_cxhrLines) do pcall(function() l.Visible = false end) end
+        for _, obj in ipairs(_cxhrLines) do pcall(function() obj.Visible=false end) end
         for _, c in ipairs(_cxhrConns) do pcall(function() c:Disconnect() end) end
         _cxhrConns = {}
     end
@@ -6941,7 +7156,7 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
     end)
 
     -- ============================================================
-    -- [uncode] FOV Circle + Chams UI (Visuals tab)
+    -- [uncode] FOV Circle v2 UI
     -- ============================================================
     pcall(function()
         if not B.visRight then return end
@@ -6949,14 +7164,26 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         BT(B.visRight,"UC_FOVC","FOV Circle",false,function(v)
             if FOVC then if v then FOVC.enable() else FOVC.disable() end end
         end)
-        B.visRight:AddSlider("UC_FOVC_R",{Text="FOV Radius",Default=120,Min=20,Max=400,Rounding=0,
+        B.visRight:AddSlider("UC_FOVC_R",{Text="  Radius",Default=120,Min=20,Max=500,Rounding=0,
             Callback=function(v) if FOVC then FOVC.Radius=v end end})
+        B.visRight:AddSlider("UC_FOVC_TH",{Text="  Thickness",Default=2,Min=1,Max=5,Rounding=1,
+            Callback=function(v) if FOVC then FOVC.Thickness=v end end})
+        BT(B.visRight,"UC_FOVC_DR","  Double Ring",false,function(v)
+            if FOVC then FOVC.DoubleRing=v end
+        end)
         B.visRight:AddDivider()
+        -- Chams v2
         BT(B.visRight,"UC_CHMS","Chams (Highlight)",false,function(v)
             if CHMS then if v then CHMS.enable() else CHMS.disable() end end
         end)
         BT(B.visRight,"UC_CHMS_TW","  Through Walls",true,function(v)
             if CHMS then CHMS.ThroughWall=v end
+        end)
+        BT(B.visRight,"UC_CHMS_OO","  Outline Only",false,function(v)
+            if CHMS then CHMS.OutlineOnly=v end
+        end)
+        BT(B.visRight,"UC_CHMS_HP","  HP Tint",false,function(v)
+            if CHMS then CHMS.HPTint=v end
         end)
         B.visRight:AddSlider("UC_CHMS_TR",{Text="  Fill Trans",Default=50,Min=0,Max=100,Rounding=0,
             Callback=function(v) if CHMS then CHMS.FillTransparency=v/100 end end})
@@ -6990,7 +7217,7 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
     end)
 
     -- ============================================================
-    -- [uncode] Tracers UI (Visuals tab)
+    -- [uncode] Tracers v2 UI
     -- ============================================================
     pcall(function()
         if not B.visRight or not TRAC then return end
@@ -6998,22 +7225,41 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         BT(B.visRight,"UC_TRAC","Tracers",false,function(v)
             if v then TRAC.enable() else TRAC.disable() end
         end)
+        B.visRight:AddDropdown("UC_TRAC_OR",{Text="  Origin",Default="bottom",
+            Values={"bottom","center","crosshair"},
+            Callback=function(v) if TRAC then TRAC.Origin=v end end})
+        B.visRight:AddSlider("UC_TRAC_TH",{Text="  Thickness",Default=2,Min=1,Max=6,Rounding=1,
+            Callback=function(v) if TRAC then TRAC.Thickness=v end end})
+        BT(B.visRight,"UC_TRAC_DF","  Dist Fade",false,function(v)
+            if TRAC then TRAC.DistFade=v end
+        end)
     end)
 
     -- ============================================================
-    -- [uncode] Drawing Box ESP UI (Visuals tab)
+    -- [uncode] Box ESP v2 UI (コーナー + ヘッドドット + 距離)
     -- ============================================================
     pcall(function()
         if not B.visRight or not DESP then return end
         B.visRight:AddDivider()
-        BT(B.visRight,"UC_DESP","Box ESP (Draw)",false,function(v)
+        BT(B.visRight,"UC_DESP","Box ESP",false,function(v)
             if v then DESP.enable() else DESP.disable() end
         end)
+        BT(B.visRight,"UC_DESP_CR","  Corner Style",true,function(v)
+            if DESP then DESP.CornerStyle=v end
+        end)
+        B.visRight:AddSlider("UC_DESP_CL",{Text="  Corner Len",Default=25,Min=10,Max=50,Rounding=0,
+            Callback=function(v) if DESP then DESP.CornerLen=v/100 end end})
         BT(B.visRight,"UC_DESP_NM","  Show Name",true,function(v)
             if DESP then DESP.ShowName=v end
         end)
         BT(B.visRight,"UC_DESP_HP","  Show Health",true,function(v)
             if DESP then DESP.ShowHealth=v end
+        end)
+        BT(B.visRight,"UC_DESP_DS","  Show Distance",true,function(v)
+            if DESP then DESP.ShowDist=v end
+        end)
+        BT(B.visRight,"UC_DESP_HD","  Head Dot",true,function(v)
+            if DESP then DESP.ShowHeadDot=v end
         end)
     end)
 
@@ -7036,7 +7282,7 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
     end)
 
     -- ============================================================
-    -- [uncode] Custom Crosshair + Disable Viewmodel + Remove Vignette (Visuals)
+    -- [uncode] Custom Crosshair v2 UI + Disable VM + No Vignette
     -- ============================================================
     pcall(function()
         if not B.visRight then return end
@@ -7044,12 +7290,24 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         BT(B.visRight,"UC_CXHR","Custom Crosshair",false,function(v)
             if CXHR then if v then CXHR.enable() else CXHR.disable() end end
         end)
-        B.visRight:AddSlider("UC_CXHR_SZ",{Text="  Size",Default=12,Min=2,Max=40,Rounding=0,
+        B.visRight:AddSlider("UC_CXHR_SZ",{Text="  Size",Default=12,Min=2,Max=50,Rounding=0,
             Callback=function(v) if CXHR then CXHR.Size=v end end})
-        B.visRight:AddSlider("UC_CXHR_GP",{Text="  Gap",Default=4,Min=0,Max=20,Rounding=0,
+        B.visRight:AddSlider("UC_CXHR_GP",{Text="  Gap",Default=4,Min=0,Max=25,Rounding=0,
             Callback=function(v) if CXHR then CXHR.Gap=v end end})
         B.visRight:AddSlider("UC_CXHR_TH",{Text="  Thickness",Default=2,Min=1,Max=6,Rounding=0,
             Callback=function(v) if CXHR then CXHR.Thickness=v end end})
+        BT(B.visRight,"UC_CXHR_CD","  Center Dot",true,function(v)
+            if CXHR then CXHR.CenterDot=v end
+        end)
+        BT(B.visRight,"UC_CXHR_OL","  Outline",true,function(v)
+            if CXHR then CXHR.Outline=v end
+        end)
+        BT(B.visRight,"UC_CXHR_TS","  T-Style",false,function(v)
+            if CXHR then CXHR.TStyle=v end
+        end)
+        BT(B.visRight,"UC_CXHR_DY","  Dynamic",false,function(v)
+            if CXHR then CXHR.Dynamic=v end
+        end)
         B.visRight:AddDivider()
         BT(B.visRight,"UC_DVM","Disable Viewmodel",false,function(v)
             if DVM then if v then DVM.enable() else DVM.disable() end end
