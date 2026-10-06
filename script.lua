@@ -1051,47 +1051,60 @@ end
 
 function WPK.pickOnce() pcall(_wpkFire) end
 
--- マッチ開始直後(CharacterAdded)に連打してピックフェーズを確実に取る
-local _wpkCharConn = nil
+-- Rivals の武器選択フェーズは CharacterRemoving 後 / CharacterAdded 前に発生する
+-- CharacterRemoving で即座に連打開始 → CharacterAdded で選択フェーズ終了
+local _wpkCharConn  = nil
+local _wpkRemovConn = nil
+local _wpkSelecting = false  -- 武器選択フェーズ中フラグ
+
 local function _wpkBurst()
     task.spawn(function()
-        -- PickWeapons はスポーン後 ~3秒が受付ウィンドウ
-        -- 0.2s間隔で10回連打 → 計2秒カバー
-        for i = 1, 10 do
+        -- スポーン直後にも念のため数回撃つ (0.15s × 8 = 1.2秒)
+        for i = 1, 8 do
             if not WPK.Enabled then break end
             pcall(_wpkFire)
-            task.wait(0.2)
+            task.wait(0.15)
         end
+    end)
+end
+
+local function _wpkSelectionLoop()
+    -- 武器選択フェーズ: 0.1s間隔で最大15秒間連打
+    _wpkSelecting = true
+    task.spawn(function()
+        local t = 0
+        while WPK.Enabled and _wpkSelecting and t < 15 do
+            pcall(_wpkFire)
+            task.wait(0.1)
+            t = t + 0.1
+        end
+        _wpkSelecting = false
     end)
 end
 
 function WPK.enable()
     WPK.Enabled = true
-    -- CharacterAdded フック: スポーン直後バースト
+    local lp = cloneref(game:GetService("Players")).LocalPlayer
+    -- CharacterRemoving: ラウンド終了 → 武器選択フェーズ開始
+    if _wpkRemovConn then pcall(function() _wpkRemovConn:Disconnect() end) end
+    _wpkRemovConn = lp.CharacterRemoving:Connect(function()
+        if WPK.Enabled then _wpkSelectionLoop() end
+    end)
+    -- CharacterAdded: 武器選択フェーズ終了 → スポーン直後バースト
     if _wpkCharConn then pcall(function() _wpkCharConn:Disconnect() end) end
-    _wpkCharConn = cloneref(game:GetService("Players")).LocalPlayer.CharacterAdded:Connect(function()
-        if WPK.Enabled then
-            task.wait(0.05) -- 1フレーム待ってからバースト
-            _wpkBurst()
-        end
+    _wpkCharConn = lp.CharacterAdded:Connect(function()
+        _wpkSelecting = false   -- 選択フェーズ終了
+        if WPK.Enabled then task.wait(0.05); _wpkBurst() end
     end)
-    -- 今すぐも1回バースト (既にマッチ中の場合)
-    _wpkBurst()
-    -- 0.5s バックグラウンドループ (継続ピック)
-    if WPK._loopRunning then return end
-    WPK._loopRunning = true
-    task.spawn(function()
-        while WPK.Enabled do pcall(_wpkFire); task.wait(0.5) end
-        WPK._loopRunning = false
-    end)
+    -- 初回: 今すぐ選択フェーズループも実行 (既にロビーにいる場合)
+    _wpkSelectionLoop()
 end
 
 function WPK.disable()
     WPK.Enabled = false
-    if _wpkCharConn then
-        pcall(function() _wpkCharConn:Disconnect() end)
-        _wpkCharConn = nil
-    end
+    _wpkSelecting = false
+    if _wpkCharConn  then pcall(function() _wpkCharConn:Disconnect()  end); _wpkCharConn  = nil end
+    if _wpkRemovConn then pcall(function() _wpkRemovConn:Disconnect() end); _wpkRemovConn = nil end
 end
 
 task.spawn(_wpkBuildList)
@@ -3893,9 +3906,10 @@ local LP_  = PL_.LocalPlayer
 local WS_  = workspace
 local CG_  = game:GetService("CoreGui")
 
-local _util, _enums
+local _util, _enums, _fc
 pcall(function() _util  = require(cloneref(RS_).Modules.Utility)    end)
 pcall(function() _enums = require(cloneref(RS_).Modules.EnumLibrary) end)
+pcall(function() _fc    = require(LP_.PlayerScripts.Controllers.FighterController) end)
 
 local _pool = {}
 local function _conn(key, c)
@@ -4214,7 +4228,31 @@ function AutoShoot.enable()
         end
         if shouldShoot then
             _asFrames = 0
-            _doAttack()
+            -- UseItemリモートを直接発火 (オートクリッカーではない)
+            local fired = false
+            pcall(function()
+                if not _util or not _enums then return end
+                local remote = _getRemote(); if not remote then return end
+                local ss = _getStartShoot(); if not ss then return end
+                -- _fc が未ロードなら再試行
+                if not _fc then pcall(function() _fc = require(LP_.PlayerScripts.Controllers.FighterController) end) end
+                if not _fc or not _fc.LocalFighter then return end
+                local item = _fc.LocalFighter.EquippedItem; if not item then return end
+                local objId; pcall(function() objId = item:Get("ObjectID") end); if not objId then return end
+                -- 照準方向 (カメラ正面) でカメラデータ構築
+                local camCF = cam.CFrame
+                local fwdPos = camCF.Position + camCF.LookVector * 200
+                -- 最近敵のHRPをターゲットボーンとして使う
+                local enemy = _closestEnemyWorld(500)
+                local bone  = enemy and enemy.Character and _getBone(enemy.Character)
+                if not bone then return end
+                local cd = _buildCamData(camCF.Position, bone, fwdPos)
+                if not cd then return end
+                remote:FireServer(objId, ss, cd, nil)
+                fired = true
+            end)
+            -- リモート発火失敗時のみフォールバック
+            if not fired then _doAttack() end
         end
     end))
 end
