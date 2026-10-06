@@ -5468,6 +5468,205 @@ return {
     if not _ok2 then print("[UNCODE v1] Part2 err:"..tostring(_err2)) end
     pcall(collectgarbage,"collect"); task.wait(0.5)
     pcall(collectgarbage,"collect")
+    -- ============================================================
+    -- [uncode] Chat Spam (from Harion)
+    -- ============================================================
+    do
+    local CSPM = {}
+    CSPM.Enabled = false
+    CSPM.Interval = 1.5
+    CSPM.Mode = "custom"
+    CSPM.Custom = "..."
+    local _cspmRunning = false
+    local _cspmMsgs = {
+        smol     = {"tiny wins still count","small text big result","smol but locked in"},
+        corny    = {"that round was nacho average duel","you just got served with extra cheese","corny line, clean win"},
+        wholesome= {"good fight","nice shot","well played"},
+        ["auto ban"]={"ban phase handled","voting the loadout","random ban locked"},
+    }
+    local function _cspmSend(text)
+        text = tostring(text or "")
+        if text=="" then return end
+        local ok = pcall(function()
+            local tcs = cloneref(game:GetService("TextChatService"))
+            local chs = tcs:FindFirstChild("TextChannels")
+            local ch  = chs and (chs:FindFirstChild("RBXGeneral") or chs:FindFirstChild("RBXSystem"))
+            if ch and ch.SendAsync then ch:SendAsync(text) end
+        end)
+        if not ok then
+            pcall(function()
+                RS.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text,"All")
+            end)
+        end
+    end
+    local function _cspmMsg()
+        if CSPM.Mode=="custom" then return CSPM.Custom end
+        local list = _cspmMsgs[CSPM.Mode] or {}
+        if #list==0 then return CSPM.Custom end
+        return list[math.random(1,#list)]
+    end
+    function CSPM.enable()
+        CSPM.Enabled = true
+        if not _cspmRunning then
+            _cspmRunning = true
+            task.spawn(function()
+                while CSPM.Enabled do
+                    pcall(_cspmSend, _cspmMsg())
+                    task.wait(math.max(CSPM.Interval, 0.5))
+                end
+                _cspmRunning = false
+            end)
+        end
+    end
+    function CSPM.disable() CSPM.Enabled = false end
+    _UM.CSPM = CSPM
+    end
+
+    -- ============================================================
+    -- [uncode] Drawing Box ESP (from Harion)
+    -- ============================================================
+    do
+    local DESP = {}
+    DESP.Enabled   = false
+    DESP.ShowName  = true
+    DESP.ShowHealth= true
+    DESP.Color     = Color3.fromRGB(255, 50, 50)
+    local _despConns = {}
+    local _despBoxes = {}   -- [Player] = {box, txt, hbg, hfg}
+    local function _despClearAll()
+        for _,t in pairs(_despBoxes) do
+            for _,d in pairs(t) do pcall(function() d:Remove() end) end
+        end
+        table.clear(_despBoxes)
+        for _,c in ipairs(_despConns) do pcall(function() c:Disconnect() end) end
+        table.clear(_despConns)
+    end
+    local function _despUpdate()
+        if not DESP.Enabled then return end
+        local cam = workspace.CurrentCamera; if not cam then return end
+        local seen = {}
+        for _,p in ipairs(Players:GetPlayers()) do
+            if p == LP then continue end
+            local char = p.Character
+            local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+            local hum  = char and char:FindFirstChildOfClass("Humanoid")
+            if not hrp or not hum or hum.Health<=0 then
+                if _despBoxes[p] then for _,d in pairs(_despBoxes[p]) do d.Visible=false end end
+                continue
+            end
+            seen[p] = true
+            local head   = char:FindFirstChild("Head")
+            local topPos = head and (head.Position+Vector3.new(0,0.7,0)) or (hrp.Position+Vector3.new(0,3,0))
+            local botPos = hrp.Position - Vector3.new(0,3,0)
+            local sp1,v1 = cam:WorldToViewportPoint(topPos)
+            local sp2,v2 = cam:WorldToViewportPoint(botPos)
+            if not v1 or not v2 or sp1.Z<0 then
+                if _despBoxes[p] then for _,d in pairs(_despBoxes[p]) do d.Visible=false end end
+                continue
+            end
+            local bh = math.abs(sp2.Y - sp1.Y)
+            local bw = bh * 0.5
+            local cx = (sp1.X+sp2.X)*0.5
+            local by = math.min(sp1.Y, sp2.Y)
+            local bx = cx - bw*0.5
+            if not _despBoxes[p] then
+                local box = Drawing.new("Square")
+                box.Filled=false; box.Thickness=1; box.ZIndex=4
+                local txt = Drawing.new("Text")
+                txt.Size=13; txt.Center=true; txt.Outline=true; txt.ZIndex=5
+                local hbg = Drawing.new("Square")
+                hbg.Filled=true; hbg.Color=Color3.fromRGB(0,0,0); hbg.Transparency=0.5; hbg.ZIndex=3
+                local hfg = Drawing.new("Square")
+                hfg.Filled=true; hfg.Transparency=1; hfg.ZIndex=4
+                _despBoxes[p] = {box=box,txt=txt,hbg=hbg,hfg=hfg}
+            end
+            local T = _despBoxes[p]
+            local col = DESP.Color
+            T.box.Position = Vector2.new(bx,by); T.box.Size=Vector2.new(bw,bh)
+            T.box.Color=col; T.box.Transparency=1; T.box.Visible=true
+            if DESP.ShowName then
+                T.txt.Position = Vector2.new(cx, by-14); T.txt.Text=p.Name
+                T.txt.Color=col; T.txt.Transparency=1; T.txt.Visible=true
+            else T.txt.Visible=false end
+            if DESP.ShowHealth then
+                local hp = math.clamp(hum.Health/hum.MaxHealth,0,1)
+                local barH = bh*hp
+                T.hbg.Position=Vector2.new(bx-5,by); T.hbg.Size=Vector2.new(3,bh); T.hbg.Visible=true
+                T.hfg.Position=Vector2.new(bx-5,by+bh-barH); T.hfg.Size=Vector2.new(3,barH)
+                T.hfg.Color=Color3.fromRGB(math.floor((1-hp)*255),math.floor(hp*255),0); T.hfg.Visible=true
+            else T.hbg.Visible=false; T.hfg.Visible=false end
+        end
+        for p,T in pairs(_despBoxes) do
+            if not seen[p] then for _,d in pairs(T) do d.Visible=false end end
+        end
+    end
+    function DESP.enable()
+        DESP.Enabled = true
+        table.insert(_despConns, RunService.RenderStepped:Connect(_despUpdate))
+    end
+    function DESP.disable()
+        DESP.Enabled = false
+        _despClearAll()
+    end
+    _UM.DESP = DESP
+    end
+
+    -- ============================================================
+    -- [uncode] Tracers (from Harion)
+    -- ============================================================
+    do
+    local TRAC = {}
+    TRAC.Enabled = false
+    TRAC.Color   = Color3.fromRGB(255, 50, 50)
+    local _tracConns = {}
+    local _tracLines = {}
+    local function _tracClearAll()
+        for _,l in ipairs(_tracLines) do pcall(function() l:Remove() end) end
+        table.clear(_tracLines)
+        for _,c in ipairs(_tracConns) do pcall(function() c:Disconnect() end) end
+        table.clear(_tracConns)
+    end
+    function TRAC.enable()
+        TRAC.Enabled = true
+        table.insert(_tracConns, RunService.RenderStepped:Connect(function()
+            if not TRAC.Enabled then return end
+            local cam = workspace.CurrentCamera; if not cam then return end
+            local vp = cam.ViewportSize
+            local origin = Vector2.new(vp.X*0.5, vp.Y)
+            local plrs = Players:GetPlayers()
+            -- ensure enough line objects
+            while #_tracLines < #plrs do
+                local l = Drawing.new("Line")
+                l.Thickness=1; l.Transparency=1; l.ZIndex=5; l.Visible=false
+                table.insert(_tracLines, l)
+            end
+            local idx = 0
+            for _,p in ipairs(plrs) do
+                if p==LP then continue end
+                idx = idx+1
+                local line = _tracLines[idx]
+                if not line then continue end
+                local char = p.Character
+                local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+                if not hrp then line.Visible=false; continue end
+                local sp, vis = cam:WorldToViewportPoint(hrp.Position)
+                if not vis or sp.Z<0 then line.Visible=false; continue end
+                line.From  = origin
+                line.To    = Vector2.new(sp.X, sp.Y)
+                line.Color = TRAC.Color
+                line.Visible = true
+            end
+            -- hide unused lines
+            for i = idx+1, #_tracLines do _tracLines[i].Visible=false end
+        end))
+    end
+    function TRAC.disable()
+        TRAC.Enabled = false
+        _tracClearAll()
+    end
+    _UM.TRAC = TRAC
+    end
+
     -- Part3: Movement features (FLY, PH, TP3, FC, SB, ANT, AJ, TGS, ORB)
     -- _E1のローカル変数200上限対策として分離
     local _E3; local _ok3,_err3 = pcall(function()
@@ -5846,6 +6045,7 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
     local HESP   = _UM.HESP;  local OAPP  = _UM.OAPP;  local XRAY   = _UM.XRAY
     local ATMO   = _UM.ATMO;  local LGHT  = _UM.LGHT;  local WFOV   = _UM.WFOV
     local WPK    = _UM.WPK;   local WPNM  = _UM.WPNM   -- 新規: 武器ピック / 武器MOD
+    local CSPM   = _UM.CSPM;  local DESP  = _UM.DESP;  local TRAC  = _UM.TRAC
     -- VFX内部ヘルパーのエイリアス
     local _vfxCC       = VFXCFG and VFXCFG.applyCC
     local _vfxBloom    = VFXCFG and VFXCFG.applyBloom
@@ -6353,6 +6553,52 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         end)
         B.visRight:AddSlider("UC_WFOV_V",{Text="Field of View",Default=90,Min=30,Max=120,Rounding=0,
             Callback=function(v) _UM.WFOV.FOV=v; if _UM.WFOV.Enabled then pcall(function() Camera.FieldOfView=v end) end end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Tracers UI (Visuals tab)
+    -- ============================================================
+    pcall(function()
+        if not B.visRight or not TRAC then return end
+        B.visRight:AddDivider()
+        BT(B.visRight,"UC_TRAC","Tracers",false,function(v)
+            if v then TRAC.enable() else TRAC.disable() end
+        end)
+    end)
+
+    -- ============================================================
+    -- [uncode] Drawing Box ESP UI (Visuals tab)
+    -- ============================================================
+    pcall(function()
+        if not B.visRight or not DESP then return end
+        B.visRight:AddDivider()
+        BT(B.visRight,"UC_DESP","Box ESP (Draw)",false,function(v)
+            if v then DESP.enable() else DESP.disable() end
+        end)
+        BT(B.visRight,"UC_DESP_NM","  Show Name",true,function(v)
+            if DESP then DESP.ShowName=v end
+        end)
+        BT(B.visRight,"UC_DESP_HP","  Show Health",true,function(v)
+            if DESP then DESP.ShowHealth=v end
+        end)
+    end)
+
+    -- ============================================================
+    -- [uncode] Chat Spam UI (Misc tab)
+    -- ============================================================
+    pcall(function()
+        if not B.miscRight or not CSPM then return end
+        B.miscRight:AddDivider()
+        BT(B.miscRight,"UC_CSPM","Chat Spam",false,function(v)
+            if v then CSPM.enable() else CSPM.disable() end
+        end)
+        B.miscRight:AddDropdown("UC_CSPM_MODE",{
+            Text="Chat Mode",Default="custom",
+            Values={"custom","smol","corny","wholesome","auto ban"},
+            Callback=function(v) if CSPM then CSPM.Mode=v end end})
+        B.miscRight:AddSlider("UC_CSPM_INT",{
+            Text="Interval (s)",Default=15,Min=5,Max=100,Rounding=0,
+            Callback=function(v) if CSPM then CSPM.Interval=v/10 end end})
     end)
 
     print("[UNCODE v1] Features wired OK")
