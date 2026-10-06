@@ -566,13 +566,20 @@ end -- ANIM
 do -- [uncode] Desync / Anti-Aim: サーバー側カメラ角度を偽装
 local DESYNC={}; DESYNC.Enabled=false; DESYNC.PitchMode="disabled"; DESYNC.YawMode="disabled"
 DESYNC.SpinSpeed=5.0; DESYNC.Underground=false; DESYNC._spinAngle=0
+local _dsUtil=nil
 local function _dsFireCam(pitch,yaw)
     pcall(function()
         local rems=RS:FindFirstChild("Remotes"); if not rems then return end
         local repl=rems:FindFirstChild("Replication"); if not repl then return end
         local figh=repl:FindFirstChild("Fighter"); if not figh then return end
         local ucr=figh:FindFirstChild("UpdateCameraRotation"); if not ucr then return end
-        ucr:FireServer(CFrame.fromEulerAnglesYXZ(math.rad(pitch),math.rad(yaw),0))
+        -- Harion: use EncodeCameraRotation when available
+        if not _dsUtil then pcall(function() _dsUtil=require(cloneref(game:GetService("ReplicatedStorage")).Modules.Utility) end) end
+        if _dsUtil and _dsUtil.EncodeCameraRotation then
+            ucr:FireServer(_dsUtil:EncodeCameraRotation(Vector2.new(math.rad(pitch),math.rad(yaw))),nil)
+        else
+            ucr:FireServer(CFrame.fromEulerAnglesYXZ(math.rad(pitch),math.rad(yaw),0))
+        end
     end)
 end
 function DESYNC.enable()
@@ -631,6 +638,70 @@ end
 VFXCFG.applyCC=_vfxCC; VFXCFG.applyBloom=_vfxBloom; VFXCFG.applySunRays=_vfxSunRays
 _UM.VFXCFG=VFXCFG
 end -- VFXCFG
+
+do -- [harion] Skybox: 26プリセット
+local HSKYX={}; HSKYX.Enabled=false; HSKYX.Selected="Night"; HSKYX._sky=nil; HSKYX._orig={}; HSKYX._skyboxes={}
+local _HP={
+    ["Afternoon"]={ids={600830446,600831635,600832720,600886090,600833862,600835177},SC=1200,SS=18,MS=11,CT=14},
+    ["Blue Space"]={ids={149397692,149397686,149397697,149397684,149397688,149397702},SC=4500,SS=4,MS=6,CT=0},
+    ["Classic Roblox"]={ids={1012890,1012891,1012887,1012889,1012888,1014449},SC=1200,SS=21,MS=11,CT=12},
+    ["Cloudy"]={ids={591058823,591059876,591058104,591057861,591057625,591059642},SC=0,SS=12,MS=0,CT=13},
+    ["Dusk"]={ids={264908339,264907909,264909420,264909758,264908886,264907379},SC=900,SS=14,MS=8,CT=18.4},
+    ["Dawn"]={ids={1417494030,1417494146,1417494253,1417494402,1417494499,1417494643},SC=600,SS=16,MS=7,CT=6.2},
+    ["Dark Skies"]={ids={570557514,570557775,570557559,570557620,570557672,570557727},SC=2600,SS=0,MS=12,CT=0},
+    ["Earth"]={ids={6444884337,6444884785,6444884337,6444884785,6444884337,6444884785},SC=3000,SS=8,MS=5,CT=1},
+    ["Horizontal Milky Way"]={ids={159454299,159454296,159454293,159454286,159454300,159454288},SC=6000,SS=0,MS=8,CT=0},
+    ["Heaven"]={ids={591058823,591059642,591059876,591057625,591057861,591058104},SC=0,SS=24,MS=0,CT=12},
+    ["Jungle"]={ids={214253616,214253616,214253616,214253616,214253616,214253616},SC=200,SS=18,MS=0,CT=15},
+    ["Mountains"]={ids={452457785,452457806,452457839,452457866,452457896,452457928},SC=600,SS=16,MS=9,CT=10},
+    ["Nebula"]={ids={149397697,149397702,149397692,149397688,149397684,149397686},SC=7000,SS=0,MS=5,CT=0},
+    ["Night Light"]={ids={12064107,12064152,12064121,12063984,12064115,12064131},SC=5000,SS=0,MS=14,CT=0},
+    ["Night"]={ids={12064121,12064152,12064107,12064115,12063984,12064131},SC=3500,SS=0,MS=11,CT=0},
+    ["Ocean Sky"]={ids={150335574,150335585,150335628,150335620,150335610,150335642},SC=400,SS=20,MS=8,CT=13},
+    ["Redshift"]={ids={401664839,401664862,401664960,401664881,401664901,401664936},SC=1800,SS=18,MS=6,CT=18},
+    ["Space"]={ids={149397684,149397686,149397688,149397692,149397697,149397702},SC=6500,SS=0,MS=6,CT=0},
+    ["Sunset"]={ids={264909420,264907909,264908339,264908886,264909758,264907379},SC=700,SS=20,MS=7,CT=17.8},
+    ["Storm"]={ids={570557672,570557514,570557727,570557559,570557775,570557620},SC=0,SS=0,MS=7,CT=16},
+    ["SFOTH"]={ids={1012887,1012891,1012890,1012888,1012889,1014449},SC=1000,SS=21,MS=11,CT=14},
+    ["Solid Black"]={ids={0,0,0,0,0,0},SC=0,SS=0,MS=0,CT=0},
+    ["Saturn"]={ids={149397688,149397686,149397684,149397692,149397702,149397697},SC=5500,SS=0,MS=18,CT=0},
+    ["Smoke"]={ids={570557514,570557775,570557559,570557620,570557672,570557727},SC=0,SS=0,MS=0,CT=3},
+    ["Vertical Milky Way"]={ids={159454286,159454288,159454299,159454300,159454296,159454293},SC=6200,SS=0,MS=8,CT=0},
+    ["White"]={ids={0,0,0,0,0,0},SC=0,SS=0,MS=0,CT=12},
+}
+local function _hId(id) if id==0 then return "" end return "rbxassetid://"..id end
+local function _hApply(nm)
+    local p=_HP[nm] or _HP["Night"]
+    if not HSKYX._sky then HSKYX._sky=Instance.new("Sky"); HSKYX._sky.Name="__UCHSK" end
+    local s=HSKYX._sky; local ids=p.ids
+    s.SkyboxBk=_hId(ids[1]); s.SkyboxDn=_hId(ids[2]); s.SkyboxFt=_hId(ids[3])
+    s.SkyboxLf=_hId(ids[4]); s.SkyboxRt=_hId(ids[5]); s.SkyboxUp=_hId(ids[6])
+    pcall(function() s.StarCount=p.SC end); pcall(function() s.SunAngularSize=p.SS end); pcall(function() s.MoonAngularSize=p.MS end)
+    for _,obj in ipairs(Lighting:GetChildren()) do
+        if obj:IsA("Sky") and obj~=s then
+            if HSKYX._skyboxes[obj]==nil then HSKYX._skyboxes[obj]=obj.Parent end
+            pcall(function() obj.Parent=nil end)
+        end
+    end
+    if HSKYX._orig.ClockTime==nil then pcall(function() HSKYX._orig.ClockTime=Lighting.ClockTime end) end
+    pcall(function() Lighting.ClockTime=p.CT end)
+    s.Parent=Lighting
+end
+local function _hClear()
+    if HSKYX._sky then HSKYX._sky.Parent=nil end
+    for sky,par in pairs(HSKYX._skyboxes) do if sky and par then pcall(function() sky.Parent=par end) end; HSKYX._skyboxes[sky]=nil end
+    for prop,val in pairs(HSKYX._orig) do pcall(function() Lighting[prop]=val end) end; table.clear(HSKYX._orig)
+end
+function HSKYX.enable() HSKYX.Enabled=true; _hApply(HSKYX.Selected)
+    _ucConn("HSKYX",RunService.Heartbeat:Connect(function()
+        if HSKYX.Enabled and HSKYX._sky and HSKYX._sky.Parent~=Lighting then _hApply(HSKYX.Selected) end
+    end))
+end
+function HSKYX.disable() HSKYX.Enabled=false; _ucStop("HSKYX"); _hClear() end
+function HSKYX.set(nm) HSKYX.Selected=nm; if HSKYX.Enabled then _hApply(nm) end end
+_UM.HSKYX=HSKYX
+end -- HSKYX
+
 
 do -- [uncode] Rage Silent: UseItemリモートをフックして頭部に誘導 + FOVサークル
 local RSAI={}
@@ -2296,6 +2367,18 @@ pcall(function()
     SR:AddButton({Text="Apply Shader",Func=function()
         if Toggles.Shader_On and Toggles.Shader_On.Value then
             applyShader(Options.ShaderPreset and Options.ShaderPreset.Value or "Cyber"); Notify("Shader applied",2) end end})
+    -- [Harion] Skybox
+    SR:AddDivider()
+    SR:AddLabel("── Skybox (26 Presets) ──")
+    BT(SR,"UC_HSKY","Custom Skybox",false,function(v)
+        if v then _UM.HSKYX.enable() else _UM.HSKYX.disable() end
+    end)
+    SR:AddDropdown("UC_HSKY_SEL",{Text="Skybox Preset",Default="Night",
+        Values={"Afternoon","Blue Space","Classic Roblox","Cloudy","Dusk","Dawn","Dark Skies",
+                "Earth","Horizontal Milky Way","Heaven","Jungle","Mountains","Nebula",
+                "Night Light","Night","Ocean Sky","Redshift","Space","Sunset","Storm",
+                "SFOTH","Solid Black","Saturn","Smoke","Vertical Milky Way","White"},
+        Callback=function(v) _UM.HSKYX.set(v) end})
 end)
 
 -- [AC("esp") stub removed]
@@ -7157,6 +7240,21 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         B.aaLeft:AddDivider()
         BT(B.aaLeft,"UC_ANT","Yaw Flip",  false,function(v) if v then E.ANT.enable() else E.ANT.disable() end end)
         BT(B.aaLeft,"UC_SB", "Spin Bot",  false,function(v) if v then E.SB.enable()  else E.SB.disable()  end end)
+        -- [Harion] Desync / Anti-Aim
+        B.aaLeft:AddDivider()
+        B.aaLeft:AddLabel("── Harion Anti-Aim ──")
+        BT(B.aaLeft,"UC_DESYNC","Desync / Anti-Aim",false,function(v)
+            if v then _UM.DESYNC.enable() else _UM.DESYNC.disable() end
+        end)
+        B.aaLeft:AddDropdown("UC_DS_PITCH",{Text="Pitch Mode",Default="disabled",
+            Values={"disabled","up","down","zero","random"},
+            Callback=function(v) _UM.DESYNC.PitchMode=v end})
+        B.aaLeft:AddDropdown("UC_DS_YAW",{Text="Yaw Mode",Default="disabled",
+            Values={"disabled","backwards","spin","random"},
+            Callback=function(v) _UM.DESYNC.YawMode=v end})
+        B.aaLeft:AddSlider("UC_DS_SPD",{Text="Spin Speed",Default=5,Min=1,Max=30,Rounding=0,
+            Callback=function(v) _UM.DESYNC.SpinSpeed=v end})
+        BT(B.aaLeft,"UC_DS_UG","Underground",false,function(v) _UM.DESYNC.Underground=v end)
     end)
 
     task.wait()
@@ -7384,25 +7482,7 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
             Callback=function(v) _UM.ANIM.Speed=v; if _UM.ANIM._track then pcall(function() _UM.ANIM._track:AdjustSpeed(v) end) end end})
     end)
 
-    -- ============================================================
-    -- [uncode] Desync / Anti-Aim UI (強化版)
-    -- ============================================================
-    pcall(function()
-        if not B.miscLeft then return end
-        B.miscLeft:AddDivider()
-        BT(B.miscLeft,"UC_DESYNC","Desync / Anti-Aim",false,function(v)
-            if v then _UM.DESYNC.enable() else _UM.DESYNC.disable() end
-        end)
-        B.miscLeft:AddDropdown("UC_DS_PITCH",{Text="Pitch Mode",Default="disabled",
-            Values={"disabled","up","down","zero","random"},
-            Callback=function(v) _UM.DESYNC.PitchMode=v end})
-        B.miscLeft:AddDropdown("UC_DS_YAW",{Text="Yaw Mode",Default="disabled",
-            Values={"disabled","backwards","spin","random"},
-            Callback=function(v) _UM.DESYNC.YawMode=v end})
-        B.miscLeft:AddSlider("UC_DS_SPD",{Text="Spin Speed",Default=5,Min=1,Max=30,Rounding=0,
-            Callback=function(v) _UM.DESYNC.SpinSpeed=v end})
-        BT(B.miscLeft,"UC_DS_UG","Underground",false,function(v) _UM.DESYNC.Underground=v end)
-    end)
+    -- Desync/Anti-Aim UI → moved to HVH tab (B.aaLeft)
 
     -- ============================================================
     -- [uncode] Color Correction / Bloom / Sun Rays UI
@@ -7464,6 +7544,58 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         B.combatKX:AddDropdown("UC_RSAI_PART",{Text="Target Part",Default="Head",
             Values={"Head","HumanoidRootPart","closest"},
             Callback=function(v) _UM.RSAI.Part=v end})
+        -- [Harion] Heartbeat Silent Aim
+        B.combatKX:AddDivider()
+        B.combatKX:AddLabel("── Harion Silent (Heartbeat) ──")
+        BT(B.combatKX,"UC_HRSAI","Harion Silent Aim",false,function(v)
+            local KEY="UC_HRSAI_HB"
+            if v then
+                local _hu,_he,_hf,_hui=nil,nil,nil,nil
+                local _hr=RaycastParams.new(); _hr.FilterType=Enum.RaycastFilterType.Blacklist
+                _ucConn(KEY,RunService.Heartbeat:Connect(function()
+                    if not(Toggles.UC_HRSAI and Toggles.UC_HRSAI.Value) then return end
+                    pcall(function()
+                        local rs_=cloneref(game:GetService("ReplicatedStorage"))
+                        if not _hu then pcall(function() _hu=require(rs_.Modules.Utility) end) end
+                        if not _he then pcall(function() _he=require(rs_.Modules.EnumLibrary) end) end
+                        if not _hf then pcall(function() _hf=require(LP.PlayerScripts.Controllers.FighterController) end) end
+                        if not _hui then
+                            local r=rs_:FindFirstChild("Remotes"); r=r and r:FindFirstChild("Replication")
+                            r=r and r:FindFirstChild("Fighter"); _hui=r and r:FindFirstChild("UseItem")
+                        end
+                        if not(_hu and _he and _hf and _hui) then return end
+                        if not _hf.LocalFighter then return end
+                        local item=_hf.LocalFighter.EquippedItem; if not item then return end
+                        local mc=LP.Character; if not mc then return end
+                        local mr=mc:FindFirstChild("HumanoidRootPart"); if not mr then return end
+                        local best,bd=nil,math.huge
+                        for _,p in ipairs(Players:GetPlayers()) do
+                            if p~=LP and p.Character then
+                                local hd=p.Character:FindFirstChild("Head")
+                                local hm=p.Character:FindFirstChildOfClass("Humanoid")
+                                if hd and hm and hm.Health>0 then
+                                    local d=(hd.Position-mr.Position).Magnitude
+                                    if d<bd then bd=d; best=hd end
+                                end
+                            end
+                        end
+                        if not best then return end
+                        local cam=workspace.CurrentCamera.CFrame
+                        _hr.FilterDescendantsInstances={mc}
+                        local res=workspace:Raycast(cam.Position,best.Position-cam.Position,_hr)
+                        if res and not res.Instance:IsDescendantOf(best.Parent) then return end
+                        local vel=best.Velocity or Vector3.zero
+                        local pred=best.Position+vel*0.12+Vector3.new(0,0.1,0)
+                        local fcf=CFrame.new(cam.Position,cam.Position+(pred-cam.Position).Unit)
+                        local cd={}
+                        cd[utf8.char(1)]={[utf8.char(0)]=_hu:EncodeCFrame(fcf),
+                            [utf8.char(1)]=_hu:EncodeCFrame(fcf),[utf8.char(2)]=best,
+                            [utf8.char(3)]=_hu:EncodeCFrame(best.CFrame:ToObjectSpace(CFrame.new(pred)))}
+                        _hui:FireServer(item:Get("ObjectID"),_he:ToEnum("StartShooting"),cd,nil)
+                    end)
+                end))
+            else _ucStop(KEY) end
+        end)
     end)
 
     -- ============================================================
@@ -7502,6 +7634,66 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
             Callback=function(v) _UM.HESP.FillTrans=v/100; _UM.HESP.refresh() end})
         B.visRight:AddSlider("UC_HESP_OT",{Text="Outline Trans",Default=0,Min=0,Max=100,Rounding=0,
             Callback=function(v) _UM.HESP.OutlineTrans=v/100; _UM.HESP.refresh() end})
+        -- [Harion] Particle Aura
+        B.visRight:AddDivider()
+        B.visRight:AddLabel("── Particle Aura (Harion) ──")
+        BT(B.visRight,"UC_PAURA","Particle Aura",false,function(v)
+            _ucStop("UC_PAURA_C")
+            local _cx={}
+            local _COLS={Red=Color3.fromRGB(255,80,80),Blue=Color3.fromRGB(80,120,255),
+                Green=Color3.fromRGB(80,255,120),White=Color3.new(1,1,1),
+                Yellow=Color3.fromRGB(255,220,80),Purple=Color3.fromRGB(180,80,255),
+                Cyan=Color3.fromRGB(80,220,255),Orange=Color3.fromRGB(255,140,40)}
+            local function _addP(char)
+                if not char then return end
+                local root=char:FindFirstChild("HumanoidRootPart"); if not root then return end
+                local att=root:FindFirstChild("__UCPATT") or Instance.new("Attachment")
+                att.Name="__UCPATT"; att.Parent=root
+                local em=att:FindFirstChild("UCPar") or Instance.new("ParticleEmitter")
+                em.Name="UCPar"; em.Parent=att
+                em.Texture="rbxassetid://243660364"; em.Rate=18
+                em.Lifetime=NumberRange.new(0.7,1.25); em.Speed=NumberRange.new(0.5,2)
+                em.SpreadAngle=Vector2.new(180,180); em.LightEmission=0.35
+                local col=_COLS[Options.UC_PCOL and Options.UC_PCOL.Value or "Red"] or _COLS.Red
+                em.Color=ColorSequence.new(col)
+            end
+            local function _rmP(char)
+                if not char then return end
+                local root=char:FindFirstChild("HumanoidRootPart"); if not root then return end
+                local att=root:FindFirstChild("__UCPATT"); if att then att:Destroy() end
+            end
+            if v then
+                for _,p in ipairs(Players:GetPlayers()) do
+                    if p~=LP and p.Character then _addP(p.Character) end
+                    table.insert(_cx,p.CharacterAdded:Connect(function(ch) task.wait(0.3); _addP(ch) end))
+                    table.insert(_cx,p.CharacterRemoving:Connect(function(ch) _rmP(ch) end))
+                end
+                table.insert(_cx,Players.PlayerAdded:Connect(function(p)
+                    table.insert(_cx,p.CharacterAdded:Connect(function(ch) task.wait(0.3); _addP(ch) end))
+                end))
+                _ucConn("UC_PAURA_C",{Disconnect=function()
+                    for _,c in ipairs(_cx) do pcall(c.Disconnect,c) end
+                    for _,p in ipairs(Players:GetPlayers()) do if p.Character then _rmP(p.Character) end end
+                end})
+            end
+        end)
+        B.visRight:AddDropdown("UC_PCOL",{Text="Aura Color",Default="Red",
+            Values={"Red","Blue","Green","White","Yellow","Purple","Cyan","Orange"},
+            Callback=function(v)
+                local _COLS={Red=Color3.fromRGB(255,80,80),Blue=Color3.fromRGB(80,120,255),
+                    Green=Color3.fromRGB(80,255,120),White=Color3.new(1,1,1),
+                    Yellow=Color3.fromRGB(255,220,80),Purple=Color3.fromRGB(180,80,255),
+                    Cyan=Color3.fromRGB(80,220,255),Orange=Color3.fromRGB(255,140,40)}
+                local col=_COLS[v] or _COLS.Red
+                for _,p in ipairs(Players:GetPlayers()) do
+                    if p~=LP and p.Character then
+                        local root=p.Character:FindFirstChild("HumanoidRootPart")
+                        local att=root and root:FindFirstChild("__UCPATT")
+                        local em=att and att:FindFirstChild("UCPar")
+                        if em then em.Color=ColorSequence.new(col) end
+                    end
+                end
+            end})
     end)
 
     -- ============================================================
