@@ -1957,7 +1957,7 @@ local function hookCosmetics()
 end
 
 local function fetch(path)
-    local ok,r=pcall(function() return game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"..path) end)
+    local ok,r=pcall(function() return game:HttpGet("https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/"..path) end)
     return ok and r or nil
 end
 
@@ -1969,16 +1969,16 @@ do
     local libSrc=nil
     -- Try loading from workspace cache first (fast, no HTTP)
     pcall(function()
-        local cached = dofile("Obsidian/Library.lua")
+        local cached = dofile("LinoriaLib/Library.lua")
         if type(cached)=="table" then Library=cached end
     end)
     if not Library then
         -- Fallback: HTTP download
-        print("[UNCODE v1] Fetching Obsidian from network...")
+        print("[UNCODE v1] Fetching LinoriaLib from network...")
         libSrc=fetch("Library.lua")
         if not libSrc then
             pcall(function()
-                libSrc=game:HttpGet("https://cdn.jsdelivr.net/gh/deividcomsono/Obsidian@main/Library.lua")
+                libSrc=game:HttpGet("https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/Library.lua")
             end)
         end
         if libSrc then
@@ -1990,13 +1990,13 @@ do
                 if ok2 and type(res)=="table" then
                     Library=res
                 else
-                    warn("[UNCODE] Obsidian init failed: "..tostring(res))
+                    warn("[UNCODE] LinoriaLib init failed: "..tostring(res))
                 end
             else
-                warn("[UNCODE] Obsidian loadstring failed: "..tostring(fn))
+                warn("[UNCODE] LinoriaLib loadstring failed: "..tostring(fn))
             end
         else
-            warn("[UNCODE] Obsidian fetch failed - check HTTP permissions")
+            warn("[UNCODE] LinoriaLib fetch failed - check HTTP permissions")
         end
     end
     if Library then
@@ -2023,7 +2023,7 @@ do
             CreateWindow=function() return fakeEl() end,
         }
         Toggles=fakeToggles; Options=fakeOptions
-        warn("[UNCODE] Running in headless mode (Obsidian unavailable)")
+        warn("[UNCODE] Running in headless mode (LinoriaLib unavailable)")
     else
         print("[UNCODE v1] UI library loaded - building interface...")
     end
@@ -2032,13 +2032,12 @@ do
 end
 
 local Window=Library:CreateWindow({
-    Title="uncode",Footer="rivals . v4 . anti-kicia . anti-transcrait",
+    Title="uncode v4",
     NotifySide="Right",ShowCustomCursor=true,AutoShow=true,Center=true,
-    Resizable=true,ShowMobileButtons=true,MobileButtonsSide="Left",
-    ToggleKeybind=Enum.KeyCode.RightShift,EnableSidebarResize=true,
+    Resizable=true,TabPadding=8,MenuFadeTime=0.2,
 })
 task.wait() 
-local function Notify(t,d) pcall(function() Library:Notify({Title="uncode",Description=t,Time=d or 3}) end) end
+local function Notify(t,d) pcall(function() Library:Notify(t, d or 3) end) end
 
 local Tabs={}
 for _,nm in ipairs({"Combat","Void","Orbit","AntiAim","Riot","Visuals","Misc","Configs"}) do
@@ -2088,7 +2087,7 @@ pcall(function()
     CR2:AddSlider("PB_Expand",{Text="Expand",Default=18,Min=0,Max=200,Rounding=0,Callback=function(v) PB.expand=v*0.01 end})
     CR2:AddSlider("PB_Lerp",{Text="Aim Lerp",Default=88,Min=10,Max=100,Rounding=0,Callback=function(v) PB.lerp=v*0.01 end})
     CR2:AddSlider("PB_PredMult",{Text="Pred Mult",Default=1,Min=1,Max=10,Rounding=1,Callback=function(v) PB.predMult=v end})
-    CR2:AddButton("Re-hook Remotes",function() hookRemotes(); Notify("Remotes re-hooked",2) end)
+    CR2:AddButton({Text="Re-hook Remotes",Func=function() hookRemotes(); Notify("Remotes re-hooked",2) end})
 
     local CL3=Tabs.Combat:AddLeftGroupbox("Weapon Mods"); _ucBoxes.combatWP=CL3
     BT(CL3,"WP_NoSpread","No Spread",false)
@@ -2135,7 +2134,7 @@ pcall(function()
     VL:AddSlider("VoidRadius",{Text="Radius (x109 B)",Default=200,Min=10,Max=1000,Rounding=0,Callback=function(v) VCFG.radius=v*1e9 end})
     VL:AddSlider("VoidAlt",{Text="Altitude (x109 B)",Default=10,Min=1,Max=500,Rounding=0,Callback=function(v) VCFG.altitude=v*1e9; VCFG.radius=VCFG.radius end})
     VL:AddSlider("VoidChaos",{Text="Chaos Factor %",Default=98,Min=1,Max=100,Rounding=0,Callback=function(v) VCFG.chaos=v*0.01 end})
-    VL:AddButton("Reset Pattern",function() vElapsed=0; vX=math.random(-1e8,1e8); vZ=math.random(-1e8,1e8); vYOff=0; Notify("Pattern reset",2) end)
+    VL:AddButton({Text="Reset Pattern",Func=function() vElapsed=0; vX=math.random(-1e8,1e8); vZ=math.random(-1e8,1e8); vYOff=0; Notify("Pattern reset",2) end})
 
     local VR=Tabs.Void:AddRightGroupbox("Evasion & Godmode")
     BT(VR,"VoidEvade","Void Evasion",true,function(v) VCFG.evade=v end)
@@ -2226,9 +2225,9 @@ pcall(function()
     end)
     SR:AddDropdown("ShaderPreset",{Text="Shader",Default="Cyber",Values={"Cyber","Void","Neon","Warm","Cold","Moonlight","GoldenHour","Cinematic","Soft","DeepFried"},
         Callback=function(v) if Toggles.Shader_On and Toggles.Shader_On.Value then applyShader(v) end end})
-    SR:AddButton("Apply Shader",function()
+    SR:AddButton({Text="Apply Shader",Func=function()
         if Toggles.Shader_On and Toggles.Shader_On.Value then
-            applyShader(Options.ShaderPreset and Options.ShaderPreset.Value or "Cyber"); Notify("Shader applied",2) end end)
+            applyShader(Options.ShaderPreset and Options.ShaderPreset.Value or "Cyber"); Notify("Shader applied",2) end end})
 end)
 
 -- [AC("esp") stub removed]
@@ -2257,11 +2256,11 @@ pcall(function()
     BT(ML,"FreezeChar","Freeze Character",false,function(v)
         if root then pcall(function() root.Anchored=v; if v then root.AssemblyLinearVelocity=Vector3.zero end end) end
     end)
-    ML:AddButton("Teleport to Target",function()
+    ML:AddButton({Text="Teleport to Target",Func=function()
         local t=getClosest(); if not t or not t.Character then return end
         local r=t.Character:FindFirstChild("HumanoidRootPart"); if not r or not root then return end
         pcall(function() root.CFrame=r.CFrame*CFrame.new(0,0,3) end)
-    end)
+    end})
 
     local MR=Tabs.Misc:AddRightGroupbox("Spoof / Cosmetics"); _ucBoxes.miscRight=MR
     BT(MR,"UnlockAll","Unlock All Skins",false,function(v) if v then hookCosmetics() end end)
@@ -2281,13 +2280,13 @@ pcall(function()
         if v and avTargetUID then task.spawn(cloneAvatar, avTargetUID) end
     end)
     MR:AddInput("AV_UID",{Text="Target User ID",Default="",Placeholder="12345...",ClearTextOnFocus=false,Callback=function(v) avTargetUID=tonumber(v) end})
-    MR:AddButton("Apply Avatar",function()
+    MR:AddButton({Text="Apply Avatar",Func=function()
         if avTargetUID then task.spawn(cloneAvatar,avTargetUID); Notify("Avatar cloning...",3) end
-    end)
-    MR:AddButton("Avatar: Copy Closest",function()
+    end})
+    MR:AddButton({Text="Avatar: Copy Closest",Func=function()
         local t=getClosest(); if not t then return end
         avTargetUID=t.UserId; task.spawn(cloneAvatar,avTargetUID); Notify("Copying "..t.Name,3)
-    end)
+    end})
 end)
 
 pcall(function()
@@ -2315,7 +2314,7 @@ pcall(function()
 
     local CL=Tabs.Configs:AddLeftGroupbox("Community Presets")
     CL:AddDropdown("PresetSel",{Text="Preset",Default="Anti-Kicia v3",Values={"Anti-Kicia v3","Anti-Transcrait","Rage Max","Balanced HVH","Safe / Legit","Orbit Spam","Full Defense","Speed Rush"}})
-    CL:AddButton("> Apply Preset",function() applyPreset(Options.PresetSel and Options.PresetSel.Value or "Anti-Kicia v3") end)
+    CL:AddButton({Text="> Apply Preset",Func=function() applyPreset(Options.PresetSel and Options.PresetSel.Value or "Anti-Kicia v3") end})
     CL:AddLabel("Anti-Kicia v3: Resolver+BT+Evade+God")
     CL:AddLabel("Anti-Transcrait: Snap+25ms+BT14+God")
     CL:AddLabel("Rage Max: 10ms+Chaos+4xBurst")
@@ -2324,7 +2323,7 @@ pcall(function()
 
     local CR=Tabs.Configs:AddRightGroupbox("Custom Configs")
     CR:AddInput("CfgName",{Text="Config Name",Default="",Placeholder="my_cfg",ClearTextOnFocus=false})
-    CR:AddButton("Save",function()
+    CR:AddButton({Text="Save",Func=function()
         local n=Options.CfgName and Options.CfgName.Value or ""
         if n=="" then Notify("Enter config name",2); return end
         pcall(function()
@@ -2335,8 +2334,8 @@ pcall(function()
             writefile("uncode4/"..n..".json",HTTP:JSONEncode(d))
             Notify("Saved: "..n,3)
         end)
-    end)
-    CR:AddButton("Load",function()
+    end})
+    CR:AddButton({Text="Load",Func=function()
         local n=Options.CfgName and Options.CfgName.Value or ""
         if n=="" then Notify("Enter config name",2); return end
         pcall(function()
@@ -2350,16 +2349,16 @@ pcall(function()
             end
             Notify("Loaded: "..n,3)
         end)
-    end)
-    CR:AddButton("Export to Clipboard",function()
+    end})
+    CR:AddButton({Text="Export to Clipboard",Func=function()
         pcall(function()
             local d={}
             for k,v in pairs(Toggles) do d["T:"..k]=v.Value end
             for k,v in pairs(Options) do if type(v.Value)~="userdata" then d["O:"..k]=v.Value end end
             setclipboard(HTTP:JSONEncode(d)); Notify("Exported to clipboard",3)
         end)
-    end)
-    CR:AddButton("Import from Clipboard",function()
+    end})
+    CR:AddButton({Text="Import from Clipboard",Func=function()
         pcall(function()
             local raw=getclipboard()
             local d=HTTP:JSONDecode(raw)
@@ -2369,7 +2368,7 @@ pcall(function()
             end
             Notify("Imported from clipboard",3)
         end)
-    end)
+    end})
 end)
 
 -- ThemeManager / SaveManager 初期化 (Settings タブ廃止)
@@ -2910,7 +2909,7 @@ pcall(function()
     HL2:AddDropdown("RVHS_Sel",  {Text="Hit Sound",         Default="bell",Values={"bell","pop","tick","fortnite"},                   Callback=function(v) RV.HitSound.Selected=v end})
     HL2:AddSlider("RVHS_Vol",    {Text="Volume",            Default=5, Min=0,Max=10,Rounding=1, Callback=function(v) RV.HitSound.Volume=v end})
     HL2:AddSlider("RVHS_Pitch",  {Text="Pitch",             Default=1, Min=0.5,Max=2,Rounding=2, Callback=function(v) RV.HitSound.Pitch=v end})
-    HL2:AddButton("Test Hit Sound", function() PlayHitSnd() end)
+    HL2:AddButton({Text="Test Hit Sound",Func=function() PlayHitSnd() end})
 
     local TR2 = VT:AddRightGroupbox("Custom Tracers")
     TR2:AddToggle("RVTR_On",     {Text="Tracers Enabled",  Default=false, Callback=function(v) RV.Tracers.Enabled=v end})
@@ -2958,14 +2957,14 @@ pcall(function()
     WR2:AddToggle("RVSky_Bloom",{Text="Bloom",            Default=false, Callback=function(v) RV.Sky.Bloom=v; pcall(RVApplyWorld) end})
     WR2:AddSlider("RVSky_BInt", {Text="Bloom Intensity", Default=0.1,Min=0,Max=2,  Rounding=2, Callback=function(v) RV.Sky.BInt=v; pcall(RVApplyWorld) end})
     WR2:AddToggle("RVSky_Sun",  {Text="Sun Rays",         Default=false, Callback=function(v) RV.Sky.SunRays=v; pcall(RVApplyWorld) end})
-    WR2:AddButton("Apply World Settings", function() pcall(RVApplyWorld); Notify("World applied",2) end)
-    WR2:AddButton("Restore World",        function() pcall(RVRestoreWorld); Notify("World restored",2) end)
+    WR2:AddButton({Text="Apply World Settings",Func=function() pcall(RVApplyWorld); Notify("World applied",2) end})
+    WR2:AddButton({Text="Restore World",Func=function() pcall(RVRestoreWorld); Notify("World restored",2) end})
 
     local UK2 = VT:AddRightGroupbox("Unlock All (NOKS)")
     UK2:AddToggle("RVUL_On",    {Text="Unlock All Skins/Charms/Wraps", Default=false, Callback=function(v) unlockActive=v; if v then task.spawn(doUnlockAll) end end})
     UK2:AddLabel("Includes: Skins / Charms / Wraps / Dances")
     UK2:AddLabel("Excludes: Finishers (crash guard)")
-    UK2:AddButton("Apply Unlock Now", function() if unlockActive then task.spawn(doUnlockAll) else Notify("Enable unlock toggle first",2) end end)
+    UK2:AddButton({Text="Apply Unlock Now",Func=function() if unlockActive then task.spawn(doUnlockAll) else Notify("Enable unlock toggle first",2) end end})
 end)
 
 pcall(function()
@@ -3872,7 +3871,7 @@ pcall(function()
     AUL:AddToggle("Aura_Ring",{Text="Ring",Default=true,Callback=function(v) RV.Config.Aura.Ring=v; local ch=LP.Character; if ch then RV.BuildAura(ch) end end})
     AUL:AddToggle("Aura_Trail",{Text="Limb Trails",Default=true,Callback=function(v) RV.Config.Aura.Trail=v; local ch=LP.Character; if ch then RV.BuildAura(ch) end end})
     AUL:AddToggle("Aura_Pulse",{Text="Pulse",Default=true,Callback=function(v) RV.Config.Aura.Pulse=v end})
-    AUL:AddButton("Rebuild Aura",function() local ch=LP.Character; if ch then RV.BuildAura(ch) end end)
+    AUL:AddButton({Text="Rebuild Aura",Func=function() local ch=LP.Character; if ch then RV.BuildAura(ch) end end})
 
     local CHL = VT:AddRightGroupbox("Crosshair")
     BT(CHL,"CH_On","Custom Crosshair",false,function(v) RV.Config.Crosshair.Enabled=v end)
@@ -3935,8 +3934,8 @@ pcall(function()
     BT(WL,"W_SunRays","Sun Rays",false,function(v) RV.Config.World.SunRays=v; RV.ApplyWorld() end)
     BT(WL,"W_Sky","Custom Sky",false,function(v) RV.Config.World.Sky=v; RV.ApplyWorld() end)
     WL:AddDropdown("W_SkyPreset",{Text="Sky Preset",Default="Vertical Milky Way",Values={"Vertical Milky Way","Night Stars","Clean Day"},Callback=function(v) RV.Config.World.SkySelected=v; RV.ApplyWorld() end})
-    WL:AddButton("Apply World",function() RV.ApplyWorld(); Notify("World applied",2) end)
-    WL:AddButton("Restore World",function() RV.RestoreWorld(); Notify("World restored",2) end)
+    WL:AddButton({Text="Apply World",Func=function() RV.ApplyWorld(); Notify("World applied",2) end})
+    WL:AddButton({Text="Restore World",Func=function() RV.RestoreWorld(); Notify("World restored",2) end})
 
     local VML = VT:AddLeftGroupbox("Viewmodel Override")
     BT(VML,"VM_On","Override Viewmodel",false,function(v) RV.Config.Viewmodel.OverrideEnabled=v; RV.ApplyViewmodelOverride() end)
@@ -3945,7 +3944,7 @@ pcall(function()
     VML:AddToggle("VM_Wire",{Text="Wireframe",Default=false,Callback=function(v) RV.Config.Viewmodel.VMWireframe=v; if RV.Config.Viewmodel.OverrideEnabled then RV.ApplyViewmodelOverride() end end})
     VML:AddDropdown("VM_ArmMat",{Text="Arm Material",Default="Neon",Values={"Neon","SmoothPlastic","ForceField","Glass","Metal"},Callback=function(v) RV.Config.Viewmodel.ArmMaterial=v; if RV.Config.Viewmodel.OverrideEnabled then RV.ApplyViewmodelOverride() end end})
     VML:AddSlider("VM_ArmTrans",{Text="Arm Transparency",Default=32,Min=0,Max=100,Rounding=0,Callback=function(v) RV.Config.Viewmodel.ArmTrans=v; if RV.Config.Viewmodel.OverrideEnabled then RV.ApplyViewmodelOverride() end end})
-    VML:AddButton("Apply Now",function() RV.ApplyViewmodelOverride(); Notify("Viewmodel applied",2) end)
+    VML:AddButton({Text="Apply Now",Func=function() RV.ApplyViewmodelOverride(); Notify("Viewmodel applied",2) end})
 
     local APL = VT:AddRightGroupbox("Appearance / Unlock")
     BT(APL,"App_On","Self Appearance",false,function(v) RV.Config.Appearance.Enabled=v; if v then RV.ApplyAppearance() end end)
