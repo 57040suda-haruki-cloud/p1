@@ -4331,6 +4331,7 @@ local _skinPresets = {
     pink        = {color = Color3.fromRGB(255,  80, 180), mat = Enum.Material.Neon},
 }
 local _skinOrig = {}
+local _skinSA   = {}  -- SurfaceAppearanceの退避テーブル
 local _skinHue  = 0
 
 local function _applySkin(col, mat)
@@ -4339,6 +4340,19 @@ local function _applySkin(col, mat)
         if p:IsA("BasePart") then
             if not _skinOrig[p] then
                 _skinOrig[p] = {color = p.Color, mat = p.Material}
+                -- SurfaceAppearanceがあると色変更が見えないので一時的に退避
+                local sa = p:FindFirstChildOfClass("SurfaceAppearance")
+                if sa and not _skinSA[p] then
+                    _skinSA[p] = sa
+                    pcall(function() sa.Parent = nil end)
+                end
+                -- SpecialMeshのTextureIDも退避 (テクスチャが色を隠す)
+                local sm = p:FindFirstChildOfClass("SpecialMesh")
+                if sm and sm.TextureId ~= "" and not _skinOrig[p].texId then
+                    _skinOrig[p].texId = sm.TextureId
+                    _skinOrig[p].mesh  = sm
+                    pcall(function() sm.TextureId = "" end)
+                end
             end
             pcall(function() p.Color = col; p.Material = mat end)
         end
@@ -4348,8 +4362,16 @@ end
 local function _restoreSkin()
     for p, orig in pairs(_skinOrig) do
         pcall(function() p.Color = orig.color; p.Material = orig.mat end)
+        -- SurfaceAppearanceを戻す
+        local sa = _skinSA[p]
+        if sa then pcall(function() sa.Parent = p end) end
+        -- SpecialMesh TextureIDを戻す
+        if orig.mesh and orig.texId then
+            pcall(function() orig.mesh.TextureId = orig.texId end)
+        end
     end
     table.clear(_skinOrig)
+    table.clear(_skinSA)
 end
 
 local function _skinApplyPreset()
@@ -4682,7 +4704,10 @@ local function _espLoop()
         end
         local myRoot = _root()
         local studs = (hrp.Position - (myRoot and myRoot.Position or hrp.Position)).Magnitude
-        local fade  = math.clamp(1 - studs / ESP.MaxDist, 0.1, 1)
+        -- alpha: 近い=1(不透明), 遠い=0.2(半透明)
+        -- Drawing APIはTransparency=0が不透明,1が透明なのでalphaを反転する
+        local alpha = math.clamp(1 - studs / ESP.MaxDist, 0.2, 1)
+        local transp = 1 - alpha  -- 近い=0(不透明), 遠い=0.8(透明寄り)
         local topSP = cam:WorldToViewportPoint(head.Position + Vector3.new(0,2.5,0))
         local w  = math.clamp(math.abs(sp.Z) * 1.2, 20, 200)
         local h2 = math.abs(Vector2.new(sp.X,sp.Y).Y - Vector2.new(topSP.X,topSP.Y).Y) + 8
@@ -4695,21 +4720,21 @@ local function _espLoop()
         d.box.Position     = Vector2.new(x, y)
         d.box.Size         = Vector2.new(w, h2)
         d.box.Color        = hpCol
-        d.box.Transparency = fade; d.box.Visible = true
+        d.box.Transparency = transp; d.box.Visible = true
         -- 名前 (DisplayName + HP%)
         d.name.Position    = Vector2.new(sp.X, y - 16)
         d.name.Text        = p.DisplayName .. " [" .. math.floor(hp*100) .. "%]"
-        d.name.Transparency = fade; d.name.Visible = true
+        d.name.Transparency = transp; d.name.Visible = true
         -- 距離
         d.dist.Position    = Vector2.new(sp.X, y + h2 + 2)
         d.dist.Text        = string.format("%.0fm", studs)
-        d.dist.Transparency = fade; d.dist.Visible = true
+        d.dist.Transparency = transp; d.dist.Visible = true
         -- 武器名
         local tool = c:FindFirstChildOfClass("Tool")
         if tool then
             d.weap.Position    = Vector2.new(sp.X, y - 28)
             d.weap.Text        = "[" .. tool.Name .. "]"
-            d.weap.Transparency= fade; d.weap.Visible = true
+            d.weap.Transparency= transp; d.weap.Visible = true
         else
             d.weap.Visible = false
         end
@@ -4719,13 +4744,13 @@ local function _espLoop()
         d.hbar.From = Vector2.new(bx, y+h2*(1-hp))
         d.hbar.To   = Vector2.new(bx, y+h2)
         d.hbar.Color = hpCol
-        d.hbg.Transparency = fade; d.hbar.Transparency = fade
+        d.hbg.Transparency = transp; d.hbar.Transparency = transp
         d.hbg.Visible = true; d.hbar.Visible = true
         -- トレーサー (クロスヘアから敵の足元へ)
         d.trc.From  = screenBot
         d.trc.To    = Vector2.new(sp.X, y + h2)
         d.trc.Color = hpCol
-        d.trc.Transparency = fade * 0.55
+        d.trc.Transparency = math.clamp(transp + 0.35, 0, 0.85)
         d.trc.Visible = true
         -- スナップライン (画面下端→足元)
         d.snapL.From = Vector2.new(vp.X/2, vp.Y)
