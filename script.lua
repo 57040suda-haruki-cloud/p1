@@ -6333,6 +6333,297 @@ return {
     _UM.NOVIG = NOVIG
     end -- NOVIG
 
+    do -- [uncode] RAGE v1 (Phillnoob互換: Void Movement / Spin / Desync)
+    local RAGE = {}
+    -- ---- 設定 ----
+    RAGE.VoidEnabled   = false
+    RAGE.VoidMode      = "VOID_SPAM"   -- VOID_SPAM / VOID_HIDE / RANDOM / FORWARD / CAMERA
+    RAGE.VoidPattern   = "Random Far"  -- getFarVoidPosition のパターン
+    RAGE.Distance      = 500
+    RAGE.Interval      = 0.035
+    RAGE.Jitter        = 14
+    RAGE.SpinEnabled   = false
+    RAGE.SpinSpeed     = 720
+    RAGE.SpinXJitter   = 30
+    RAGE.SpinYJitter   = 8
+    RAGE.SpinDist      = 300
+    RAGE.VPulse        = false         -- Velocity Pulse
+    RAGE.OffsetDesync  = false
+    RAGE.BurstDesync   = false
+    RAGE.AnchorStutter = false
+    RAGE.DesyncOffset  = 40
+    RAGE.BurstPower    = 1500
+
+    local _rageLp       = cloneref(game:GetService("Players")).LocalPlayer
+    local _rageRS       = cloneref(game:GetService("RunService"))
+    local _rageVoidConn = nil
+    local _rageSpinConn = nil
+    local _ragePulseConn= nil
+    local _rageDsyncConn= nil
+    local _rageOrigCF   = nil
+    local _rageSpinCF   = nil
+    local _rageHideLastCF= nil
+    local _ragePrevAnch = nil
+    local _rageStutterAn= false
+    local _rageStutterOA= nil
+    local _lastVoidTP   = 0
+    local _voidElapsed  = 0
+    local _voidX        = math.random(-1e8, 1e8)
+    local _voidZ        = math.random(-1e8, 1e8)
+    local _voidYBase    = 1e10 + math.random(-5e9, 5e9)
+    local _voidYOff     = 0
+    local _voidYDir     = 1
+    local _voidDirX     = math.random()*2-1
+    local _voidDirZ     = math.random()*2-1
+    local _voidDrift    = 9e6
+    local _voidYDrift   = 4e6
+    local _voidYRange   = 2e9
+    local _dsyncPClock  = 0
+    local _dsyncBClock  = 0
+    local _dsyncSClock  = 0
+    local _dsyncPDelay  = 0.03
+    local _dsyncBDelay  = 0.025
+    local _dsyncSDelay  = 0.08
+
+    local function _rageHRP()
+        local c = _rageLp.Character
+        return c and c:FindFirstChild("HumanoidRootPart") or nil
+    end
+
+    local function _rawVoidTP(pos)
+        local hrp = _rageHRP(); if not hrp then return end
+        if tick() - _lastVoidTP > 0.2 then
+            hrp.AssemblyLinearVelocity  = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            _lastVoidTP = tick()
+        end
+        hrp.CFrame = CFrame.new(pos)
+    end
+
+    local function _computeVoidDir(t)
+        local nx,nz,amp,freq = 0,0,1,0.0001
+        for _=1,4 do
+            nx+=math.noise(t*freq,0)*amp; nz+=math.noise(0,t*freq)*amp
+            freq*=2.37; amp*=0.5
+        end
+        nx+=math.sin(t*0.00213)*math.cos(t*0.00344)*0.2
+        nz+=math.cos(t*0.00131)*math.sin(t*0.00579)*0.2
+        local len=math.sqrt(nx*nx+nz*nz)
+        if len<0.001 then return math.cos(t*0.1),math.sin(t*0.1) end
+        return nx/len, nz/len
+    end
+
+    local function _getFarVoidPos(dt)
+        _voidElapsed += dt
+        local pat = RAGE.VoidPattern
+        local d   = RAGE.Distance
+        if pat=="Still Point" then
+            return Vector3.new(_voidX, _voidYBase+_voidYOff, _voidZ)
+        elseif pat=="Slow Drift" then
+            local dx,dz=_computeVoidDir(_voidElapsed)
+            _voidDirX+=( dx-_voidDirX)*0.98*dt*10
+            _voidDirZ+=( dz-_voidDirZ)*0.98*dt*10
+            _voidX+=_voidDirX*_voidDrift*dt; _voidZ+=_voidDirZ*_voidDrift*dt
+            _voidYOff+=_voidYDir*_voidYDrift*dt
+            if math.abs(_voidYOff)>=_voidYRange then _voidYDir=-_voidYDir end
+            return Vector3.new(_voidX,_voidYBase+_voidYOff,_voidZ)
+        elseif pat=="Circle" then
+            local r=math.max(d*1000,1e9)*(1+math.sin(_voidElapsed))
+            return Vector3.new(_voidX+math.cos(_voidElapsed*3)*r, _voidYBase+_voidYOff, _voidZ+math.sin(_voidElapsed*3)*r)
+        elseif pat=="Figure Eight" then
+            local r=math.max(d*2000,2e9)
+            return Vector3.new(_voidX+math.sin(_voidElapsed*2)*r, _voidYBase+math.sin(_voidElapsed*4)*r*0.1, _voidZ+math.sin(_voidElapsed*3)*r)
+        elseif pat=="Wide Sweep" then
+            local t=_voidElapsed*15; local r=math.max(d*10000,1e10)
+            return Vector3.new(_voidX+math.sin(t)*r, _voidYBase+math.cos(t*1.5)*r*0.1, _voidZ+math.cos(t)*r)
+        elseif pat=="Fast Bounce" then
+            local t=_voidElapsed*50; local r=math.max(d*10000,1e10)*math.sin(t)
+            return Vector3.new(_voidX+r, _voidYBase+math.cos(t)*1e10, _voidZ+r)
+        elseif pat=="Noise Cloud" then
+            local t=_voidElapsed*1.5; local r=math.max(d*5000,4e9)
+            return Vector3.new(_voidX+math.noise(t,0,0)*r, _voidYBase+math.noise(0,t,0)*r*0.25, _voidZ+math.noise(0,0,t)*r)
+        end
+        -- Random Far (default)
+        local r=math.max(d*10000,1e11)
+        local sign=math.random()>0.5 and 1 or -1
+        return Vector3.new(_voidX+r*sign, _voidYBase+math.random(-1e8,1e8), _voidZ+r*sign)
+    end
+
+    local function _doVoidStep(dt)
+        local hrp = _rageHRP(); if not hrp then return end
+        if RAGE.VoidMode=="VOID_HIDE" then
+            if not _rageHideLastCF then _rageHideLastCF=hrp.CFrame end
+            _rawVoidTP(Vector3.new(hrp.Position.X+2e15, 999999, hrp.Position.Z+2e15))
+        elseif RAGE.VoidMode=="VOID_SPAM" then
+            _rawVoidTP(_getFarVoidPos(dt))
+        elseif RAGE.VoidMode=="FORWARD" then
+            local off=hrp.CFrame.LookVector*RAGE.Distance
+            hrp.AssemblyLinearVelocity=Vector3.zero
+            hrp.CFrame=hrp.CFrame+off
+        elseif RAGE.VoidMode=="CAMERA" then
+            local cam=workspace.CurrentCamera
+            if cam then local off=cam.CFrame.LookVector*RAGE.Distance; hrp.AssemblyLinearVelocity=Vector3.zero; hrp.CFrame=hrp.CFrame+off end
+        else
+            local ph=_voidElapsed
+            local r1=RAGE.Distance*(0.60+0.40*math.sin(ph*2.3))
+            local r2=RAGE.Distance*(0.25+0.15*math.sin(ph*5.7))
+            local r3=RAGE.Distance*(0.10+0.10*math.sin(ph*11.3))
+            local oX=math.cos(ph*7.1)*r1+math.cos(ph*13.4)*r2+math.cos(ph*21.9)*r3
+            local oZ=math.sin(ph*7.1)*r1+math.sin(ph*13.4)*r2+math.sin(ph*21.9)*r3
+            local oY=math.sin(ph*9)*r1*0.4+math.sin(ph*17)*r2*0.3
+            local j=RAGE.Jitter
+            local jX=math.noise(ph*6,0,0)*j*3+(math.random()-0.5)*j*2.5
+            local jZ=math.noise(0,0,ph*6)*j*3+(math.random()-0.5)*j*2.5
+            local jY=math.noise(0,ph*6,0)*j*1.5+(math.random()-0.5)*j*1.2
+            hrp.AssemblyLinearVelocity=Vector3.zero
+            hrp.CFrame=hrp.CFrame+Vector3.new(oX+jX,oY+jY,oZ+jZ)
+        end
+    end
+
+    local function _anyDesync()
+        return RAGE.OffsetDesync or RAGE.BurstDesync or RAGE.AnchorStutter
+    end
+
+    local function _clearDsyncStutter()
+        local hrp=_rageHRP()
+        if hrp and _rageStutterOA~=nil then hrp.Anchored=_rageStutterOA end
+        _rageStutterOA=nil; _rageStutterAn=false; _dsyncSClock=0
+    end
+
+    -- ---- Void Movement ----
+    function RAGE.startVoid()
+        if _rageVoidConn then return end
+        local hrp=_rageHRP(); if hrp then _rageOrigCF=hrp.CFrame end
+        _voidElapsed=0; _lastVoidTP=0
+        _rageVoidConn = _rageRS.Heartbeat:Connect(function(dt)
+            if not RAGE.VoidEnabled then return end
+            if tick()-_lastVoidTP < RAGE.Interval then return end
+            _lastVoidTP=tick(); _voidElapsed+=dt
+            pcall(_doVoidStep, dt)
+        end)
+    end
+    function RAGE.stopVoid()
+        if _rageVoidConn then _rageVoidConn:Disconnect(); _rageVoidConn=nil end
+        local hrp=_rageHRP()
+        if hrp then
+            if RAGE.VoidMode=="VOID_HIDE" and _rageHideLastCF then hrp.CFrame=_rageHideLastCF
+            elseif _rageOrigCF then hrp.AssemblyLinearVelocity=Vector3.zero; hrp.CFrame=_rageOrigCF end
+        end
+        _rageHideLastCF=nil; _rageOrigCF=nil
+    end
+
+    -- ---- Spin Motion ----
+    function RAGE.startSpin()
+        if _rageSpinConn then return end
+        local hrp=_rageHRP(); if hrp then _rageSpinCF=hrp.CFrame end
+        local t0,seed=tick(),math.random(1000,9999)
+        _rageSpinConn = _rageRS.Heartbeat:Connect(function(dt)
+            if not RAGE.SpinEnabled then return end
+            local hrp2=_rageHRP(); if not hrp2 then return end
+            local t=tick()-t0
+            local spread=RAGE.SpinDist/300
+            local yaw  =math.rad(RAGE.SpinSpeed*dt)
+            local pitch=math.rad(RAGE.SpinSpeed*0.37*dt*math.sin(t*3.1))
+            local roll =math.rad(RAGE.SpinSpeed*0.19*dt*math.cos(t*5.7+seed))
+            local spinCF=hrp2.CFrame*CFrame.Angles(pitch,yaw,roll)
+            local jX=(math.random()-0.5)*RAGE.SpinXJitter*spread*2+math.noise(t*9,seed,0)*RAGE.SpinXJitter*spread
+            local jY=(math.random()-0.5)*RAGE.SpinYJitter*spread  +math.noise(0,t*9,seed)*RAGE.SpinYJitter*spread*0.3
+            local jZ=(math.random()-0.5)*RAGE.SpinXJitter*spread*2+math.noise(0,0,t*9+seed)*RAGE.SpinXJitter*spread
+            local newY=math.max(spinCF.Position.Y+jY,2)
+            hrp2.CFrame=spinCF+Vector3.new(jX,newY-spinCF.Position.Y,jZ)
+        end)
+    end
+    function RAGE.stopSpin()
+        if _rageSpinConn then _rageSpinConn:Disconnect(); _rageSpinConn=nil end
+        local hrp=_rageHRP()
+        if hrp and _rageSpinCF then hrp.AssemblyLinearVelocity=Vector3.zero; hrp.CFrame=_rageSpinCF end
+        _rageSpinCF=nil
+    end
+
+    -- ---- Velocity Pulse ----
+    function RAGE.startVPulse()
+        if _ragePulseConn then return end
+        local clk=0
+        _ragePulseConn = _rageRS.Heartbeat:Connect(function(dt)
+            if not RAGE.VPulse then return end
+            local hrp=_rageHRP(); if not hrp then return end
+            clk+=dt*math.max(RAGE.SpinSpeed/180,0.1)
+            local hz=math.clamp(RAGE.SpinDist*0.35,0,220)
+            local lift=math.clamp(RAGE.SpinYJitter*4,0,120)
+            hrp.AssemblyLinearVelocity=Vector3.new(math.cos(clk)*hz, lift, math.sin(clk)*hz)
+            hrp.AssemblyAngularVelocity=Vector3.new(0,math.rad(math.clamp(RAGE.SpinSpeed,0,1440)),0)
+        end)
+    end
+    function RAGE.stopVPulse()
+        if _ragePulseConn then _ragePulseConn:Disconnect(); _ragePulseConn=nil end
+        local hrp=_rageHRP(); if hrp then hrp.AssemblyLinearVelocity=Vector3.zero; hrp.AssemblyAngularVelocity=Vector3.zero end
+    end
+
+    -- ---- Desync Systems ----
+    function RAGE.startDesync()
+        if _rageDsyncConn then return end
+        _dsyncPClock=0; _dsyncBClock=0; _dsyncSClock=0
+        _rageDsyncConn = _rageRS.Heartbeat:Connect(function(dt)
+            if not _anyDesync() then
+                if _rageDsyncConn then _rageDsyncConn:Disconnect(); _rageDsyncConn=nil end
+                local hrp=_rageHRP(); if hrp then hrp.AssemblyLinearVelocity=Vector3.zero end
+                _clearDsyncStutter(); return
+            end
+            local hrp=_rageHRP(); if not hrp then return end
+            if RAGE.OffsetDesync then
+                _dsyncPClock+=dt
+                if _dsyncPClock>=_dsyncPDelay then
+                    _dsyncPClock=0
+                    local ang=tick()*3
+                    local off=Vector3.new(math.sin(ang)*RAGE.DesyncOffset, math.sin(ang*1.7)*RAGE.DesyncOffset*0.35, math.cos(ang)*RAGE.DesyncOffset)
+                    local pulse=off*40
+                    local vel=hrp.AssemblyLinearVelocity
+                    hrp.AssemblyLinearVelocity=Vector3.new(pulse.X, vel.Y+pulse.Y, pulse.Z)
+                    task.delay(0.05,function() if hrp and hrp.Parent and RAGE.OffsetDesync then hrp.AssemblyLinearVelocity=Vector3.zero end end)
+                end
+            end
+            if RAGE.BurstDesync then
+                _dsyncBClock+=dt
+                if _dsyncBClock>=_dsyncBDelay then
+                    _dsyncBClock=0
+                    local dir=Vector3.new(math.random()-0.5,0,math.random()-0.5)
+                    dir=(dir.Magnitude<0.01) and Vector3.new(1,0,0) or dir.Unit
+                    local vel=hrp.AssemblyLinearVelocity
+                    hrp.AssemblyLinearVelocity=Vector3.new(dir.X*RAGE.BurstPower, vel.Y+(math.random()-0.5)*RAGE.BurstPower*0.2, dir.Z*RAGE.BurstPower)
+                    task.delay(0.05,function() if hrp and hrp.Parent and RAGE.BurstDesync then hrp.AssemblyLinearVelocity=Vector3.zero end end)
+                end
+            end
+            if RAGE.AnchorStutter then
+                if _rageStutterOA==nil then _rageStutterOA=hrp.Anchored end
+                _dsyncSClock+=dt
+                if _dsyncSClock>=_dsyncSDelay then
+                    _dsyncSClock=0; _rageStutterAn=not _rageStutterAn; hrp.Anchored=_rageStutterAn
+                end
+            elseif _rageStutterOA~=nil then
+                _clearDsyncStutter()
+            end
+        end)
+    end
+    function RAGE.stopDesync()
+        RAGE.OffsetDesync=false; RAGE.BurstDesync=false; RAGE.AnchorStutter=false
+        if _rageDsyncConn then _rageDsyncConn:Disconnect(); _rageDsyncConn=nil end
+        local hrp=_rageHRP(); if hrp then hrp.AssemblyLinearVelocity=Vector3.zero end
+        _clearDsyncStutter()
+    end
+
+    function RAGE.enable()
+        RAGE.VoidEnabled=true; RAGE.startVoid()
+    end
+    function RAGE.disable()
+        RAGE.VoidEnabled=false; RAGE.stopVoid()
+        RAGE.SpinEnabled=false; RAGE.stopSpin()
+        RAGE.VPulse=false; RAGE.stopVPulse()
+        RAGE.stopDesync()
+    end
+
+    _UM.RAGE = RAGE
+    end -- RAGE
+
     -- Part3: Movement features (FLY, PH, TP3, FC, SB, ANT, AJ, TGS, ORB)
     -- _E1のローカル変数200上限対策として分離
     local _E3; local _ok3,_err3 = pcall(function()
@@ -6716,7 +7007,7 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
     local BHOP   = _UM.BHOP;  local IJMP  = _UM.IJMP
     local AUBA   = _UM.AUBA;  local ARSP  = _UM.ARSP;  local DVSP  = _UM.DVSP
     local CDROP  = _UM.CDROP; local CXHR  = _UM.CXHR;  local DVM   = _UM.DVM
-    local NOVIG  = _UM.NOVIG
+    local NOVIG  = _UM.NOVIG; local RAGE  = _UM.RAGE
     -- VFX内部ヘルパーのエイリアス
     local _vfxCC       = VFXCFG and VFXCFG.applyCC
     local _vfxBloom    = VFXCFG and VFXCFG.applyBloom
@@ -7429,6 +7720,97 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
                     end) end
                 end
             end})
+    end)
+
+    -- ============================================================
+    -- [uncode] RAGE UI (Void Movement / Spin / Desync)
+    -- ============================================================
+    pcall(function()
+        if not B.miscLeft then return end
+        B.miscLeft:AddDivider()
+        B.miscLeft:AddLabel("── RAGE ──")
+
+        -- Void Movement toggle + mode dropdown + pattern dropdown
+        BT(B.miscLeft,"UC_RAGE_VOID","Void Movement",false,function(v)
+            if RAGE then
+                RAGE.VoidEnabled = v
+                if v then RAGE.startVoid() else RAGE.stopVoid() end
+            end
+        end)
+        B.miscLeft:AddDropdown("UC_RAGE_VMODE",{
+            Text="  Void Mode", Default="VOID_SPAM",
+            Values={"VOID_SPAM","VOID_HIDE","RANDOM","FORWARD","CAMERA"},
+            Callback=function(v) if RAGE then RAGE.VoidMode=v end end})
+        B.miscLeft:AddDropdown("UC_RAGE_VPAT",{
+            Text="  Void Pattern", Default="Random Far",
+            Values={"Random Far","Still Point","Slow Drift","Circle","Figure Eight","Wide Sweep","Fast Bounce","Noise Cloud"},
+            Callback=function(v) if RAGE then RAGE.VoidPattern=v end end})
+        B.miscLeft:AddSlider("UC_RAGE_VDIST",{
+            Text="  Void Distance", Default=500, Min=100, Max=5000, Rounding=0,
+            Callback=function(v) if RAGE then RAGE.Distance=v end end})
+        B.miscLeft:AddSlider("UC_RAGE_VITV",{
+            Text="  Void Interval (ms)", Default=35, Min=10, Max=200, Rounding=0,
+            Callback=function(v) if RAGE then RAGE.Interval=v/1000 end end})
+        B.miscLeft:AddSlider("UC_RAGE_VJIT",{
+            Text="  Void Jitter", Default=14, Min=0, Max=100, Rounding=0,
+            Callback=function(v) if RAGE then RAGE.Jitter=v end end})
+
+        B.miscLeft:AddDivider()
+        -- Spin Motion
+        BT(B.miscLeft,"UC_RAGE_SPIN","Spin Motion",false,function(v)
+            if RAGE then
+                RAGE.SpinEnabled = v
+                if v then RAGE.startSpin() else RAGE.stopSpin() end
+            end
+        end)
+        B.miscLeft:AddSlider("UC_RAGE_SPD",{
+            Text="  Spin Speed", Default=720, Min=60, Max=3600, Rounding=0,
+            Callback=function(v) if RAGE then RAGE.SpinSpeed=v end end})
+        B.miscLeft:AddSlider("UC_RAGE_SXJIT",{
+            Text="  Spin XZ Jitter", Default=30, Min=0, Max=200, Rounding=0,
+            Callback=function(v) if RAGE then RAGE.SpinXJitter=v end end})
+        B.miscLeft:AddSlider("UC_RAGE_SYJIT",{
+            Text="  Spin Y Jitter", Default=8, Min=0, Max=80, Rounding=0,
+            Callback=function(v) if RAGE then RAGE.SpinYJitter=v end end})
+        B.miscLeft:AddSlider("UC_RAGE_SDIST",{
+            Text="  Spin Spread", Default=300, Min=0, Max=2000, Rounding=0,
+            Callback=function(v) if RAGE then RAGE.SpinDist=v end end})
+
+        B.miscLeft:AddDivider()
+        -- Velocity Pulse
+        BT(B.miscLeft,"UC_RAGE_VPULSE","Velocity Pulse",false,function(v)
+            if RAGE then
+                RAGE.VPulse = v
+                if v then RAGE.startVPulse() else RAGE.stopVPulse() end
+            end
+        end)
+
+        B.miscLeft:AddDivider()
+        -- Desync
+        BT(B.miscLeft,"UC_RAGE_ODES","Offset Desync",false,function(v)
+            if RAGE then
+                RAGE.OffsetDesync = v
+                if v then RAGE.startDesync() else if not RAGE.BurstDesync and not RAGE.AnchorStutter then RAGE.stopDesync() end end
+            end
+        end)
+        BT(B.miscLeft,"UC_RAGE_BDES","Burst Desync",false,function(v)
+            if RAGE then
+                RAGE.BurstDesync = v
+                if v then RAGE.startDesync() else if not RAGE.OffsetDesync and not RAGE.AnchorStutter then RAGE.stopDesync() end end
+            end
+        end)
+        BT(B.miscLeft,"UC_RAGE_ANCH","Anchor Stutter",false,function(v)
+            if RAGE then
+                RAGE.AnchorStutter = v
+                if v then RAGE.startDesync() else if not RAGE.OffsetDesync and not RAGE.BurstDesync then RAGE.stopDesync() end end
+            end
+        end)
+        B.miscLeft:AddSlider("UC_RAGE_DOFF",{
+            Text="  Desync Offset", Default=40, Min=5, Max=200, Rounding=0,
+            Callback=function(v) if RAGE then RAGE.DesyncOffset=v end end})
+        B.miscLeft:AddSlider("UC_RAGE_BPWR",{
+            Text="  Burst Power", Default=1500, Min=100, Max=5000, Rounding=0,
+            Callback=function(v) if RAGE then RAGE.BurstPower=v end end})
     end)
 
     print("[UNCODE v1] Features wired OK")
