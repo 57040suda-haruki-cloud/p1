@@ -4172,94 +4172,70 @@ function AimSmooth.disable()
     _stop("AimSmooth")
 end
 
+-- Rage (AutoShoot): 最近敵の真下に高速テレポート → UseItem攻撃 → 元の位置に戻る
 local AutoShoot = {}
-AutoShoot.Enabled = false
-AutoShoot.Delay   = 0.08
+AutoShoot.Enabled     = false
+AutoShoot.Delay       = 0.18   -- 攻撃間隔(秒)
+AutoShoot.BelowOffset = 0      -- 敵HRPからのY方向オフセット(0=同位置, 負=真下)
 
 local _asFrames = 0
-local _asRay = RaycastParams.new()
-_asRay.FilterType = Enum.RaycastFilterType.Exclude
-
-local _asOffsets = {
-    Vector2.new(0, 0),
-    Vector2.new(0,-8), Vector2.new(0, 8),
-    Vector2.new(-8,0), Vector2.new(8, 0),
-}
-
-local function _asHitEnemy(cam, c, cx, cy)
-    for _, off in ipairs(_asOffsets) do
-        local ray = cam:ViewportPointToRay(cx + off.X, cy + off.Y)
-        _asRay.FilterDescendantsInstances = {c, cam}
-        local hit = workspace:Raycast(ray.Origin, ray.Direction * 250, _asRay)
-        if hit then
-            local node = hit.Instance
-            while node and node ~= workspace do
-                local h = node:IsA("Model") and node:FindFirstChildOfClass("Humanoid")
-                if h and h.Health > 0 then
-                    local plr = PL_:GetPlayerFromCharacter(node)
-                    if plr and plr ~= LP_ then return true end
-                    break
-                end
-                node = node.Parent
-            end
-        end
-    end
-    return false
-end
+local _asLock   = false  -- テレポート中フラグ (再入防止)
 
 function AutoShoot.enable()
     AutoShoot.Enabled = true
-    _asFrames = 0
+    _asFrames = 0; _asLock = false
     _conn("AutoShoot", RN_.Heartbeat:Connect(function(dt)
-        if not AutoShoot.Enabled then return end
+        if not AutoShoot.Enabled or _asLock then return end
         _asFrames = _asFrames + dt
         if _asFrames < AutoShoot.Delay then return end
-        local cam = WS_.CurrentCamera
-        local c = _char()
-        if not c or not cam then return end
-        -- まずviewportレイキャストを試み、失敗したら3D距離で近くの敵を確認
-        local vp = cam.ViewportSize
-        local cx, cy = vp.X/2, vp.Y/2
-        local shouldShoot = _asHitEnemy(cam, c, cx, cy)
-        if not shouldShoot then
-            -- Viewportに映っていなくても近距離の敵がいれば発砲
-            local near = _closestEnemyWorld and _closestEnemyWorld(20)
-            shouldShoot = near ~= nil
-        end
-        if shouldShoot then
-            _asFrames = 0
-            -- UseItemリモートを直接発火 (オートクリッカーではない)
-            local fired = false
-            pcall(function()
-                if not _util or not _enums then return end
-                local remote = _getRemote(); if not remote then return end
-                local ss = _getStartShoot(); if not ss then return end
-                -- _fc が未ロードなら再試行
-                if not _fc then pcall(function() _fc = require(LP_.PlayerScripts.Controllers.FighterController) end) end
-                if not _fc or not _fc.LocalFighter then return end
-                local item = _fc.LocalFighter.EquippedItem; if not item then return end
-                local objId; pcall(function() objId = item:Get("ObjectID") end); if not objId then return end
-                -- 照準方向 (カメラ正面) でカメラデータ構築
-                local camCF = cam.CFrame
-                local fwdPos = camCF.Position + camCF.LookVector * 200
-                -- 最近敵のHRPをターゲットボーンとして使う
-                local enemy = _closestEnemyWorld(500)
-                local bone  = enemy and enemy.Character and _getBone(enemy.Character)
-                if not bone then return end
-                local cd = _buildCamData(camCF.Position, bone, fwdPos)
-                if not cd then return end
-                remote:FireServer(objId, ss, cd, nil)
-                fired = true
-            end)
-            -- リモート発火失敗時のみフォールバック
-            if not fired then _doAttack() end
-        end
+
+        local root = _root()
+        if not root or not _alive() then return end
+
+        -- 最近敵を取得
+        local enemy = _closestEnemyWorld(600)
+        if not enemy or not enemy.Character then return end
+        local eHRP = enemy.Character:FindFirstChild("HumanoidRootPart")
+        if not eHRP then return end
+
+        _asFrames = 0
+        _asLock   = true
+
+        -- 1. 現在位置を保存
+        local origCF = root.CFrame
+
+        -- 2. 敵の真下にテレポート
+        local tpPos = eHRP.Position + Vector3.new(0, AutoShoot.BelowOffset, 0)
+        pcall(function() root.CFrame = CFrame.new(tpPos) end)
+
+        -- 3. UseItemリモートで直接攻撃
+        pcall(function()
+            if not _util or not _enums then return end
+            local remote = _getRemote(); if not remote then return end
+            local ss = _getStartShoot(); if not ss then return end
+            if not _fc then
+                pcall(function() _fc = require(LP_.PlayerScripts.Controllers.FighterController) end)
+            end
+            if not _fc or not _fc.LocalFighter then return end
+            local item = _fc.LocalFighter.EquippedItem; if not item then return end
+            local objId; pcall(function() objId = item:Get("ObjectID") end); if not objId then return end
+            local bone = _getBone(enemy.Character) or eHRP
+            local cd   = _buildCamData(tpPos, bone, bone.Position)
+            if not cd then return end
+            remote:FireServer(objId, ss, cd, nil)
+        end)
+
+        -- 4. 次フレームで元の位置に戻る
+        task.defer(function()
+            pcall(function() root.CFrame = origCF end)
+            _asLock = false
+        end)
     end))
 end
 
 function AutoShoot.disable()
     AutoShoot.Enabled = false
-    _asFrames = 0
+    _asFrames = 0; _asLock = false
     _stop("AutoShoot")
 end
 
