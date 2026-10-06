@@ -1007,16 +1007,9 @@ end
 _UM.WFOV=WFOV
 end -- WFOV
 
-do -- [uncode] Weapon Picker v4
--- v3 の残課題:
---   ① キャラクター存在中の間隔が 2s → Rivals の武器選択は CharacterRemoving 前
---      (ロビー/マッチ開始直前) に表示されるため 2s では遅すぎる
---   ② RemoteEvent のみ対応 → PickWeapons が RemoteFunction の場合に全て空振り
---   ③ PlayerGui への選択 UI 出現を未検知
--- v4 の修正:
---   ① キャラクター存在中も 0.3s 間隔 (選択ウィンドウ ~15s で約 50 回カバー)
---   ② RemoteEvent (FireServer) ＋ RemoteFunction (InvokeServer) 両対応
---   ③ PlayerGui.ChildAdded で選択 UI 出現を直接検知して即 fire
+do -- [uncode] Weapon Picker v5
+-- v5: Harion 互換シンプルループ (hookfunction廃止, 0.5s間隔)
+-- Harion 検証済み: FireServer({s1,s2,s3,s4}) 形式
 local WPK = {}
 WPK.Enabled = false
 WPK.Slot1   = "Assault Rifle"
@@ -1025,36 +1018,25 @@ WPK.Slot3   = "Fists"
 WPK.Slot4   = "Grenade"
 WPK.List    = {}
 
-local _wpkRemote  = nil
-local _wpkHooked  = false
-local _wpkConns   = {}
+local _wpkRemote    = nil
+local _wpkLoopAlive = false
+local _wpkConns     = {}
 
 local function _wpkClearConns()
     for _, c in ipairs(_wpkConns) do pcall(function() c:Disconnect() end) end
     _wpkConns = {}
 end
-local function _wpkTrack(c) _wpkConns[#_wpkConns+1] = c end
 
--- PickWeapons リモート取得
--- RemoteEvent / RemoteFunction どちらでも返す。3 段階探索。
+-- PickWeapons リモート取得 (RemoteEvent / RemoteFunction)
 local function _wpkGetRemote()
     if _wpkRemote and _wpkRemote.Parent then return _wpkRemote end
     pcall(function()
-        local rs  = cloneref(game:GetService("ReplicatedStorage"))
-        local rem = rs:FindFirstChild("Remotes"); if not rem then return end
-        -- 1) 既知パス (RemoteEvent または RemoteFunction)
-        local r = rem:FindFirstChild("Replication")
+        local rs = cloneref(game:GetService("ReplicatedStorage"))
+        local r = rs:FindFirstChild("Remotes")
+        r = r and r:FindFirstChild("Replication")
         r = r and r:FindFirstChild("Fighter")
         r = r and r:FindFirstChild("PickWeapons")
         if r then _wpkRemote = r; return end
-        -- 2) Remotes 以下を全探索
-        for _, v in ipairs(rem:GetDescendants()) do
-            if v.Name == "PickWeapons" and
-               (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) then
-                _wpkRemote = v; return
-            end
-        end
-        -- 3) ReplicatedStorage 全体
         for _, v in ipairs(rs:GetDescendants()) do
             if v.Name == "PickWeapons" and
                (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) then
@@ -1065,37 +1047,20 @@ local function _wpkGetRemote()
     return _wpkRemote
 end
 
--- RemoteEvent → FireServer / RemoteFunction → InvokeServer 自動判別
+-- Harion 同等: FireServer({s1,s2,s3,s4})
 local function _wpkFire()
     pcall(function()
         local r = _wpkGetRemote(); if not r then return end
-        local slots = {WPK.Slot1, WPK.Slot2, WPK.Slot3, WPK.Slot4}
+        local payload = {WPK.Slot1, WPK.Slot2, WPK.Slot3, WPK.Slot4}
         if r:IsA("RemoteFunction") then
-            r:InvokeServer(slots)
+            r:InvokeServer(payload)
         else
-            r:FireServer(slots)
+            r:FireServer(payload)
         end
     end)
 end
 
--- hookfunction: UI から選択した場合もすり替え (対応環境のみ)
-local function _wpkHook()
-    if _wpkHooked or not hookfunction or not newcclosure then return end
-    local r = _wpkGetRemote(); if not r then return end
-    pcall(function()
-        local target = r:IsA("RemoteFunction") and r.InvokeServer or r.FireServer
-        local orig
-        orig = hookfunction(target, newcclosure(function(self, slots, ...)
-            if WPK.Enabled and type(slots) == "table" then
-                slots = {WPK.Slot1, WPK.Slot2, WPK.Slot3, WPK.Slot4}
-            end
-            return orig(self, slots, ...)
-        end))
-        _wpkHooked = true
-    end)
-end
-
-function WPK.pickOnce() pcall(_wpkFire) end
+function WPK.pickOnce() _wpkFire() end
 
 -- 武器リスト構築
 local function _wpkBuildList()
@@ -1127,82 +1092,46 @@ end
 
 function WPK.enable()
     WPK.Enabled = true
-    task.spawn(_wpkHook)
-
-    local LP  = cloneref(game:GetService("Players")).LocalPlayer
-    local RN  = cloneref(game:GetService("RunService"))
-
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- ① Heartbeat 常時ループ
-    --    キャラクター不在: 0.08s / キャラクター存在: 0.3s
-    --    (Rivals の選択 UI はキャラ削除前に出るため 0.3s 必須)
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    local _hbAcc = 0
-    _wpkTrack(RN.Heartbeat:Connect(function(dt)
-        if not WPK.Enabled then return end
-        _hbAcc = _hbAcc + dt
-        local interval = LP.Character and 0.3 or 0.08
-        if _hbAcc < interval then return end
-        _hbAcc = 0
-        _wpkFire()
-    end))
-
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- ② CharacterRemoving → CharacterAdded: タイマーリセット + バースト
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    _wpkTrack(LP.CharacterRemoving:Connect(function()
-        _hbAcc = 999
-    end))
-    _wpkTrack(LP.CharacterAdded:Connect(function()
-        if not WPK.Enabled then return end
+    _wpkFire() -- 即 fire
+    if not _wpkLoopAlive then
+        _wpkLoopAlive = true
         task.spawn(function()
-            for _ = 1, 10 do
-                if not WPK.Enabled then return end
-                _wpkFire(); task.wait(0.15)
+            -- Harion と同じ 0.5s 間隔ループ
+            while WPK.Enabled do
+                pcall(_wpkFire)
+                task.wait(0.5)
             end
+            _wpkLoopAlive = false
         end)
-    end))
-
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- ③ PlayerGui.ChildAdded: 武器選択 UI の出現を直接検知
-    --    新しい ScreenGui が追加されたとき = 選択画面が開いた可能性が高い
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    end
+    local _wpkLP = cloneref(game:GetService("Players")).LocalPlayer
+    -- CharacterRemoving = ラウンド終了→武器選択フェーズ
     pcall(function()
-        local pg = LP:FindFirstChild("PlayerGui"); if not pg then return end
-        _wpkTrack(pg.ChildAdded:Connect(function(child)
+        local c = _wpkLP.CharacterRemoving:Connect(function()
             if not WPK.Enabled then return end
-            if not child:IsA("ScreenGui") then return end
-            -- 即 fire + 2s 間バースト
-            _hbAcc = 999
             task.spawn(function()
-                local t = 0
-                while WPK.Enabled and t < 2 do
-                    _wpkFire(); task.wait(0.1); t = t + 0.1
+                for _ = 1, 25 do
+                    if not WPK.Enabled then return end
+                    pcall(_wpkFire); task.wait(0.2)
                 end
             end)
-        end))
+        end)
+        _wpkConns[#_wpkConns+1] = c
     end)
-
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- ④ RS のサーバー通知リモート監視
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- PlayerGui.ChildAdded = 選択 UI 出現
     pcall(function()
-        local rs = cloneref(game:GetService("ReplicatedStorage"))
-        for _, v in ipairs(rs:GetDescendants()) do
-            if v:IsA("RemoteEvent") then
-                local n = v.Name:lower()
-                if n:find("match") or n:find("round") or n:find("start")
-                or n:find("select") or n:find("loadout") or n:find("phase") then
-                    _wpkTrack(v.OnClientEvent:Connect(function()
-                        if WPK.Enabled then _hbAcc = 999 end
-                    end))
+        local pg = _wpkLP:FindFirstChild("PlayerGui"); if not pg then return end
+        local c = pg.ChildAdded:Connect(function(child)
+            if not WPK.Enabled or not child:IsA("ScreenGui") then return end
+            task.spawn(function()
+                for _ = 1, 20 do
+                    if not WPK.Enabled then return end
+                    pcall(_wpkFire); task.wait(0.15)
                 end
-            end
-        end
+            end)
+        end)
+        _wpkConns[#_wpkConns+1] = c
     end)
-
-    -- 初回即 fire
-    _wpkFire()
 end
 
 function WPK.disable()
@@ -1211,7 +1140,6 @@ function WPK.disable()
 end
 
 task.spawn(_wpkBuildList)
-task.delay(3, function() pcall(_wpkHook) end)
 _UM.WPK = WPK
 end -- WPK
 
@@ -5667,6 +5595,167 @@ return {
     _UM.TRAC = TRAC
     end
 
+    -- ============================================================
+    -- [uncode] FOV Circle (from Harion)
+    -- ============================================================
+    do
+    local FOVC = {}
+    FOVC.Enabled = false; FOVC.Radius = 120; FOVC.Color = Color3.fromRGB(255,255,255)
+    local _fovcCircle = nil; local _fovcConns = {}
+    local function _fovcMake()
+        local c = Drawing.new("Circle")
+        c.Thickness = 1.5; c.NumSides = 64; c.Radius = FOVC.Radius
+        c.Filled = false; c.Color = FOVC.Color; c.Transparency = 1; c.Visible = false
+        return c
+    end
+    function FOVC.enable()
+        FOVC.Enabled = true
+        if not _fovcCircle then _fovcCircle = _fovcMake() end
+        local _fovcCam = workspace.CurrentCamera
+        local c = RunService.RenderStepped:Connect(function()
+            if not FOVC.Enabled or not _fovcCircle then return end
+            local vp = _fovcCam.ViewportSize
+            _fovcCircle.Position = Vector2.new(vp.X*0.5, vp.Y*0.5)
+            _fovcCircle.Radius   = FOVC.Radius
+            _fovcCircle.Color    = FOVC.Color
+            _fovcCircle.Visible  = true
+        end)
+        _fovcConns[#_fovcConns+1] = c
+    end
+    function FOVC.disable()
+        FOVC.Enabled = false
+        if _fovcCircle then _fovcCircle.Visible = false end
+        for _, c in ipairs(_fovcConns) do pcall(function() c:Disconnect() end) end
+        _fovcConns = {}
+    end
+    _UM.FOVC = FOVC
+    end
+
+    -- ============================================================
+    -- [uncode] Chams / Highlight ESP (from Harion)
+    -- ============================================================
+    do
+    local CHMS = {}
+    CHMS.Enabled = false
+    CHMS.FillColor        = Color3.fromRGB(255,50,50)
+    CHMS.OutlineColor     = Color3.fromRGB(255,255,255)
+    CHMS.FillTransparency = 0.5
+    CHMS.ThroughWall      = true
+    local _chmsHLs   = {}; local _chmsConns = {}
+    local function _chmsApply(char, hl)
+        if not hl or not hl.Parent then
+            hl = Instance.new("Highlight")
+            hl.Adornee = char; hl.Parent = char
+        end
+        hl.FillColor        = CHMS.FillColor
+        hl.OutlineColor     = CHMS.OutlineColor
+        hl.FillTransparency = CHMS.FillTransparency
+        hl.DepthMode        = CHMS.ThroughWall
+            and Enum.HighlightDepthMode.AlwaysOnTop
+            or  Enum.HighlightDepthMode.Occluded
+        return hl
+    end
+    local function _chmsUpdate()
+        if not CHMS.Enabled then return end
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p == LP then continue end
+            local char = p.Character
+            if char then
+                _chmsHLs[p] = _chmsApply(char, _chmsHLs[p])
+            else
+                if _chmsHLs[p] then
+                    pcall(function() _chmsHLs[p]:Destroy() end)
+                    _chmsHLs[p] = nil
+                end
+            end
+        end
+    end
+    function CHMS.enable()
+        CHMS.Enabled = true; _chmsUpdate()
+        local c = RunService.Heartbeat:Connect(function()
+            if CHMS.Enabled then _chmsUpdate() end
+        end)
+        _chmsConns[#_chmsConns+1] = c
+    end
+    function CHMS.disable()
+        CHMS.Enabled = false
+        for _, hl in pairs(_chmsHLs) do
+            pcall(function() if hl and hl.Parent then hl:Destroy() end end)
+        end
+        _chmsHLs = {}
+        for _, c in ipairs(_chmsConns) do pcall(function() c:Disconnect() end) end
+        _chmsConns = {}
+    end
+    _UM.CHMS = CHMS
+    end
+
+    -- ============================================================
+    -- [uncode] BunnyHop: 着地即ジャンプ
+    -- ============================================================
+    do
+    local BHOP = {}
+    BHOP.Enabled = false
+    local _bhopConns = {}
+    function BHOP.enable()
+        BHOP.Enabled = true
+        local c = RunService.Heartbeat:Connect(function()
+            if not BHOP.Enabled then return end
+            local char = LP.Character; if not char then return end
+            local hum = char:FindFirstChildOfClass("Humanoid"); if not hum then return end
+            if hum.Health <= 0 then return end
+            if hum.FloorMaterial ~= Enum.Material.Air
+            and hum:GetState() ~= Enum.HumanoidStateType.Jumping then
+                pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
+            end
+        end)
+        _bhopConns[#_bhopConns+1] = c
+    end
+    function BHOP.disable()
+        BHOP.Enabled = false
+        for _, c in ipairs(_bhopConns) do pcall(function() c:Disconnect() end) end
+        _bhopConns = {}
+    end
+    _UM.BHOP = BHOP
+    end
+
+    -- ============================================================
+    -- [uncode] Infinite Double Jump (from Harion)
+    -- ============================================================
+    do
+    local IJMP = {}
+    IJMP.Enabled = false
+    local _ijmpConns = {}
+    local function _ijmpPatch()
+        pcall(function()
+            local mech = require(LP.PlayerScripts.Controllers.MechanicsController)
+            if not mech or not mech.LocalFighter then return end
+            local item = mech.LocalFighter.EquippedItem
+            local info = item and item.Info
+            if info then
+                info.MaxDoubleJumps = math.huge
+                local objectId
+                pcall(function() objectId = item:Get("ObjectID") end)
+                if objectId and mech._double_jumps_used then
+                    mech._double_jumps_used[objectId] = 0
+                end
+            end
+        end)
+    end
+    function IJMP.enable()
+        IJMP.Enabled = true
+        local c = RunService.Heartbeat:Connect(function()
+            if IJMP.Enabled then _ijmpPatch() end
+        end)
+        _ijmpConns[#_ijmpConns+1] = c
+    end
+    function IJMP.disable()
+        IJMP.Enabled = false
+        for _, c in ipairs(_ijmpConns) do pcall(function() c:Disconnect() end) end
+        _ijmpConns = {}
+    end
+    _UM.IJMP = IJMP
+    end
+
     -- Part3: Movement features (FLY, PH, TP3, FC, SB, ANT, AJ, TGS, ORB)
     -- _E1のローカル変数200上限対策として分離
     local _E3; local _ok3,_err3 = pcall(function()
@@ -6046,6 +6135,8 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
     local ATMO   = _UM.ATMO;  local LGHT  = _UM.LGHT;  local WFOV   = _UM.WFOV
     local WPK    = _UM.WPK;   local WPNM  = _UM.WPNM   -- 新規: 武器ピック / 武器MOD
     local CSPM   = _UM.CSPM;  local DESP  = _UM.DESP;  local TRAC  = _UM.TRAC
+    local FOVC   = _UM.FOVC;  local CHMS  = _UM.CHMS
+    local BHOP   = _UM.BHOP;  local IJMP  = _UM.IJMP
     -- VFX内部ヘルパーのエイリアス
     local _vfxCC       = VFXCFG and VFXCFG.applyCC
     local _vfxBloom    = VFXCFG and VFXCFG.applyBloom
@@ -6540,6 +6631,42 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         end)
         B.visLeft:AddSlider("UC_LGHT_BV",{Text="Brightness",Default=20,Min=0,Max=100,Rounding=0,
             Callback=function(v) _UM.LGHT.Brightness=v/10; if _UM.LGHT.Enabled then _UM.LGHT._apply() end end})
+    end)
+
+    -- ============================================================
+    -- [uncode] FOV Circle + Chams UI (Visuals tab)
+    -- ============================================================
+    pcall(function()
+        if not B.visRight then return end
+        B.visRight:AddDivider()
+        BT(B.visRight,"UC_FOVC","FOV Circle",false,function(v)
+            if FOVC then if v then FOVC.enable() else FOVC.disable() end end
+        end)
+        B.visRight:AddSlider("UC_FOVC_R",{Text="FOV Radius",Default=120,Min=20,Max=400,Rounding=0,
+            Callback=function(v) if FOVC then FOVC.Radius=v end end})
+        B.visRight:AddDivider()
+        BT(B.visRight,"UC_CHMS","Chams (Highlight)",false,function(v)
+            if CHMS then if v then CHMS.enable() else CHMS.disable() end end
+        end)
+        BT(B.visRight,"UC_CHMS_TW","  Through Walls",true,function(v)
+            if CHMS then CHMS.ThroughWall=v end
+        end)
+        B.visRight:AddSlider("UC_CHMS_TR",{Text="  Fill Trans",Default=50,Min=0,Max=100,Rounding=0,
+            Callback=function(v) if CHMS then CHMS.FillTransparency=v/100 end end})
+    end)
+
+    -- ============================================================
+    -- [uncode] BunnyHop + Inf Double Jump UI (Misc tab)
+    -- ============================================================
+    pcall(function()
+        if not B.miscLeft then return end
+        B.miscLeft:AddDivider()
+        BT(B.miscLeft,"UC_BHOP","BunnyHop",false,function(v)
+            if BHOP then if v then BHOP.enable() else BHOP.disable() end end
+        end)
+        BT(B.miscLeft,"UC_IJMP","Infinite D-Jump",false,function(v)
+            if IJMP then if v then IJMP.enable() else IJMP.disable() end end
+        end)
     end)
 
     -- ============================================================
