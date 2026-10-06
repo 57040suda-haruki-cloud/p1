@@ -4316,109 +4316,75 @@ local SkinSwap = {}
 SkinSwap.Enabled = false
 SkinSwap.Preset  = "neon_red"
 
-local _skinPresets = {
-    neon_red    = {color = Color3.fromRGB(255, 50,  50),  mat = Enum.Material.Neon},
-    neon_blue   = {color = Color3.fromRGB( 50, 100, 255), mat = Enum.Material.Neon},
-    neon_green  = {color = Color3.fromRGB( 50, 255,  80), mat = Enum.Material.Neon},
-    chrome      = {color = Color3.fromRGB(180, 200, 220), mat = Enum.Material.SmoothPlastic},
-    gold        = {color = Color3.fromRGB(255, 200,  40), mat = Enum.Material.SmoothPlastic},
-    void        = {color = Color3.fromRGB( 10,   0,  30), mat = Enum.Material.Neon},
-    ice         = {color = Color3.fromRGB(150, 230, 255), mat = Enum.Material.Glass},
-    lava        = {color = Color3.fromRGB(255,  80,   0), mat = Enum.Material.Neon},
-    holographic = {color = Color3.fromRGB(130, 255, 230), mat = Enum.Material.ForceField},
-    white       = {color = Color3.fromRGB(255, 255, 255), mat = Enum.Material.SmoothPlastic},
-    black       = {color = Color3.fromRGB( 10,  10,  10), mat = Enum.Material.SmoothPlastic},
-    pink        = {color = Color3.fromRGB(255,  80, 180), mat = Enum.Material.Neon},
+-- Highlightインスタンス方式 (BasePart.Color変更はSurfaceAppearanceで上書きされるため)
+-- HESPと同じ仕組みでキャラにHighlightを被せて色変更を実現
+local _skinColors = {
+    neon_red    = Color3.fromRGB(255, 50,  50),
+    neon_blue   = Color3.fromRGB( 50, 100, 255),
+    neon_green  = Color3.fromRGB( 50, 255,  80),
+    chrome      = Color3.fromRGB(180, 200, 220),
+    gold        = Color3.fromRGB(255, 200,  40),
+    void        = Color3.fromRGB( 10,   0,  30),
+    ice         = Color3.fromRGB(150, 230, 255),
+    lava        = Color3.fromRGB(255,  80,   0),
+    holographic = Color3.fromRGB(130, 255, 230),
+    white       = Color3.fromRGB(255, 255, 255),
+    black       = Color3.fromRGB( 10,  10,  10),
+    pink        = Color3.fromRGB(255,  80, 180),
 }
-local _skinOrig = {}
-local _skinSA   = {}  -- SurfaceAppearanceの退避テーブル
-local _skinHue  = 0
+local _skinHL  = nil  -- Highlightインスタンス
+local _skinHue = 0
 
-local function _applySkin(col, mat)
+local function _skinGetCol()
+    return _skinColors[SkinSwap.Preset] or Color3.fromRGB(255, 50, 50)
+end
+
+local function _skinApply()
     local c = _char(); if not c then return end
-    for _, p in ipairs(c:GetDescendants()) do
-        if p:IsA("BasePart") then
-            if not _skinOrig[p] then
-                _skinOrig[p] = {color = p.Color, mat = p.Material}
-                -- SurfaceAppearanceがあると色変更が見えないので一時的に退避
-                local sa = p:FindFirstChildOfClass("SurfaceAppearance")
-                if sa and not _skinSA[p] then
-                    _skinSA[p] = sa
-                    pcall(function() sa.Parent = nil end)
-                end
-                -- SpecialMeshのTextureIDも退避 (テクスチャが色を隠す)
-                local sm = p:FindFirstChildOfClass("SpecialMesh")
-                if sm and sm.TextureId ~= "" and not _skinOrig[p].texId then
-                    _skinOrig[p].texId = sm.TextureId
-                    _skinOrig[p].mesh  = sm
-                    pcall(function() sm.TextureId = "" end)
-                end
-            end
-            pcall(function() p.Color = col; p.Material = mat end)
-        end
-    end
-end
-
-local function _restoreSkin()
-    for p, orig in pairs(_skinOrig) do
-        pcall(function() p.Color = orig.color; p.Material = orig.mat end)
-        -- SurfaceAppearanceを戻す
-        local sa = _skinSA[p]
-        if sa then pcall(function() sa.Parent = p end) end
-        -- SpecialMesh TextureIDを戻す
-        if orig.mesh and orig.texId then
-            pcall(function() orig.mesh.TextureId = orig.texId end)
-        end
-    end
-    table.clear(_skinOrig)
-    table.clear(_skinSA)
-end
-
-local function _skinApplyPreset()
-    local pr = _skinPresets[SkinSwap.Preset]
-    if pr then _applySkin(pr.color, pr.mat) end
+    -- 既存のHighlightを片付け
+    if _skinHL and _skinHL.Parent then pcall(function() _skinHL:Destroy() end) end
+    _skinHL = Instance.new("Highlight")
+    _skinHL.FillColor          = _skinGetCol()
+    _skinHL.OutlineColor       = _skinGetCol()
+    _skinHL.FillTransparency   = 0.15   -- 薄く塗りつぶし
+    _skinHL.OutlineTransparency = 0.0   -- 縁は不透明
+    _skinHL.DepthMode          = Enum.HighlightDepthMode.Occluded
+    _skinHL.Adornee            = c
+    _skinHL.Parent             = CG_    -- CoreGuiに置く (サーバー保護を回避)
 end
 
 function SkinSwap.enable()
     SkinSwap.Enabled = true
-    table.clear(_skinOrig)
-    if SkinSwap.Preset ~= "rainbow" then _skinApplyPreset() end
-    local _reTimer = 0
+    _skinApply()
+    _conn("SkinSwap", LP_.CharacterAdded:Connect(function()
+        task.wait(0.3)
+        if SkinSwap.Enabled then _skinApply() end
+    end))
     _conn("SkinSwap", RN_.Heartbeat:Connect(function(dt)
         if not SkinSwap.Enabled then return end
-        if SkinSwap.Preset == "rainbow" then
-            _skinHue = (_skinHue + dt * 0.25) % 1
-            local col = Color3.fromHSV(_skinHue, 1, 1)
-            local c = _char(); if not c then return end
-            for _, p in ipairs(c:GetDescendants()) do
-                if p:IsA("BasePart") then
-                    if not _skinOrig[p] then
-                        _skinOrig[p] = {color = p.Color, mat = p.Material}
-                    end
-                    pcall(function() p.Color = col; p.Material = Enum.Material.Neon end)
-                end
-            end
-        else
-            -- 非レインボー: 0.12秒ごとに再適用してゲームリセットを上書き
-            _reTimer = _reTimer + dt
-            if _reTimer >= 0.12 then
-                _reTimer = 0
-                _skinApplyPreset()
-            end
+        -- Highlightが消えていたら再適用
+        if not _skinHL or not _skinHL.Parent then
+            _skinApply(); return
         end
-    end))
-    _conn("SkinSwap", LP_.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        if not SkinSwap.Enabled then return end
-        table.clear(_skinOrig)
-        if SkinSwap.Preset ~= "rainbow" then _skinApplyPreset() end
+        -- レインボーモード: 色を毎フレーム更新
+        if SkinSwap.Preset == "rainbow" then
+            _skinHue = (_skinHue + dt * 0.3) % 1
+            local col = Color3.fromHSV(_skinHue, 1, 1)
+            pcall(function()
+                _skinHL.FillColor    = col
+                _skinHL.OutlineColor = col
+            end)
+        end
     end))
 end
 
 function SkinSwap.disable()
     SkinSwap.Enabled = false
     _stop("SkinSwap")
-    _restoreSkin()
+    if _skinHL then
+        pcall(function() _skinHL:Destroy() end)
+        _skinHL = nil
+    end
 end
 
 -- FLY〜ORB は _E3 IIFE に移動済み (ローカル変数200上限対策)
