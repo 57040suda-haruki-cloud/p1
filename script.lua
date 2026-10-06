@@ -1007,93 +1007,98 @@ end
 _UM.WFOV=WFOV
 end -- WFOV
 
-do -- [uncode] Weapon Picker v2: hookfunction + aggressive timing
+do -- [uncode] Weapon Picker v3: Heartbeat 常時ループ方式
+-- v2 の問題: task.spawn ループはタイミング次第で武器選択フェーズと合わない
+-- v3 の解決: RunService.Heartbeat を永続ループとして使い、
+--   キャラクター不在中 (=選択フェーズ) は毎 0.08s に FireServer を連打する。
+--   イベントのタイミングに依存せず、選択ウィンドウが開いている間を確実にカバーする。
 local WPK = {}
-WPK.Enabled  = false
-WPK.Slot1    = "Assault Rifle"
-WPK.Slot2    = "Handgun"
-WPK.Slot3    = "Fists"
-WPK.Slot4    = "Grenade"
-WPK.List     = {}
-WPK._hooked  = false
-WPK._orig    = nil
-WPK._remote  = nil
-WPK._charConn   = nil
-WPK._removConn  = nil
-WPK._selecting  = false
+WPK.Enabled = false
+WPK.Slot1   = "Assault Rifle"
+WPK.Slot2   = "Handgun"
+WPK.Slot3   = "Fists"
+WPK.Slot4   = "Grenade"
+WPK.List    = {}
 
--- PickWeapons remote を ReplicatedStorage.Remotes 以下を全探索して取得
-local function _wpkFindRemote()
-    local ok, r = pcall(function()
-        local rs = cloneref(game:GetService("ReplicatedStorage"))
-        local rem = rs:FindFirstChild("Remotes")
-        if not rem then return nil end
-        -- 既知パスを先に試す
-        local direct = rem:FindFirstChild("Replication")
-            and rem.Replication:FindFirstChild("Fighter")
-            and rem.Replication.Fighter:FindFirstChild("PickWeapons")
-        if direct then return direct end
-        -- 全探索フォールバック
+local _wpkRemote  = nil
+local _wpkHooked  = false
+local _wpkConns   = {}
+
+local function _wpkClearConns()
+    for _, c in ipairs(_wpkConns) do pcall(function() c:Disconnect() end) end
+    _wpkConns = {}
+end
+local function _wpkTrack(c) _wpkConns[#_wpkConns+1] = c end
+
+-- PickWeapons リモート取得 (パス変更対応: 既知パス → 全探索)
+local function _wpkGetRemote()
+    if _wpkRemote and _wpkRemote.Parent then return _wpkRemote end
+    pcall(function()
+        local rs  = cloneref(game:GetService("ReplicatedStorage"))
+        local rem = rs:FindFirstChild("Remotes"); if not rem then return end
+        -- 1) 既知パス
+        local r = rem:FindFirstChild("Replication")
+        r = r and r:FindFirstChild("Fighter")
+        r = r and r:FindFirstChild("PickWeapons")
+        if r then _wpkRemote = r; return end
+        -- 2) Remotes 以下を全探索
         for _, v in ipairs(rem:GetDescendants()) do
             if v:IsA("RemoteEvent") and v.Name == "PickWeapons" then
-                return v
+                _wpkRemote = v; return
             end
         end
-        return nil
+        -- 3) ReplicatedStorage 全体を探索
+        for _, v in ipairs(rs:GetDescendants()) do
+            if v:IsA("RemoteEvent") and v.Name == "PickWeapons" then
+                _wpkRemote = v; return
+            end
+        end
     end)
-    return ok and r or nil
+    return _wpkRemote
 end
 
-local function _wpkGetRemote()
-    if WPK._remote and WPK._remote.Parent then return WPK._remote end
-    WPK._remote = _wpkFindRemote()
-    return WPK._remote
+-- 実際の FireServer
+local function _wpkFire()
+    pcall(function()
+        local r = _wpkGetRemote(); if not r then return end
+        r:FireServer({WPK.Slot1, WPK.Slot2, WPK.Slot3, WPK.Slot4})
+    end)
 end
 
--- hookfunction でリモートを乗っ取り: ゲームUIからの選択もすべて自分の武器に差し替え
-local function _wpkInstallHook()
-    if WPK._hooked then return end
-    if not hookfunction or not newcclosure then return end
-    local remote = _wpkGetRemote()
-    if not remote then return end
+-- hookfunction: ゲームUIから選択した場合もすり替え
+local function _wpkHook()
+    if _wpkHooked or not hookfunction or not newcclosure then return end
+    local r = _wpkGetRemote(); if not r then return end
     pcall(function()
         local orig
-        orig = hookfunction(remote.FireServer, newcclosure(function(self, slots, ...)
+        orig = hookfunction(r.FireServer, newcclosure(function(self, slots, ...)
             if WPK.Enabled and type(slots) == "table" then
                 slots = {WPK.Slot1, WPK.Slot2, WPK.Slot3, WPK.Slot4}
             end
             return orig(self, slots, ...)
         end))
-        WPK._orig   = orig
-        WPK._hooked = true
-    end)
-end
-
--- リモートを直接 FireServer する (フック無しの環境用)
-local function _wpkFire()
-    pcall(function()
-        local r = _wpkGetRemote()
-        if r then r:FireServer({WPK.Slot1, WPK.Slot2, WPK.Slot3, WPK.Slot4}) end
+        _wpkHooked = true
     end)
 end
 
 function WPK.pickOnce() pcall(_wpkFire) end
 
--- 武器リスト構築
+-- 武器リスト構築 (StarterPlayer から取得、失敗時はデフォルト)
 local function _wpkBuildList()
     pcall(function()
         local sp = cloneref(game:GetService("StarterPlayer"))
-        local scripts = sp:FindFirstChild("StarterPlayerScripts"); if not scripts then return end
-        local assets  = scripts:FindFirstChild("Assets");          if not assets  then return end
-        local vms     = assets:FindFirstChild("ViewModels");       if not vms     then return end
-        local wf      = vms:FindFirstChild("Weapons");             if not wf      then return end
+        local wf = sp:FindFirstChild("StarterPlayerScripts")
+        wf = wf and wf:FindFirstChild("Assets")
+        wf = wf and wf:FindFirstChild("ViewModels")
+        wf = wf and wf:FindFirstChild("Weapons")
+        if not wf then return end
         for _, v in ipairs(wf:GetChildren()) do
-            if v:IsA("Model") then table.insert(WPK.List, v.Name) end
+            if v:IsA("Model") then WPK.List[#WPK.List+1] = v.Name end
         end
         local uf = wf:FindFirstChild("Unobtainable")
         if uf then
             for _, v in ipairs(uf:GetChildren()) do
-                if v:IsA("Model") then table.insert(WPK.List, v.Name) end
+                if v:IsA("Model") then WPK.List[#WPK.List+1] = v.Name end
             end
         end
         table.sort(WPK.List)
@@ -1106,66 +1111,78 @@ local function _wpkBuildList()
     end
 end
 
--- 武器選択フェーズ中: 0.05s 間隔で最大 30 秒連打
-local function _wpkSelectionLoop()
-    WPK._selecting = true
-    task.spawn(function()
-        local deadline = tick() + 30
-        while WPK.Enabled and WPK._selecting and tick() < deadline do
-            _wpkFire()
-            task.wait(0.05)
-        end
-        WPK._selecting = false
-    end)
-end
-
--- スポーン直後バースト (念のため 10 回 × 0.1s)
-local function _wpkSpawnBurst()
-    task.spawn(function()
-        for _ = 1, 10 do
-            if not WPK.Enabled then break end
-            _wpkFire()
-            task.wait(0.1)
-        end
-    end)
-end
-
 function WPK.enable()
     WPK.Enabled = true
-    -- フック設定 (hookfunction 対応環境)
-    task.spawn(_wpkInstallHook)
+    task.spawn(_wpkHook)
 
-    local lp = cloneref(game:GetService("Players")).LocalPlayer
+    local LP  = cloneref(game:GetService("Players")).LocalPlayer
+    local RN  = cloneref(game:GetService("RunService"))
 
-    -- CharacterRemoving: ラウンド終了 → 武器選択フェーズ直後から連打開始
-    if WPK._removConn then pcall(function() WPK._removConn:Disconnect() end) end
-    WPK._removConn = lp.CharacterRemoving:Connect(function()
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- ① メイン: Heartbeat 常時ループ
+    --    キャラクター不在 (武器選択フェーズ) → 0.08s ごとに連打
+    --    キャラクター存在 (通常プレイ中)     → 2s ごとに送る (念のため)
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    local _hbAcc = 0
+    _wpkTrack(RN.Heartbeat:Connect(function(dt)
         if not WPK.Enabled then return end
-        WPK._selecting = false  -- 前ループ停止
-        _wpkSelectionLoop()     -- 即座に新ループ
+        _hbAcc = _hbAcc + dt
+        local interval = LP.Character and 2.0 or 0.08
+        if _hbAcc < interval then return end
+        _hbAcc = 0
+        _wpkFire()
+    end))
+
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- ② CharacterRemoving: 即座にタイマーリセット → 次フレームで fire
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    _wpkTrack(LP.CharacterRemoving:Connect(function()
+        _hbAcc = 999  -- 即座に次フレームで fire させる
+    end))
+
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- ③ CharacterAdded: スポーン直後に 10 回バースト (0.15s 間隔)
+    --    スポーン後にも武器が決まっていない場合があるため
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    _wpkTrack(LP.CharacterAdded:Connect(function()
+        if not WPK.Enabled then return end
+        task.spawn(function()
+            for _ = 1, 10 do
+                if not WPK.Enabled then return end
+                _wpkFire(); task.wait(0.15)
+            end
+        end)
+    end))
+
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- ④ サーバー通知監視: match/round/start/select 系リモートを検知したら即 fire
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    pcall(function()
+        local rs  = cloneref(game:GetService("ReplicatedStorage"))
+        for _, v in ipairs(rs:GetDescendants()) do
+            if v:IsA("RemoteEvent") then
+                local n = v.Name:lower()
+                if n:find("match") or n:find("round") or n:find("start")
+                or n:find("select") or n:find("loadout") or n:find("phase") then
+                    _wpkTrack(v.OnClientEvent:Connect(function()
+                        if WPK.Enabled then _hbAcc = 999 end
+                    end))
+                end
+            end
+        end
     end)
 
-    -- CharacterAdded: フェーズ終了 + スポーン直後バースト
-    if WPK._charConn then pcall(function() WPK._charConn:Disconnect() end) end
-    WPK._charConn = lp.CharacterAdded:Connect(function()
-        WPK._selecting = false
-        if WPK.Enabled then _wpkSpawnBurst() end
-    end)
-
-    -- 初回: すでにロビー/選択画面にいる場合も即座に実行
-    _wpkSelectionLoop()
+    -- 初回: すでに選択画面の場合に即 fire
+    _wpkFire()
 end
 
 function WPK.disable()
-    WPK.Enabled    = false
-    WPK._selecting = false
-    if WPK._charConn  then pcall(function() WPK._charConn:Disconnect()  end); WPK._charConn  = nil end
-    if WPK._removConn then pcall(function() WPK._removConn:Disconnect() end); WPK._removConn = nil end
+    WPK.Enabled = false
+    _wpkClearConns()
 end
 
 task.spawn(_wpkBuildList)
--- ロード 3 秒後にバックグラウンドでフックも試みる
-task.delay(3, function() pcall(_wpkInstallHook) end)
+task.delay(3, function() pcall(_wpkHook) end)
 _UM.WPK = WPK
 end -- WPK
 
