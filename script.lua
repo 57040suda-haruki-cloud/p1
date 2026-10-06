@@ -4856,80 +4856,165 @@ function MaxMode.disable()
     SilentShot.FOV = 120
 end
 
-local SkinSwap = {}
-SkinSwap.Enabled = false
-SkinSwap.Preset  = "neon_red"
+-- ============================================================
+-- [uncode] SKINC: Real Skin Changer via CosmeticLibrary
+-- CosLib.Cosmetics からスキン一覧を自動取得し EquipCosmetic で装備
+-- ============================================================
+local SKINC = {}
+SKINC.Enabled    = false
+SKINC.SkinName   = ""      -- 現在選択中のスキン名
+SKINC.WeaponSlot = "All"   -- "All" or 武器名
+SKINC._list      = {}      -- {name, ...} ソート済みスキン名リスト
+SKINC._equipRem  = nil     -- Remotes.Data.EquipCosmetic
+SKINC._dataCtrl  = nil     -- PlayerDataController
+SKINC._cosLib    = nil     -- CosmeticLibrary
+SKINC._onRefresh = nil     -- UI用コールバック(リスト更新時)
 
--- Highlightインスタンス方式 (BasePart.Color変更はSurfaceAppearanceで上書きされるため)
--- HESPと同じ仕組みでキャラにHighlightを被せて色変更を実現
-local _skinColors = {
-    neon_red    = Color3.fromRGB(255, 50,  50),
-    neon_blue   = Color3.fromRGB( 50, 100, 255),
-    neon_green  = Color3.fromRGB( 50, 255,  80),
-    chrome      = Color3.fromRGB(180, 200, 220),
-    gold        = Color3.fromRGB(255, 200,  40),
-    void        = Color3.fromRGB( 10,   0,  30),
-    ice         = Color3.fromRGB(150, 230, 255),
-    lava        = Color3.fromRGB(255,  80,   0),
-    holographic = Color3.fromRGB(130, 255, 230),
-    white       = Color3.fromRGB(255, 255, 255),
-    black       = Color3.fromRGB( 10,  10,  10),
-    pink        = Color3.fromRGB(255,  80, 180),
-}
-local _skinHL  = nil  -- Highlightインスタンス
-local _skinHue = 0
-
-local function _skinGetCol()
-    return _skinColors[SkinSwap.Preset] or Color3.fromRGB(255, 50, 50)
-end
-
-local function _skinApply()
-    local c = _char(); if not c then return end
-    -- 既存のHighlightを片付け
-    if _skinHL and _skinHL.Parent then pcall(function() _skinHL:Destroy() end) end
-    _skinHL = Instance.new("Highlight")
-    _skinHL.FillColor          = _skinGetCol()
-    _skinHL.OutlineColor       = _skinGetCol()
-    _skinHL.FillTransparency   = 0.15   -- 薄く塗りつぶし
-    _skinHL.OutlineTransparency = 0.0   -- 縁は不透明
-    _skinHL.DepthMode          = Enum.HighlightDepthMode.Occluded
-    _skinHL.Adornee            = c
-    _skinHL.Parent             = CG_    -- CoreGuiに置く (サーバー保護を回避)
-end
-
-function SkinSwap.enable()
-    SkinSwap.Enabled = true
-    _skinApply()
-    _conn("SkinSwap", LP_.CharacterAdded:Connect(function()
-        task.wait(0.3)
-        if SkinSwap.Enabled then _skinApply() end
-    end))
-    _conn("SkinSwap", RN_.Heartbeat:Connect(function(dt)
-        if not SkinSwap.Enabled then return end
-        -- Highlightが消えていたら再適用
-        if not _skinHL or not _skinHL.Parent then
-            _skinApply(); return
+-- CosmeticLibraryからスキン一覧取得
+local function _scScanSkins()
+    SKINC._list = {}
+    pcall(function()
+        local cl = SKINC._cosLib
+        if not cl or not cl.Cosmetics then return end
+        for name, data in pairs(cl.Cosmetics) do
+            if type(name)=="string" and type(data)=="table" then
+                local t = data.Type or ""
+                if t == "Skin" or t == "Wrap" or t == "Wrapping" then
+                    table.insert(SKINC._list, name)
+                end
+            end
         end
-        -- レインボーモード: 色を毎フレーム更新
-        if SkinSwap.Preset == "rainbow" then
-            _skinHue = (_skinHue + dt * 0.3) % 1
-            local col = Color3.fromHSV(_skinHue, 1, 1)
-            pcall(function()
-                _skinHL.FillColor    = col
-                _skinHL.OutlineColor = col
-            end)
-        end
-    end))
-end
-
-function SkinSwap.disable()
-    SkinSwap.Enabled = false
-    _stop("SkinSwap")
-    if _skinHL then
-        pcall(function() _skinHL:Destroy() end)
-        _skinHL = nil
+        table.sort(SKINC._list)
+    end)
+    if #SKINC._list == 0 then
+        SKINC._list = {"(No skins found - enable Unlock All first)"}
     end
 end
+
+-- ライブラリ/リモートをロード
+local function _scInit()
+    if SKINC._cosLib then return true end
+    local ok = pcall(function()
+        local RS2  = cloneref(game:GetService("ReplicatedStorage"))
+        local mods = RS2:WaitForChild("Modules", 6)
+        local ps2  = LP_:WaitForChild("PlayerScripts", 6)
+        local ctrl = ps2:WaitForChild("Controllers", 6)
+        SKINC._cosLib   = require(mods:WaitForChild("CosmeticLibrary", 5))
+        SKINC._dataCtrl = require(ctrl:WaitForChild("PlayerDataController", 5))
+        -- EquipCosmetic リモートを探す
+        local rems = RS2:FindFirstChild("Remotes")
+        if rems then
+            local dataR = rems:FindFirstChild("Data")
+            if dataR then SKINC._equipRem = dataR:FindFirstChild("EquipCosmetic") end
+            if not SKINC._equipRem then
+                for _, c in ipairs(rems:GetDescendants()) do
+                    if c:IsA("RemoteEvent") and c.Name:lower():find("equip") then
+                        SKINC._equipRem = c; break
+                    end
+                end
+            end
+        end
+    end)
+    return ok and SKINC._cosLib ~= nil
+end
+
+-- EquipCosmetic リモートで装備
+local function _scFireEquip(weaponName, skinName)
+    if SKINC._equipRem then
+        pcall(function()
+            SKINC._equipRem:FireServer(weaponName, "Skin", skinName, {})
+        end)
+        -- DataController.Replicateでサーバーへ反映
+        pcall(function()
+            if SKINC._dataCtrl and SKINC._dataCtrl.CurrentData then
+                SKINC._dataCtrl.CurrentData:Replicate("WeaponInventory")
+            end
+        end)
+        return
+    end
+    -- フォールバック: CosmeticController経由
+    pcall(function()
+        local ps2  = LP_:WaitForChild("PlayerScripts", 3)
+        local ctrl = ps2:WaitForChild("Controllers", 3)
+        local cc   = require(ctrl:WaitForChild("CosmeticController", 3))
+        for _, fn in ipairs({"EquipSkin","EquipCosmetic","SelectSkin","ApplySkin"}) do
+            pcall(function() cc[fn](cc, skinName) end)
+        end
+    end)
+end
+
+-- 武器リストを取得 (LoadoutController から)
+local function _scGetWeapons()
+    local weapons = {}
+    pcall(function()
+        local ps2  = LP_:WaitForChild("PlayerScripts", 3)
+        local ctrl = ps2:WaitForChild("Controllers", 3)
+        local lc   = require(ctrl:WaitForChild("LoadoutController", 3))
+        if lc and lc.GetLoadout then
+            local lo = lc:GetLoadout()
+            if type(lo)=="table" then
+                for _, wn in ipairs(lo) do
+                    if type(wn)=="string" then table.insert(weapons, wn) end
+                end
+            end
+        end
+    end)
+    if #weapons == 0 then
+        -- フォールバック: Rivalsの一般的な武器名
+        weapons = {"Sword","Gun","Pistol","Rifle","Shotgun","Sniper","Launcher","Melee"}
+    end
+    return weapons
+end
+
+-- スキンを装備する (SkinName, WeaponSlot に従って)
+function SKINC.equip(skinName, weaponSlot)
+    skinName   = skinName   or SKINC.SkinName
+    weaponSlot = weaponSlot or SKINC.WeaponSlot
+    if not skinName or skinName=="" or skinName:find("No skins") then
+        Notify_("Enter / select a skin first", 2); return
+    end
+    if not _scInit() then Notify_("CosLib not ready", 2); return end
+    if weaponSlot == "All" then
+        local weapons = _scGetWeapons()
+        for _, wn in ipairs(weapons) do
+            _scFireEquip(wn, skinName)
+            task.wait(0.05)
+        end
+    else
+        _scFireEquip(weaponSlot, skinName)
+    end
+    Notify_("Equip: "..skinName:sub(1,28), 3)
+end
+
+-- スキン一覧を再スキャンしてUIコールバックを呼ぶ
+function SKINC.refresh()
+    if not _scInit() then Notify_("CosLib not ready – enable Unlock All first", 3); return end
+    _scScanSkins()
+    if SKINC._onRefresh then pcall(SKINC._onRefresh, SKINC._list) end
+    Notify_("Skins: "..#SKINC._list.." found", 2)
+end
+
+function SKINC.enable()
+    SKINC.Enabled = true
+    task.spawn(function()
+        if _scInit() then _scScanSkins() end
+    end)
+    -- キャラリスポーン時に再装備
+    _conn("SKINC", LP_.CharacterAdded:Connect(function()
+        task.wait(1.0)
+        if SKINC.Enabled and SKINC.SkinName ~= "" then
+            SKINC.equip()
+        end
+    end))
+end
+
+function SKINC.disable()
+    SKINC.Enabled = false
+    _stop("SKINC")
+end
+
+-- 後方互換: SkinSwap として参照している箇所向けのエイリアス
+local SkinSwap = SKINC
 
 -- FLY〜ORB は _E3 IIFE に移動済み (ローカル変数200上限対策)
 
@@ -5119,7 +5204,7 @@ end
 return {
     SilentShot=SilentShot, AimSmooth=AimSmooth, AutoShoot=AutoShoot,
     MaxMode=MaxMode, TRIG=TRIG,
-    SkinSwap=SkinSwap, KA=KA, AP=AP,
+    SkinSwap=SKINC, SKINC=SKINC, KA=KA, AP=AP,
 }
         end)()
     end)
@@ -7558,22 +7643,53 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
     pcall(function()
         if not B.visLeft then return end
         B.visLeft:AddDivider()
-        BT(B.visLeft,"UC_SKIN","Skin Changer",false,function(v)
-            if v then E.SkinSwap.enable() else E.SkinSwap.disable() end
+        B.visLeft:AddLabel("── Skin Changer ──")
+        BT(B.visLeft,"UC_SKIN","Skin Changer (Real)",false,function(v)
+            if v then E.SKINC.enable() else E.SKINC.disable() end
         end)
-        B.visLeft:AddDropdown("UC_SK_PRESET",{
-            Text="Skin Preset",
-            Default="neon_red",
-            Values={"neon_red","neon_blue","neon_green","chrome","gold","rainbow",
-                    "void","ice","lava","holographic","white","black","pink"},
+        -- スキン一覧ドロップダウン (初期値は空→Refresh後に更新)
+        local _scInitList = {"(Click Refresh Skins)"}
+        B.visLeft:AddDropdown("UC_SK_NAME",{
+            Text="  Skin",
+            Default="(Click Refresh Skins)",
+            Values=_scInitList,
             Callback=function(v)
-                E.SkinSwap.Preset = v
-                if E.SkinSwap.Enabled then
-                    -- table.clear(_skinOrig) → done inside enable()
-                    E.SkinSwap.enable()
-                end
+                E.SKINC.SkinName = v
             end
         })
+        -- 武器スロット
+        B.visLeft:AddDropdown("UC_SK_WPN",{
+            Text="  Weapon Slot",
+            Default="All",
+            Values={"All","Sword","Gun","Pistol","Rifle","Shotgun","Sniper","Launcher","Melee"},
+            Callback=function(v) E.SKINC.WeaponSlot = v end
+        })
+        -- 装備ボタン
+        B.visLeft:AddButton({Text="Equip Skin",Func=function()
+            task.spawn(function() E.SKINC.equip() end)
+        end})
+        -- スキン一覧を再スキャン
+        B.visLeft:AddButton({Text="Refresh Skins",Func=function()
+            task.spawn(function()
+                E.SKINC._onRefresh = function(list)
+                    -- ドロップダウンを再設定
+                    if Options and Options.UC_SK_NAME then
+                        pcall(function()
+                            Options.UC_SK_NAME:SetValues(list)
+                            if list[1] then Options.UC_SK_NAME:SetValue(list[1]); E.SKINC.SkinName=list[1] end
+                        end)
+                    end
+                end
+                E.SKINC.refresh()
+            end)
+        end})
+        -- カスタム名入力 (ドロップダウンにないスキンを直接入力)
+        B.visLeft:AddInput("UC_SK_CUSTOM",{Text="  Custom Skin Name",Default="",
+            Placeholder="e.g. Rival_Neon",ClearTextOnFocus=false})
+        B.visLeft:AddButton({Text="Equip Custom Name",Func=function()
+            local n = Options.UC_SK_CUSTOM and Options.UC_SK_CUSTOM.Value or ""
+            if n ~= "" then E.SKINC.SkinName=n; task.spawn(function() E.SKINC.equip() end) end
+        end})
     end)
 
     pcall(function()
