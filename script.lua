@@ -2291,7 +2291,8 @@ pcall(function()
     if SaveManager then
         SaveManager:SetLibrary(Library); SaveManager:IgnoreThemeSettings()
         SaveManager:SetIgnoreIndexes({"MenuKey"}); SaveManager:SetFolder("uncode4/configs")
-        pcall(function() SaveManager:BuildConfigSection(Tabs.Settings) end)
+        -- ConfigsタブにSaveManagerのセクションを追加（Settingsタブと統一）
+        pcall(function() SaveManager:BuildConfigSection(Tabs.Configs) end)
         pcall(function() SaveManager:LoadAutoloadConfig() end)
     end
 end)
