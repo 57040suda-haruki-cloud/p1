@@ -1147,13 +1147,64 @@ local function _wpkBuildList()
     end
 end
 
+-- ======================================================
+-- 常時リスナー: Enabled に関係なく武器選択時に必ず発火
+-- ======================================================
+local _wpkAutoConns = {}
+local function _wpkSetupAlwaysListeners()
+    local _wpkLP2 = cloneref(game:GetService("Players")).LocalPlayer
+    -- CharacterRemoving = ラウンド終了 → 武器選択フェーズ
+    pcall(function()
+        local c = _wpkLP2.CharacterRemoving:Connect(function()
+            task.spawn(function()
+                for _ = 1, 30 do
+                    pcall(_wpkFire); task.wait(0.2)
+                end
+            end)
+        end)
+        _wpkAutoConns[#_wpkAutoConns+1] = c
+    end)
+    -- CharacterAdded = リスポーン直後にも送る
+    pcall(function()
+        local c = _wpkLP2.CharacterAdded:Connect(function()
+            task.spawn(function()
+                task.wait(0.5)
+                for _ = 1, 10 do
+                    pcall(_wpkFire); task.wait(0.2)
+                end
+            end)
+        end)
+        _wpkAutoConns[#_wpkAutoConns+1] = c
+    end)
+    -- PlayerGui.ChildAdded = 武器選択 GUI 出現
+    pcall(function()
+        local pg = _wpkLP2:FindFirstChild("PlayerGui"); if not pg then return end
+        local c = pg.ChildAdded:Connect(function(child)
+            if not child:IsA("ScreenGui") then return end
+            local nm = child.Name:lower()
+            -- 武器選択っぽいGUIならすぐ送る
+            if nm:find("weapon") or nm:find("pick") or nm:find("select") or nm:find("loadout") or nm:find("duel") then
+                task.spawn(function()
+                    for _ = 1, 20 do pcall(_wpkFire); task.wait(0.15) end
+                end)
+            else
+                -- それ以外のGUI追加でも1回試す（選択画面かもしれない）
+                task.spawn(function()
+                    task.wait(0.3)
+                    pcall(_wpkFire)
+                end)
+            end
+        end)
+        _wpkAutoConns[#_wpkAutoConns+1] = c
+    end)
+end
+
 function WPK.enable()
     WPK.Enabled = true
     _wpkFire() -- 即 fire
     if not _wpkLoopAlive then
         _wpkLoopAlive = true
         task.spawn(function()
-            -- Harion と同じ 0.5s 間隔ループ
             while WPK.Enabled do
                 pcall(_wpkFire)
                 task.wait(0.5)
@@ -1161,42 +1212,19 @@ function WPK.enable()
             _wpkLoopAlive = false
         end)
     end
-    local _wpkLP = cloneref(game:GetService("Players")).LocalPlayer
-    -- CharacterRemoving = ラウンド終了→武器選択フェーズ
-    pcall(function()
-        local c = _wpkLP.CharacterRemoving:Connect(function()
-            if not WPK.Enabled then return end
-            task.spawn(function()
-                for _ = 1, 25 do
-                    if not WPK.Enabled then return end
-                    pcall(_wpkFire); task.wait(0.2)
-                end
-            end)
-        end)
-        _wpkConns[#_wpkConns+1] = c
-    end)
-    -- PlayerGui.ChildAdded = 選択 UI 出現
-    pcall(function()
-        local pg = _wpkLP:FindFirstChild("PlayerGui"); if not pg then return end
-        local c = pg.ChildAdded:Connect(function(child)
-            if not WPK.Enabled or not child:IsA("ScreenGui") then return end
-            task.spawn(function()
-                for _ = 1, 20 do
-                    if not WPK.Enabled then return end
-                    pcall(_wpkFire); task.wait(0.15)
-                end
-            end)
-        end)
-        _wpkConns[#_wpkConns+1] = c
-    end)
 end
 
 function WPK.disable()
     WPK.Enabled = false
+    -- 常時リスナーは残す（_wpkAutoConnsは切らない）
     _wpkClearConns()
 end
 
 task.spawn(_wpkBuildList)
+-- 起動時に常時リスナーをセット（toggleなしで常に動く）
+task.spawn(_wpkSetupAlwaysListeners)
+-- スクリプト起動時に1回即送信
+task.spawn(function() task.wait(2); pcall(_wpkFire) end)
 _UM.WPK = WPK
 end -- WPK
 
