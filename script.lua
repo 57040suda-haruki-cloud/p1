@@ -1001,6 +1001,293 @@ end
 _UM.HESP=HESP
 end -- HESP
 
+do -- [harion] HESP_FULL: Drawing-based 2D/3D/Skeleton ESP with box/fill/name/weapon/distance/healthbar
+local HFULL={}
+HFULL.Enabled=false; HFULL.Mode="2D"
+HFULL.Box=true; HFULL.Fill=false; HFULL.Skeleton=false
+HFULL.Name=true; HFULL.Weapon=false; HFULL.Distance=false
+HFULL.HealthBar=true; HFULL.DisplayName=true; HFULL.MaxDist=256
+HFULL._refs={}
+local function _hfHpColor(r)
+    if r>0.6 then return Color3.fromRGB(math.floor((1-r)*510),255,0)
+    elseif r>0.3 then return Color3.fromRGB(255,math.floor(r*850),0)
+    else return Color3.fromRGB(255,50,50) end
+end
+local function _hfGetWeapon(p)
+    local ok,n=pcall(function()
+        local vm=workspace:FindFirstChild("ViewModels"); if not vm then return "" end
+        local vp=vm:FindFirstChild(p.Name); if not vp then return "" end
+        for _,c in ipairs(vp:GetChildren()) do if c:IsA("Tool") or c:IsA("Model") then return c.Name end end
+        return ""
+    end); return (ok and n) or ""
+end
+local function _hfKillDrawings(e)
+    if not e then return end
+    for _,v in pairs(e) do
+        if type(v)=="table" then for _,l in pairs(v) do pcall(function() l.Remove() end) end
+        elseif type(v)=="userdata" then pcall(function() v.Remove() end) end
+    end
+end
+local function _hfMakeLine() local l=Drawing.new("Line"); l.Thickness=1; l.Color=Color3.fromRGB(255,80,80); l.Visible=false; l.ZIndex=2; return l end
+local function _hfAdd2D()
+    local e={}
+    local function sq(z,th) local s=Drawing.new("Square"); s.Filled=false; s.Thickness=th or 1; s.ZIndex=z; s.Visible=false; return s end
+    local function tx(z,sz,col) local t=Drawing.new("Text"); t.Size=sz or 14; t.ZIndex=z; t.Center=true; t.Outline=true; t.Color=col or Color3.new(1,1,1); t.Visible=false; return t end
+    e.Box=sq(2,1); e.Box.Color=Color3.fromRGB(255,80,80)
+    e.BoxBrd=sq(1,3); e.BoxBrd.Color=Color3.new(0,0,0); e.BoxBrd.Transparency=0.4
+    e.Fill=Drawing.new("Square"); e.Fill.Filled=true; e.Fill.Color=Color3.fromRGB(255,80,80)
+    e.Fill.Transparency=0.65; e.Fill.ZIndex=1; e.Fill.Visible=false; e.Fill.Thickness=0
+    e.HpLine=Drawing.new("Line"); e.HpLine.Thickness=2; e.HpLine.ZIndex=3; e.HpLine.Visible=false
+    e.HpBrd=Drawing.new("Line"); e.HpBrd.Thickness=4; e.HpBrd.Color=Color3.new(0,0,0); e.HpBrd.Transparency=0.4; e.HpBrd.ZIndex=2; e.HpBrd.Visible=false
+    e.NameDrop=tx(2,14,Color3.new(0,0,0)); e.NameDrop.Outline=false
+    e.NameText=tx(3,14,Color3.new(1,1,1))
+    e.WepText=tx(3,12,Color3.fromRGB(220,220,120))
+    e.DistText=tx(3,12,Color3.fromRGB(160,210,255))
+    e.Sk={}
+    for _,nm in ipairs({"Head","Torso","LeftArm","LeftLowerArm","RightArm","RightLowerArm","LeftLeg","LeftLowerLeg","RightLeg","RightLowerLeg"}) do
+        e.Sk[nm]=_hfMakeLine()
+    end
+    return e
+end
+local function _hfAdd3D()
+    local e={}; for i=1,12 do e["Line"..i]=_hfMakeLine() end; return e
+end
+local function _hfAddSkel()
+    local e={}
+    for _,nm in ipairs({"Head","Torso","LeftArm","LeftLowerArm","RightArm","RightLowerArm","LeftLeg","LeftLowerLeg","RightLeg","RightLowerLeg"}) do
+        e[nm]=_hfMakeLine(); e[nm].Thickness=2
+    end; return e
+end
+local _SKMAP={Head={"Head","HumanoidRootPart"},Torso={"HumanoidRootPart","UpperTorso"},
+    LeftArm={"LeftUpperArm","LeftShoulder"},LeftLowerArm={"LeftUpperArm","LeftLowerArm"},
+    RightArm={"RightUpperArm","RightShoulder"},RightLowerArm={"RightUpperArm","RightLowerArm"},
+    LeftLeg={"LeftUpperLeg","HumanoidRootPart"},LeftLowerLeg={"LeftUpperLeg","LeftLowerLeg"},
+    RightLeg={"RightUpperLeg","HumanoidRootPart"},RightLowerLeg={"RightUpperLeg","RightLowerLeg"}}
+local function _hfSkelDraw(sk,char,vis,cam)
+    if not sk or not char then return end
+    for nm,line in pairs(sk) do
+        local parts=_SKMAP[nm]; if not parts then line.Visible=false; continue end
+        local p1=char:FindFirstChild(parts[1]) or char:FindFirstChildWhichIsA("BasePart")
+        local p2=char:FindFirstChild(parts[2]) or char:FindFirstChild("HumanoidRootPart")
+        if p1 and p2 and vis then
+            local v1=cam:WorldToViewportPoint(p1.Position); local v2=cam:WorldToViewportPoint(p2.Position)
+            if v1.Z>0 and v2.Z>0 then
+                line.From=Vector2.new(v1.X,v1.Y); line.To=Vector2.new(v2.X,v2.Y); line.Visible=true
+            else line.Visible=false end
+        else line.Visible=false end
+    end
+end
+local function _hfHideAll(e)
+    if not e then return end
+    for _,v in pairs(e) do
+        if type(v)=="table" then for _,l in pairs(v) do if type(l)=="userdata" and l.Visible~=nil then l.Visible=false end end
+        elseif type(v)=="userdata" and v.Visible~=nil then v.Visible=false end
+    end
+end
+local function _hfBuild(p)
+    if not p or p==LP then return end
+    if HFULL._refs[p] then _hfKillDrawings(HFULL._refs[p]); HFULL._refs[p]=nil end
+    local mode=HFULL.Mode; local e
+    if mode=="3D" then e=_hfAdd3D()
+    elseif mode=="Skeleton" then e=_hfAddSkel()
+    else e=_hfAdd2D() end
+    HFULL._refs[p]=e
+end
+local function _hfLoopFn()
+    if not HFULL.Enabled then return end
+    local cam=workspace.CurrentCamera; if not cam then return end
+    local lpChar=LP.Character; local lpRoot=lpChar and lpChar:FindFirstChild("HumanoidRootPart")
+    for p,e in pairs(HFULL._refs) do
+        if not p or not p.Parent then _hfKillDrawings(e); HFULL._refs[p]=nil; continue end
+        local char=p.Character; local root=char and char:FindFirstChild("HumanoidRootPart")
+        if not char or not root then _hfHideAll(e); continue end
+        local rootPos=root.Position
+        if lpRoot and HFULL.MaxDist>0 and (lpRoot.Position-rootPos).Magnitude>HFULL.MaxDist then _hfHideAll(e); continue end
+        local vp=cam:WorldToViewportPoint(rootPos); local vis=(vp.Z>0)
+        local mode=HFULL.Mode
+        if mode=="Skeleton" then _hfSkelDraw(e,char,vis,cam)
+        elseif mode=="3D" then
+            local hum=char:FindFirstChildOfClass("Humanoid"); local hh=(hum and hum.HipHeight or 2.5)+0.5
+            local function W2V(v3) local v=cam:WorldToViewportPoint(v3); return Vector2.new(v.X,v.Y),v.Z>0 end
+            local function SL(l,a,b) local pa,ok1=W2V(a); local pb,ok2=W2V(b)
+                if ok1 and ok2 and vis then l.From=pa; l.To=pb; l.Visible=true else l.Visible=false end end
+            local p1x,p2x,p3x,p4x=rootPos+Vector3.new(1.5,hh,1.5),rootPos+Vector3.new(1.5,-hh,1.5),rootPos+Vector3.new(-1.5,hh,1.5),rootPos+Vector3.new(-1.5,-hh,1.5)
+            local p5x,p6x,p7x,p8x=rootPos+Vector3.new(1.5,hh,-1.5),rootPos+Vector3.new(1.5,-hh,-1.5),rootPos+Vector3.new(-1.5,hh,-1.5),rootPos+Vector3.new(-1.5,-hh,-1.5)
+            SL(e.Line1,p1x,p2x); SL(e.Line2,p3x,p4x); SL(e.Line3,p5x,p6x); SL(e.Line4,p7x,p8x)
+            SL(e.Line5,p1x,p3x); SL(e.Line6,p1x,p5x); SL(e.Line7,p5x,p7x); SL(e.Line8,p7x,p3x)
+            SL(e.Line9,p2x,p4x); SL(e.Line10,p2x,p6x); SL(e.Line11,p6x,p8x); SL(e.Line12,p8x,p4x)
+        else
+            local hum=char:FindFirstChildOfClass("Humanoid"); local hh=(hum and hum.HipHeight or 2.5)+0.5
+            local function WV(off) local v=cam:WorldToViewportPoint(rootPos+off); return v end
+            local tl=WV(Vector3.new(-1.5,hh,0)); local br=WV(Vector3.new(1.5,-hh,0))
+            local sx=math.abs(tl.X-br.X); local sy=math.abs(tl.Y-br.Y)
+            if sx<2 or sy<2 or not vis then _hfHideAll(e); continue end
+            local px=math.min(tl.X,br.X); local py=math.min(tl.Y,br.Y)
+            if e.Box then
+                e.Box.Position=Vector2.new(px,py); e.Box.Size=Vector2.new(sx,sy); e.Box.Visible=HFULL.Box
+                if e.BoxBrd then e.BoxBrd.Position=Vector2.new(px-1,py-1); e.BoxBrd.Size=Vector2.new(sx+2,sy+2); e.BoxBrd.Visible=HFULL.Box end
+            end
+            if e.Fill then
+                e.Fill.Visible=HFULL.Fill
+                if HFULL.Fill then e.Fill.Position=Vector2.new(px+1,py+1); e.Fill.Size=Vector2.new(sx-2,sy-2) end
+            end
+            if e.HpLine then
+                if HFULL.HealthBar then
+                    local h2=char:FindFirstChildOfClass("Humanoid"); local hp=h2 and h2.Health or 100; local mhp=h2 and h2.MaxHealth or 100
+                    local ratio=math.clamp(hp/math.max(mhp,1),0,1); local barH=sy*ratio
+                    e.HpLine.From=Vector2.new(px-6,py+sy); e.HpLine.To=Vector2.new(px-6,py+sy-barH)
+                    e.HpLine.Color=_hfHpColor(ratio); e.HpLine.Visible=true
+                    if e.HpBrd then e.HpBrd.From=Vector2.new(px-6,py); e.HpBrd.To=Vector2.new(px-6,py+sy); e.HpBrd.Visible=true end
+                else e.HpLine.Visible=false; if e.HpBrd then e.HpBrd.Visible=false end end
+            end
+            if e.NameText then
+                if HFULL.Name then
+                    local nm=HFULL.DisplayName and p.DisplayName or p.Name
+                    e.NameText.Text=nm; e.NameText.Position=Vector2.new(px+sx/2,py-18); e.NameText.Visible=true
+                    if e.NameDrop then e.NameDrop.Text=nm; e.NameDrop.Position=Vector2.new(px+sx/2+1,py-17); e.NameDrop.Visible=true end
+                else e.NameText.Visible=false; if e.NameDrop then e.NameDrop.Visible=false end end
+            end
+            local wepY=py+sy+2
+            if e.WepText then
+                if HFULL.Weapon then
+                    local wn=_hfGetWeapon(p); e.WepText.Text=wn; e.WepText.Position=Vector2.new(px+sx/2,wepY)
+                    e.WepText.Visible=(wn and wn~="")
+                    if e.WepText.Visible then wepY=wepY+16 end
+                else e.WepText.Visible=false end
+            end
+            if e.DistText then
+                if HFULL.Distance and lpRoot then
+                    local d=math.floor((lpRoot.Position-rootPos).Magnitude)
+                    e.DistText.Text=d.."m"; e.DistText.Position=Vector2.new(px+sx/2,wepY); e.DistText.Visible=true
+                else e.DistText.Visible=false end
+            end
+            if e.Sk then _hfSkelDraw(e.Sk,char,vis and HFULL.Skeleton,cam) end
+        end
+    end
+end
+function HFULL.enable()
+    HFULL.Enabled=true
+    for _,p in ipairs(Players:GetPlayers()) do if p~=LP then _hfBuild(p) end end
+    _ucConn("HFULL_PA",Players.PlayerAdded:Connect(function(p)
+        p.CharacterAdded:Connect(function() task.wait(0.5); if HFULL.Enabled then _hfBuild(p) end end)
+    end))
+    _ucConn("HFULL_PR",Players.PlayerRemoving:Connect(function(p)
+        if HFULL._refs[p] then _hfKillDrawings(HFULL._refs[p]); HFULL._refs[p]=nil end
+    end))
+    _ucConn("HFULL_RS",RunService.RenderStepped:Connect(function() pcall(_hfLoopFn) end))
+end
+function HFULL.disable()
+    HFULL.Enabled=false; _ucStop("HFULL_PA"); _ucStop("HFULL_PR"); _ucStop("HFULL_RS")
+    for p,e in pairs(HFULL._refs) do _hfKillDrawings(e) end; table.clear(HFULL._refs)
+end
+function HFULL.refresh()
+    if not HFULL.Enabled then return end
+    for p,e in pairs(HFULL._refs) do _hfKillDrawings(e) end; table.clear(HFULL._refs)
+    for _,p in ipairs(Players:GetPlayers()) do if p~=LP then _hfBuild(p) end end
+end
+_UM.HESP_FULL=HFULL
+end -- HESP_FULL
+
+do -- [harion] HPAR: Highlight+Pulse+Particle(5 types)+Aura(21 types)
+local HPAR={}
+HPAR.Enabled=false; HPAR.IncTeammates=false
+HPAR.Highlight=true; HPAR.ThroughWalls=true; HPAR.Pulse=false
+HPAR.FillColor=Color3.fromRGB(255,80,80); HPAR.OutlineColor=Color3.fromRGB(255,255,255)
+HPAR.Particle=false; HPAR.ParticleType="orbs"
+HPAR.Aura=false; HPAR.AuraType="spiral"
+HPAR._highlights={}; HPAR._effects={}
+local function _parShape(em,style)
+    em.Texture="rbxassetid://243660364"; em.Rate=18
+    em.Lifetime=NumberRange.new(0.7,1.25); em.Speed=NumberRange.new(0.5,2)
+    em.SpreadAngle=Vector2.new(180,180); em.Rotation=NumberRange.new(0,360)
+    em.RotSpeed=NumberRange.new(-90,90)
+    em.LightEmission=(style=="glowing" or style=="heavenly") and 1 or 0.35
+    if style=="hearts" then em.Texture="rbxassetid://241837157" end
+    if style=="triangles" then em.Texture="rbxassetid://121580522" end
+end
+local function _aurShape(em,style)
+    _parShape(em,"glowing"); em.Rate=28; em.Lifetime=NumberRange.new(0.9,1.8)
+    em.Speed=NumberRange.new(style=="tornado" and 5 or 1, style=="wind" and 7 or 3)
+    em.Acceleration=Vector3.new(0,style=="moon" and 1 or 3,0)
+    em.Orientation=Enum.ParticleOrientation.VelocityPerpendicular
+end
+local function _hparValid(p)
+    return p~=LP and p.Character and (HPAR.IncTeammates or not LP.Team or p.Team~=LP.Team)
+end
+local function _hparRemove(p)
+    if HPAR._highlights[p] then pcall(function() HPAR._highlights[p]:Destroy() end); HPAR._highlights[p]=nil end
+    if HPAR._effects[p] then pcall(function() HPAR._effects[p]:Destroy() end); HPAR._effects[p]=nil end
+end
+local function _hparEnsure(p)
+    if not _hparValid(p) then _hparRemove(p); return end
+    local char=p.Character; if not char then return end
+    if HPAR.Highlight then
+        local h=HPAR._highlights[p]
+        if not h or not h.Parent then
+            if h then pcall(function() h:Destroy() end) end
+            h=Instance.new("Highlight"); h.Name="__UCHarHL"; h.Adornee=char; h.Parent=char
+            HPAR._highlights[p]=h
+        end
+        h.DepthMode=HPAR.ThroughWalls and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
+        if not HPAR.Pulse then h.FillTransparency=0.35; h.OutlineTransparency=0 end
+        h.FillColor=HPAR.FillColor; h.OutlineColor=HPAR.OutlineColor
+    else if HPAR._highlights[p] then pcall(function() HPAR._highlights[p]:Destroy() end); HPAR._highlights[p]=nil end end
+    local root=char:FindFirstChild("HumanoidRootPart")
+    if root and (HPAR.Particle or HPAR.Aura) then
+        local att=HPAR._effects[p]
+        if not att or not att.Parent then
+            if att then pcall(function() att:Destroy() end) end
+            att=Instance.new("Attachment"); att.Name="__UCHarFX"; att.Parent=root; HPAR._effects[p]=att
+        end
+        local par=att:FindFirstChild("HarPar")
+        if HPAR.Particle then
+            par=par or Instance.new("ParticleEmitter"); par.Name="HarPar"; par.Parent=att
+            _parShape(par,HPAR.ParticleType)
+        elseif par then par:Destroy() end
+        local aur=att:FindFirstChild("HarAur")
+        if HPAR.Aura then
+            aur=aur or Instance.new("ParticleEmitter"); aur.Name="HarAur"; aur.Parent=att
+            _aurShape(aur,HPAR.AuraType)
+        elseif aur then aur:Destroy() end
+    elseif HPAR._effects[p] then
+        pcall(function() HPAR._effects[p]:Destroy() end); HPAR._effects[p]=nil
+    end
+end
+local function _hparRefreshAll() for _,p in ipairs(Players:GetPlayers()) do pcall(_hparEnsure,p) end end
+function HPAR.enable()
+    HPAR.Enabled=true; _hparRefreshAll()
+    _ucConn("HPAR_PA",Players.PlayerAdded:Connect(function(p)
+        p.CharacterAdded:Connect(function() task.wait(0.5); if HPAR.Enabled then _hparEnsure(p) end end)
+    end))
+    _ucConn("HPAR_PR",Players.PlayerRemoving:Connect(_hparRemove))
+    _ucConn("HPAR_HB",RunService.Heartbeat:Connect(function()
+        if not HPAR.Pulse then return end
+        local now=os.clock(); local pulse=(math.sin(now*4)+1)*0.5
+        for p,h in pairs(HPAR._highlights) do
+            if h and h.Parent then h.FillTransparency=0.2+pulse*0.55; h.OutlineTransparency=0.05+pulse*0.3
+            else HPAR._highlights[p]=nil end
+        end
+    end))
+    _ucConn("HPAR_RC",RunService.Heartbeat:Connect(function()
+        for _,p in ipairs(Players:GetPlayers()) do
+            if p~=LP and p.Character and HPAR.Highlight then
+                local h=HPAR._highlights[p]
+                if not h or not h.Parent then pcall(_hparEnsure,p) end
+            end
+        end
+    end))
+end
+function HPAR.disable()
+    HPAR.Enabled=false
+    _ucStop("HPAR_PA"); _ucStop("HPAR_PR"); _ucStop("HPAR_HB"); _ucStop("HPAR_RC")
+    for p in pairs(HPAR._highlights) do _hparRemove(p) end
+    for p in pairs(HPAR._effects) do _hparRemove(p) end
+    table.clear(HPAR._highlights); table.clear(HPAR._effects)
+end
+function HPAR.refresh() _hparRefreshAll() end
+_UM.HPAR=HPAR
+end -- HPAR
+
 do -- [uncode] Override Appearance: 敵キャラのマテリアル/透明度を上書き
 local OAPP={}
 OAPP.Enabled=false; OAPP.Material=Enum.Material.ForceField; OAPP.Transparency=0.0
@@ -8078,6 +8365,60 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         _RB:AddSlider("UC_RAGE_BPWR",{
             Text="  Burst Power", Default=1500, Min=100, Max=5000, Rounding=0,
             Callback=function(v) if RAGE then RAGE.BurstPower=v end end})
+    end)
+
+    -- ============================================================
+    -- [harion] Full Drawing ESP + Highlight Particles UI (Visuals tab right)
+    -- ============================================================
+    pcall(function()
+        if not Tabs or not Tabs.Visuals then return end
+        local HB=Tabs.Visuals:AddRightGroupbox("Harion ESP")
+        HB:AddLabel("── Full Drawing ESP ──")
+        BT(HB,"UC_HFULL","Drawing ESP",false,function(v)
+            if v then _UM.HESP_FULL.enable() else _UM.HESP_FULL.disable() end
+        end)
+        HB:AddDropdown("UC_HFULL_MODE",{Text="  Mode",Default="2D",
+            Values={"2D","3D","Skeleton"},
+            Callback=function(v) _UM.HESP_FULL.Mode=v; _UM.HESP_FULL.refresh() end})
+        BT(HB,"UC_HFULL_BOX","  Box",true,function(v) _UM.HESP_FULL.Box=v end)
+        BT(HB,"UC_HFULL_FILL","  Fill",false,function(v) _UM.HESP_FULL.Fill=v end)
+        BT(HB,"UC_HFULL_SK","  Skeleton",false,function(v) _UM.HESP_FULL.Skeleton=v end)
+        BT(HB,"UC_HFULL_NAME","  Name",true,function(v) _UM.HESP_FULL.Name=v end)
+        BT(HB,"UC_HFULL_WPN","  Weapon",false,function(v) _UM.HESP_FULL.Weapon=v end)
+        BT(HB,"UC_HFULL_DIST","  Distance",false,function(v) _UM.HESP_FULL.Distance=v end)
+        BT(HB,"UC_HFULL_HP","  Healthbar",true,function(v) _UM.HESP_FULL.HealthBar=v end)
+        BT(HB,"UC_HFULL_DN","  Display Name",true,function(v) _UM.HESP_FULL.DisplayName=v end)
+        HB:AddSlider("UC_HFULL_MD",{Text="  Max Distance",Default=256,Min=10,Max=500,Rounding=0,
+            Callback=function(v) _UM.HESP_FULL.MaxDist=v end})
+        HB:AddDivider()
+        HB:AddLabel("── Harion Highlight ──")
+        BT(HB,"UC_HPAR","Harion Highlight",false,function(v)
+            if v then _UM.HPAR.enable() else _UM.HPAR.disable() end
+        end)
+        BT(HB,"UC_HPAR_HL","  Highlight On",true,function(v)
+            _UM.HPAR.Highlight=v; if _UM.HPAR.Enabled then _UM.HPAR.refresh() end
+        end)
+        BT(HB,"UC_HPAR_TW","  Through Walls",true,function(v)
+            _UM.HPAR.ThroughWalls=v; if _UM.HPAR.Enabled then _UM.HPAR.refresh() end
+        end)
+        BT(HB,"UC_HPAR_PLS","  Pulse",false,function(v) _UM.HPAR.Pulse=v end)
+        BT(HB,"UC_HPAR_TEAM","  Include Teammates",false,function(v)
+            _UM.HPAR.IncTeammates=v; if _UM.HPAR.Enabled then _UM.HPAR.refresh() end
+        end)
+        HB:AddDivider()
+        HB:AddLabel("── Particle & Aura ──")
+        BT(HB,"UC_HPAR_PAR","  Particle",false,function(v)
+            _UM.HPAR.Particle=v; if _UM.HPAR.Enabled then _UM.HPAR.refresh() end
+        end)
+        HB:AddDropdown("UC_HPAR_PTYP",{Text="  Particle Type",Default="orbs",
+            Values={"orbs","hearts","glowing","heavenly","triangles"},
+            Callback=function(v) _UM.HPAR.ParticleType=v; if _UM.HPAR.Enabled then _UM.HPAR.refresh() end end})
+        BT(HB,"UC_HPAR_AUR","  Aura",false,function(v)
+            _UM.HPAR.Aura=v; if _UM.HPAR.Enabled then _UM.HPAR.refresh() end
+        end)
+        HB:AddDropdown("UC_HPAR_ATYP",{Text="  Aura Type",Default="spiral",
+            Values={"zen","wire","mist","moon","void","wind","whirl","quake","angel","flame","sphere","aurora","bubble","spiral","ribbon","genesis","tornado","twilight","blackhole","celestial","starlight"},
+            Callback=function(v) _UM.HPAR.AuraType=v; if _UM.HPAR.Enabled then _UM.HPAR.refresh() end end})
     end)
 
     print("[UNCODE v1] Features wired OK")
