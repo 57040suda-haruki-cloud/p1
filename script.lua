@@ -4174,9 +4174,10 @@ end
 
 -- Rage (AutoShoot): 最近敵の真下に高速テレポート → UseItem攻撃 → 元の位置に戻る
 local AutoShoot = {}
-AutoShoot.Enabled     = false
-AutoShoot.Delay       = 0.18   -- 攻撃間隔(秒)
-AutoShoot.BelowOffset = 0      -- 敵HRPからのY方向オフセット(0=同位置, 負=真下)
+AutoShoot.Enabled        = false
+AutoShoot.Delay          = 0.18  -- ハイド: 攻撃サイクル間の待機時間(秒)
+AutoShoot.AttackDuration = 0     -- アタック: 敵位置に滞在する時間(秒, 0=即帰還)
+AutoShoot.BelowOffset    = 0     -- 敵HRPからのY方向オフセット(0=同位置, 負=真下)
 
 local _asFrames = 0
 local _asLock   = false  -- テレポート中フラグ (再入防止)
@@ -4225,11 +4226,19 @@ function AutoShoot.enable()
             remote:FireServer(objId, ss, cd, nil)
         end)
 
-        -- 4. 次フレームで元の位置に戻る
-        task.defer(function()
-            pcall(function() root.CFrame = origCF end)
-            _asLock = false
-        end)
+        -- 4. AttackDuration 後に元の位置に戻る (0=次フレーム即帰還)
+        local dur = AutoShoot.AttackDuration or 0
+        if dur > 0 then
+            task.delay(dur, function()
+                pcall(function() root.CFrame = origCF end)
+                _asLock = false
+            end)
+        else
+            task.defer(function()
+                pcall(function() root.CFrame = origCF end)
+                _asLock = false
+            end)
+        end
     end))
 end
 
@@ -5783,7 +5792,11 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         end
         if not B.combatKX then return end
         BT(B.combatKX,"UC_AimSmooth","Aim Smooth",   false,function(v) if v then E.AimSmooth.enable() else E.AimSmooth.disable() end end)
-        BT(B.combatKX,"UC_AutoShoot","Auto Shoot",   false,function(v) if v then E.AutoShoot.enable() else E.AutoShoot.disable() end end)
+        BT(B.combatKX,"UC_AutoShoot","Rage",false,function(v) if v then E.AutoShoot.enable() else E.AutoShoot.disable() end end)
+        B.combatKX:AddSlider("UC_AS_Hide",{Text="Hide (ms)",Default=180,Min=50,Max=2000,Rounding=0,
+            Callback=function(v) if E.AutoShoot then E.AutoShoot.Delay=v/1000 end end})
+        B.combatKX:AddSlider("UC_AS_Atk",{Text="Attack (ms)",Default=0,Min=0,Max=500,Rounding=0,
+            Callback=function(v) if E.AutoShoot then E.AutoShoot.AttackDuration=v/1000 end end})
         BT(B.combatKX,"UC_KA",       "Kill Aura",    false,function(v) if v then E.KA.enable()        else E.KA.disable()        end end)
         BT(B.combatKX,"UC_AP",       "Auto Parry",   false,function(v) if v then E.AP.enable()        else E.AP.disable()        end end)
         B.combatKX:AddDivider()
