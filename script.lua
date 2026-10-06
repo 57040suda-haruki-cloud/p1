@@ -1952,7 +1952,7 @@ task.wait()
 local function Notify(t,d) pcall(function() Library:Notify({Title="uncode",Description=t,Time=d or 3}) end) end
 
 local Tabs={}
-for _,nm in ipairs({"Combat","Void","Orbit","AntiAim","Riot","Visuals","Misc","Configs","Settings"}) do
+for _,nm in ipairs({"Combat","Void","Orbit","AntiAim","Riot","Visuals","Misc","Configs"}) do
     Tabs[nm]=Window:AddTab(nm)
 end
 
@@ -2283,29 +2283,14 @@ pcall(function()
     end)
 end)
 
+-- ThemeManager / SaveManager 初期化 (Settings タブ廃止)
 pcall(function()
-    local SL=Tabs.Settings:AddLeftGroupbox("Menu")
-    SL:AddLabel("Menu Toggle"):AddKeyPicker("MenuKey",{Default="RightShift",Text="Menu Key",Mode="Toggle",NoUI=false})
-    Library.ToggleKeybind=Options.MenuKey
-    SL:AddToggle("KeybindMenu",{Text="Keybind Menu",Default=false,Callback=function(v) pcall(function() if Library.KeybindFrame then Library.KeybindFrame.Visible=v end end) end})
-    SL:AddButton("Re-hook Remotes",function() hookRemotes(); Notify("Re-hooked",2) end)
-    SL:AddButton("Unload Script",function() Library:Unload() end)
-    local SR=Tabs.Settings:AddRightGroupbox("Info")
-    SR:AddLabel("uncode v4")
-    SR:AddLabel("AC: 4-layer bypass")
-    SR:AddLabel("Void: 18 modes + evade")
-    SR:AddLabel("Anti-Kicia v3 + Transcrait")
-    SR:AddLabel("Remote Hook projectile bypass")
-    SR:AddLabel("ItemLib ShootCooldown zeroed")
     if ThemeManager then
         ThemeManager:SetLibrary(Library); ThemeManager:SetFolder("uncode4")
-        pcall(function() ThemeManager:ApplyToTab(Tabs.Settings) end)
     end
     if SaveManager then
         SaveManager:SetLibrary(Library); SaveManager:IgnoreThemeSettings()
-        SaveManager:SetIgnoreIndexes({"MenuKey"}); SaveManager:SetFolder("uncode4/configs")
-        -- ConfigsタブにSaveManagerのセクションを追加（Settingsタブと統一）
-        pcall(function() SaveManager:BuildConfigSection(Tabs.Configs) end)
+        SaveManager:SetIgnoreIndexes({}); SaveManager:SetFolder("uncode4/configs")
         pcall(function() SaveManager:LoadAutoloadConfig() end)
     end
 end)
