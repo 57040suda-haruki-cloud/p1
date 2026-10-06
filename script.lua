@@ -1930,6 +1930,7 @@ local function setupMovement()
 end
 
 local cosHooked=false
+local _cosLib=nil -- cached CosmeticLibrary ref for manual equip
 local function hookCosmetics()
     if cosHooked then return end; cosHooked=true
     pcall(function()
@@ -1937,6 +1938,7 @@ local function hookCosmetics()
         local cl=require(m:WaitForChild("CosmeticLibrary",5))
         local dc=require(LP:WaitForChild("PlayerScripts",8):WaitForChild("Controllers",8):WaitForChild("PlayerDataController",5))
         if cl then
+            _cosLib = cl
             cl.OwnsCosmeticNormally=function() return true end
             cl.OwnsCosmeticUniversally=function() return true end
             cl.OwnsCosmeticForWeapon=function() return true end
@@ -1944,6 +1946,13 @@ local function hookCosmetics()
             cl.OwnsCosmetic=function(self,inv,nm,wep)
                 if type(nm)=="string" and nm:find("MISSING_") then return oc(self,inv,nm,wep) end
                 return true
+            end
+            -- Hook equip/select functions so clicking equip in-game actually works
+            for _,fname in ipairs({"EquipCosmetic","SelectCosmetic","ApplyCosmetic","SetCosmetic","EquipSkin"}) do
+                if type(cl[fname])=="function" then
+                    local orig=cl[fname]
+                    cl[fname]=function(self,...) pcall(orig,self,...); return true end
+                end
             end
         end
         if dc then
@@ -1954,6 +1963,59 @@ local function hookCosmetics()
             end
         end
     end)
+    -- Hook Remotes/Cosmetics equip remote if present
+    pcall(function()
+        local rs=cloneref(game:GetService("ReplicatedStorage"))
+        local rem=rs:FindFirstChild("Remotes")
+        if not rem then return end
+        for _,rname in ipairs({"EquipCosmetic","Equip","EquipSkin","SetSkin","SelectSkin"}) do
+            local r=rem:FindFirstChild(rname,true)
+            if r and (r:IsA("RemoteEvent") or r:IsA("RemoteFunction")) then
+                -- Log for debugging; actual fire happens via UI or forceEquip
+                break
+            end
+        end
+    end)
+end
+-- Force-equip a specific cosmetic by name via every available channel
+local function forceEquipCosmetic(cosName)
+    if not cosName or cosName=="" then return end
+    pcall(hookCosmetics)
+    -- Try CosmeticLibrary equip methods
+    if _cosLib then
+        for _,fname in ipairs({"EquipCosmetic","SelectCosmetic","ApplyCosmetic","SetCosmetic","EquipSkin"}) do
+            pcall(function() _cosLib[fname](_cosLib,cosName) end)
+        end
+    end
+    -- Try controllers
+    pcall(function()
+        local ctrl=require(LP:WaitForChild("PlayerScripts",5):WaitForChild("Controllers",5):WaitForChild("CosmeticController",3))
+        if ctrl then
+            for _,fname in ipairs({"EquipSkin","EquipCosmetic","SelectSkin","ApplySkin"}) do
+                pcall(function() ctrl[fname](ctrl,cosName) end)
+            end
+        end
+    end)
+    -- Try firing known equip remotes
+    pcall(function()
+        local rs=cloneref(game:GetService("ReplicatedStorage"))
+        local paths={
+            {"Remotes","Cosmetics","Equip"},
+            {"Remotes","EquipCosmetic"},
+            {"Remotes","Equip"},
+            {"Duels","EquipSkin"},
+            {"Remotes","SetSkin"},
+        }
+        for _,path in ipairs(paths) do
+            local r=rs
+            for _,seg in ipairs(path) do r=r and r:FindFirstChild(seg) end
+            if r then
+                if r:IsA("RemoteEvent") then pcall(function() r:FireServer(cosName) end)
+                elseif r:IsA("RemoteFunction") then pcall(function() r:InvokeServer(cosName) end) end
+            end
+        end
+    end)
+    Notify("Equip: "..cosName:sub(1,30),3)
 end
 
 local function fetch(path)
@@ -2040,7 +2102,7 @@ task.wait()
 local function Notify(t,d) pcall(function() Library:Notify(t, d or 3) end) end
 
 local Tabs={}
-for _,nm in ipairs({"Combat","Void","Orbit","AntiAim","Riot","Visuals","Misc","Configs"}) do
+for _,nm in ipairs({"Combat","HVH","World","Visuals","Misc","Config"}) do
     Tabs[nm]=Window:AddTab(nm)
 end
 
@@ -2052,7 +2114,7 @@ end
 local _ucBoxes = {}  
 
 pcall(function()
-    local CL=Tabs.Combat:AddLeftGroupbox("Ragebot / HVH")
+    local CL=Tabs.HVH:AddLeftGroupbox("Ragebot / HVH")
     BT(CL,"RB_On","Ragebot Enabled",false)
     CL:AddDropdown("RB_Prio",{Text="Priority",Default="Closest",Values={"Closest","Low HP","FOV"}})
     CL:AddDropdown("RB_Weapon",{Text="Weapon",Default="Sword",Values={"Sword","Revolver","Katana","Knife","Fist","Hammer"}})
@@ -2062,7 +2124,7 @@ pcall(function()
     BT(CL,"RB_Burst","Multi-Angle Burst (4x)",true)
     CL:AddDropdown("RB_BurstN",{Text="Burst Count",Default="4x",Values={"2x","3x","4x","6x","8x"}})
 
-    local CR=Tabs.Combat:AddRightGroupbox("Resolver / Backtrack")
+    local CR=Tabs.HVH:AddRightGroupbox("Resolver / Backtrack")
     BT(CR,"Resolver_On","Resolver (Anti-Kicia/Transcrait)",true)
     CR:AddLabel("12-angle . hit-bias learning")
     BT(CR,"BT_On","Backtrack",false)
@@ -2127,7 +2189,7 @@ end)
 
 pcall(function()
     local VOID_MODES={"Quantum","Chaos","Drift","Still","Circle","Figure8","WideSweep","FastBounce","Blink","GridHop","HeightWave","SquareLoop","CrossSweep","Stairs","NoiseCloud","Spiral","Loop","SlowDrift"}
-    local VL=Tabs.Void:AddLeftGroupbox("Void Control")
+    local VL=Tabs.HVH:AddLeftGroupbox("Void Control")
     BT(VL,"Void_On","Enable Void",false,function(v) VCFG.enabled=v; if v then startVoid() else stopVoid() end end)
     VL:AddDropdown("VoidMode",{Text="Mode",Default="Quantum",Values=VOID_MODES,Callback=function(v) VCFG.method=v; vElapsed=0 end})
     VL:AddSlider("VoidSpeed",{Text="Speed (x109 B/s)",Default=1,Min=1,Max=500,Rounding=0,Callback=function(v) VCFG.speed=v*1e9 end})
@@ -2136,7 +2198,7 @@ pcall(function()
     VL:AddSlider("VoidChaos",{Text="Chaos Factor %",Default=98,Min=1,Max=100,Rounding=0,Callback=function(v) VCFG.chaos=v*0.01 end})
     VL:AddButton({Text="Reset Pattern",Func=function() vElapsed=0; vX=math.random(-1e8,1e8); vZ=math.random(-1e8,1e8); vYOff=0; Notify("Pattern reset",2) end})
 
-    local VR=Tabs.Void:AddRightGroupbox("Evasion & Godmode")
+    local VR=Tabs.HVH:AddRightGroupbox("Evasion & Godmode")
     BT(VR,"VoidEvade","Void Evasion",true,function(v) VCFG.evade=v end)
     VR:AddSlider("VoidEvR",{Text="Evade Radius (x109)",Default=8,Min=1,Max=500,Rounding=0,Callback=function(v) VCFG.evadeR=v*1e9 end})
     VR:AddSlider("VoidEvS",{Text="Evade Speed (x109)",Default=6,Min=1,Max=500,Rounding=0,Callback=function(v) VCFG.evadeS=v*1e9 end})
@@ -2154,14 +2216,14 @@ end)
 task.wait() 
 
 pcall(function()
-    local OL=Tabs.Orbit:AddLeftGroupbox("Orbit"); _ucBoxes.orbitLeft=OL
+    local OL=Tabs.HVH:AddLeftGroupbox("Orbit"); _ucBoxes.orbitLeft=OL
     BT(OL,"Orbit_On","Enable Orbit",false,function(v) OCFG.enabled=v; if v then startOrbit() else stopOrbit() end end)
     OL:AddDropdown("OrbitMode",{Text="Mode",Default="Circle",Values={"Circle","Figure8","SpiralIn","SpiralOut","Bounce"},Callback=function(v) OCFG.mode=v; oCurR=OCFG.dist end})
     OL:AddSlider("OrbitSpeed",{Text="Speed (deg/s)",Default=90,Min=5,Max=720,Rounding=0,Callback=function(v) OCFG.speed=v end})
     OL:AddSlider("OrbitDist",{Text="Radius",Default=8,Min=1,Max=200,Rounding=0,Callback=function(v) OCFG.dist=v; oCurR=v end})
     OL:AddSlider("OrbitHeight",{Text="Height Offset",Default=0,Min=-50,Max=50,Rounding=0,Callback=function(v) OCFG.height=v end})
     OL:AddSlider("OrbitLerp",{Text="Smoothing",Default=30,Min=1,Max=100,Rounding=0,Callback=function(v) OCFG.lerp=v/100 end})
-    local OR=Tabs.Orbit:AddRightGroupbox("Advanced")
+    local OR=Tabs.HVH:AddRightGroupbox("Advanced")
     BT(OR,"OrbitFace","Face Target",true,function(v) OCFG.faceTarget=v end)
     BT(OR,"OrbitPred","Prediction",false,function(v) OCFG.predict=v end)
     OR:AddSlider("OrbitPredStr",{Text="Pred Strength %",Default=20,Min=0,Max=100,Rounding=0,Callback=function(v) OCFG.predStr=v/100 end})
@@ -2170,7 +2232,7 @@ end)
 task.wait() 
 
 pcall(function()
-    local AL=Tabs.AntiAim:AddLeftGroupbox("Anti-Aim"); _ucBoxes.aaLeft=AL
+    local AL=Tabs.HVH:AddLeftGroupbox("Anti-Aim"); _ucBoxes.aaLeft=AL
     BT(AL,"AA_On","Enable Anti-Aim",false,function(v) ACFG.enabled=v; if v then startAntiAim() else stopAntiAim() end end)
     AL:AddDropdown("AA_Mode",{Text="Mode",Default="Spin",Values={"Spin","Jitter","Static"},Callback=function(v) ACFG.mode=v end})
     AL:AddSlider("AA_Speed",{Text="Speed (deg/s)",Default=5000,Min=100,Max=5000,Rounding=0,Callback=function(v) ACFG.speed=v end})
@@ -2178,7 +2240,7 @@ pcall(function()
     BT(AL,"AA_Rand","Randomize Speed",true,function(v) ACFG.randSpeed=v end)
     BT(AL,"AA_JitPitch","Jitter Pitch (2D)",true,function(v) ACFG.jitterPitch=v end)
 
-    local AR=Tabs.AntiAim:AddRightGroupbox("Prediction Dodge")
+    local AR=Tabs.HVH:AddRightGroupbox("Prediction Dodge")
     BT(AR,"Dodge_On","Enable Dodge",false,function(v) DCFG.enabled=v; if v then startDodge() else stopDodge() end end)
     AR:AddSlider("Dodge_R",{Text="Danger Radius",Default=20,Min=5,Max=100,Rounding=0,Callback=function(v) DCFG.radius=v end})
     AR:AddSlider("Dodge_D",{Text="Dodge Distance",Default=30,Min=5,Max=150,Rounding=0,Callback=function(v) DCFG.dist=v end})
@@ -2189,13 +2251,13 @@ end)
 task.wait() 
 
 pcall(function()
-    local GL=Tabs.Riot:AddLeftGroupbox("Riot - Erratic + Spin")
+    local GL=Tabs.HVH:AddLeftGroupbox("Riot - Erratic + Spin")
     BT(GL,"Riot_On","Enable Riot",false,function(v) RCFG.enabled=v; if v then startRiot() else stopRiot() end end)
     GL:AddSlider("Riot_Speed",{Text="Interval (s)",Default=0.03,Min=0.01,Max=0.5,Rounding=2,Callback=function(v) RCFG.speed=v end})
     GL:AddSlider("Riot_Range",{Text="Jump Range",Default=50,Min=10,Max=200,Rounding=0,Callback=function(v) RCFG.range=v end})
     GL:AddSlider("Riot_EvR",{Text="Evade Trigger",Default=30,Min=0,Max=100,Rounding=0,Callback=function(v) RCFG.evadeRange=v end})
     GL:AddSlider("Riot_Spin",{Text="Spin Speed (deg/s)",Default=180,Min=0,Max=720,Rounding=0,Callback=function(v) RCFG.spinSpeed=v end})
-    local GR=Tabs.Riot:AddRightGroupbox("Riot Abuse 3D")
+    local GR=Tabs.HVH:AddRightGroupbox("Riot Abuse 3D")
     BT(GR,"RAbuse_On","Enable Riot Abuse",false,function(v) RABCFG.enabled=v; if v then startRiotAbuse() else stopRiotAbuse() end end)
     GR:AddDropdown("RAbuse_Mode",{Text="Mode",Default="Stick",Values={"Stick","Bounce"},Callback=function(v) RABCFG.mode=v end})
     GR:AddSlider("RAbuse_H",{Text="Height Offset",Default=3,Min=-50,Max=50,Rounding=1,Callback=function(v) RABCFG.height=v end})
@@ -2203,7 +2265,13 @@ pcall(function()
     GR:AddSlider("RAbuse_R",{Text="Right Offset",Default=0,Min=-50,Max=50,Rounding=1,Callback=function(v) RABCFG.right=v end})
     GR:AddSlider("RAbuse_D",{Text="Down Offset",Default=0,Min=0,Max=50,Rounding=1,Callback=function(v) RABCFG.down=v end})
 end)
-task.wait() 
+task.wait()
+
+pcall(function()
+    local RL=Tabs.HVH:AddLeftGroupbox("RAGE"); _ucBoxes.hvhRage=RL
+    RL:AddLabel("Void Movement / Spin / Desync")
+end)
+task.wait()
 
 pcall(function()
     local SL=Tabs.Visuals:AddLeftGroupbox("ESP"); _ucBoxes.visLeft=SL
@@ -2212,7 +2280,7 @@ pcall(function()
     BT(SL,"ESP_HP","Show Health",true)
     BT(SL,"ESP_Dist","Show Distance",true)
 
-    local SR=Tabs.Visuals:AddRightGroupbox("World / Shaders"); _ucBoxes.visRight=SR
+    local SR=Tabs.World:AddLeftGroupbox("World / Shaders"); _ucBoxes.visRight=SR
     BT(SR,"Fullbright","Full Bright",false)
     BT(SR,"NoFog","No Fog",true,function(v) Lighting.FogEnd=v and 100000 or (origLighting and origLighting.FogEnd or 1000); Lighting.FogStart=v and 100000 or 0 end)
     BT(SR,"NoShadows","No Shadows",false,function(v) Lighting.GlobalShadows=not v end)
@@ -2264,6 +2332,15 @@ pcall(function()
 
     local MR=Tabs.Misc:AddRightGroupbox("Spoof / Cosmetics"); _ucBoxes.miscRight=MR
     BT(MR,"UnlockAll","Unlock All Skins",false,function(v) if v then hookCosmetics() end end)
+    MR:AddInput("SkinName",{Text="Skin Name",Default="",Placeholder="e.g. Rival_Default",ClearTextOnFocus=false})
+    MR:AddButton({Text="Force Equip Skin",Func=function()
+        local n=Options.SkinName and Options.SkinName.Value or ""
+        if n=="" then Notify("Enter skin name",2); return end
+        task.spawn(forceEquipCosmetic,n)
+    end})
+    MR:AddButton({Text="Re-hook Cosmetics",Func=function()
+        cosHooked=false; _cosLib=nil; task.spawn(hookCosmetics); Notify("Re-hooked",2)
+    end})
     MR:AddDivider()
     MR:AddLabel("Name Spoofer")
     BT(MR,"NS_On","Enable Name Spoof",false,function(v) NSCFG.enabled=v; if v then startNameSpoof() end end)
@@ -2312,7 +2389,7 @@ pcall(function()
         Notify("Preset: "..name,3)
     end
 
-    local CL=Tabs.Configs:AddLeftGroupbox("Community Presets")
+    local CL=Tabs.Config:AddLeftGroupbox("Community Presets")
     CL:AddDropdown("PresetSel",{Text="Preset",Default="Anti-Kicia v3",Values={"Anti-Kicia v3","Anti-Transcrait","Rage Max","Balanced HVH","Safe / Legit","Orbit Spam","Full Defense","Speed Rush"}})
     CL:AddButton({Text="> Apply Preset",Func=function() applyPreset(Options.PresetSel and Options.PresetSel.Value or "Anti-Kicia v3") end})
     CL:AddLabel("Anti-Kicia v3: Resolver+BT+Evade+God")
@@ -2321,7 +2398,7 @@ pcall(function()
     CL:AddLabel("Balanced: KX+Jitter+Quantum")
     CL:AddLabel("Safe: KX only")
 
-    local CR=Tabs.Configs:AddRightGroupbox("Custom Configs")
+    local CR=Tabs.Config:AddRightGroupbox("Custom Configs")
     CR:AddInput("CfgName",{Text="Config Name",Default="",Placeholder="my_cfg",ClearTextOnFocus=false})
     CR:AddButton({Text="Save",Func=function()
         local n=Options.CfgName and Options.CfgName.Value or ""
@@ -2947,7 +3024,7 @@ pcall(function()
     VM2:AddSlider("RVVM_ArmTr",  {Text="Arm Transp %",     Default=32,  Min=0,Max=100,Rounding=0, Callback=function(v) RV.Viewmodel.ArmTrans=v end})
     VM2:AddToggle("RVVM_NoClth", {Text="Remove Clothes",   Default=false, Callback=function(v) RV.Viewmodel.ArmNoClothes=v end})
 
-    local WR2 = VT:AddRightGroupbox("World (Advanced)")
+    local WR2 = Tabs.World:AddRightGroupbox("World (Advanced)")
     WR2:AddToggle("RVCC_On",    {Text="Color Correction",  Default=false, Callback=function(v) RV.CC.Enabled=v; pcall(RVApplyWorld) end})
     WR2:AddSlider("RVCC_Sat",   {Text="Saturation",   Default=0.1, Min=-1,Max=1,  Rounding=2, Callback=function(v) RV.CC.Saturation=v; pcall(RVApplyWorld) end})
     WR2:AddSlider("RVCC_Cont",  {Text="Contrast",     Default=0,   Min=-1,Max=1,  Rounding=2, Callback=function(v) RV.CC.Contrast=v;   pcall(RVApplyWorld) end})
@@ -2960,7 +3037,7 @@ pcall(function()
     WR2:AddButton({Text="Apply World Settings",Func=function() pcall(RVApplyWorld); Notify("World applied",2) end})
     WR2:AddButton({Text="Restore World",Func=function() pcall(RVRestoreWorld); Notify("World restored",2) end})
 
-    local UK2 = VT:AddRightGroupbox("Unlock All (NOKS)")
+    local UK2 = Tabs.World:AddLeftGroupbox("Unlock All (NOKS)")
     UK2:AddToggle("RVUL_On",    {Text="Unlock All Skins/Charms/Wraps", Default=false, Callback=function(v) unlockActive=v; if v then task.spawn(doUnlockAll) end end})
     UK2:AddLabel("Includes: Skins / Charms / Wraps / Dances")
     UK2:AddLabel("Excludes: Finishers (crash guard)")
@@ -7725,89 +7802,88 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
     -- [uncode] RAGE UI (Void Movement / Spin / Desync)
     -- ============================================================
     pcall(function()
-        if not B.miscLeft then return end
-        B.miscLeft:AddDivider()
-        B.miscLeft:AddLabel("── RAGE ──")
+        if not B.hvhRage then return end
+        local _RB = B.hvhRage
 
         -- Void Movement toggle + mode dropdown + pattern dropdown
-        BT(B.miscLeft,"UC_RAGE_VOID","Void Movement",false,function(v)
+        BT(_RB,"UC_RAGE_VOID","Void Movement",false,function(v)
             if RAGE then
                 RAGE.VoidEnabled = v
                 if v then RAGE.startVoid() else RAGE.stopVoid() end
             end
         end)
-        B.miscLeft:AddDropdown("UC_RAGE_VMODE",{
+        _RB:AddDropdown("UC_RAGE_VMODE",{
             Text="  Void Mode", Default="VOID_SPAM",
             Values={"VOID_SPAM","VOID_HIDE","RANDOM","FORWARD","CAMERA"},
             Callback=function(v) if RAGE then RAGE.VoidMode=v end end})
-        B.miscLeft:AddDropdown("UC_RAGE_VPAT",{
+        _RB:AddDropdown("UC_RAGE_VPAT",{
             Text="  Void Pattern", Default="Random Far",
             Values={"Random Far","Still Point","Slow Drift","Circle","Figure Eight","Wide Sweep","Fast Bounce","Noise Cloud"},
             Callback=function(v) if RAGE then RAGE.VoidPattern=v end end})
-        B.miscLeft:AddSlider("UC_RAGE_VDIST",{
+        _RB:AddSlider("UC_RAGE_VDIST",{
             Text="  Void Distance", Default=500, Min=100, Max=5000, Rounding=0,
             Callback=function(v) if RAGE then RAGE.Distance=v end end})
-        B.miscLeft:AddSlider("UC_RAGE_VITV",{
+        _RB:AddSlider("UC_RAGE_VITV",{
             Text="  Void Interval (ms)", Default=35, Min=10, Max=200, Rounding=0,
             Callback=function(v) if RAGE then RAGE.Interval=v/1000 end end})
-        B.miscLeft:AddSlider("UC_RAGE_VJIT",{
+        _RB:AddSlider("UC_RAGE_VJIT",{
             Text="  Void Jitter", Default=14, Min=0, Max=100, Rounding=0,
             Callback=function(v) if RAGE then RAGE.Jitter=v end end})
 
-        B.miscLeft:AddDivider()
+        _RB:AddDivider()
         -- Spin Motion
-        BT(B.miscLeft,"UC_RAGE_SPIN","Spin Motion",false,function(v)
+        BT(_RB,"UC_RAGE_SPIN","Spin Motion",false,function(v)
             if RAGE then
                 RAGE.SpinEnabled = v
                 if v then RAGE.startSpin() else RAGE.stopSpin() end
             end
         end)
-        B.miscLeft:AddSlider("UC_RAGE_SPD",{
+        _RB:AddSlider("UC_RAGE_SPD",{
             Text="  Spin Speed", Default=720, Min=60, Max=3600, Rounding=0,
             Callback=function(v) if RAGE then RAGE.SpinSpeed=v end end})
-        B.miscLeft:AddSlider("UC_RAGE_SXJIT",{
+        _RB:AddSlider("UC_RAGE_SXJIT",{
             Text="  Spin XZ Jitter", Default=30, Min=0, Max=200, Rounding=0,
             Callback=function(v) if RAGE then RAGE.SpinXJitter=v end end})
-        B.miscLeft:AddSlider("UC_RAGE_SYJIT",{
+        _RB:AddSlider("UC_RAGE_SYJIT",{
             Text="  Spin Y Jitter", Default=8, Min=0, Max=80, Rounding=0,
             Callback=function(v) if RAGE then RAGE.SpinYJitter=v end end})
-        B.miscLeft:AddSlider("UC_RAGE_SDIST",{
+        _RB:AddSlider("UC_RAGE_SDIST",{
             Text="  Spin Spread", Default=300, Min=0, Max=2000, Rounding=0,
             Callback=function(v) if RAGE then RAGE.SpinDist=v end end})
 
-        B.miscLeft:AddDivider()
+        _RB:AddDivider()
         -- Velocity Pulse
-        BT(B.miscLeft,"UC_RAGE_VPULSE","Velocity Pulse",false,function(v)
+        BT(_RB,"UC_RAGE_VPULSE","Velocity Pulse",false,function(v)
             if RAGE then
                 RAGE.VPulse = v
                 if v then RAGE.startVPulse() else RAGE.stopVPulse() end
             end
         end)
 
-        B.miscLeft:AddDivider()
+        _RB:AddDivider()
         -- Desync
-        BT(B.miscLeft,"UC_RAGE_ODES","Offset Desync",false,function(v)
+        BT(_RB,"UC_RAGE_ODES","Offset Desync",false,function(v)
             if RAGE then
                 RAGE.OffsetDesync = v
                 if v then RAGE.startDesync() else if not RAGE.BurstDesync and not RAGE.AnchorStutter then RAGE.stopDesync() end end
             end
         end)
-        BT(B.miscLeft,"UC_RAGE_BDES","Burst Desync",false,function(v)
+        BT(_RB,"UC_RAGE_BDES","Burst Desync",false,function(v)
             if RAGE then
                 RAGE.BurstDesync = v
                 if v then RAGE.startDesync() else if not RAGE.OffsetDesync and not RAGE.AnchorStutter then RAGE.stopDesync() end end
             end
         end)
-        BT(B.miscLeft,"UC_RAGE_ANCH","Anchor Stutter",false,function(v)
+        BT(_RB,"UC_RAGE_ANCH","Anchor Stutter",false,function(v)
             if RAGE then
                 RAGE.AnchorStutter = v
                 if v then RAGE.startDesync() else if not RAGE.OffsetDesync and not RAGE.BurstDesync then RAGE.stopDesync() end end
             end
         end)
-        B.miscLeft:AddSlider("UC_RAGE_DOFF",{
+        _RB:AddSlider("UC_RAGE_DOFF",{
             Text="  Desync Offset", Default=40, Min=5, Max=200, Rounding=0,
             Callback=function(v) if RAGE then RAGE.DesyncOffset=v end end})
-        B.miscLeft:AddSlider("UC_RAGE_BPWR",{
+        _RB:AddSlider("UC_RAGE_BPWR",{
             Text="  Burst Power", Default=1500, Min=100, Max=5000, Rounding=0,
             Callback=function(v) if RAGE then RAGE.BurstPower=v end end})
     end)
