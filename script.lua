@@ -437,10 +437,49 @@ function CS.setMessages(list) CS.Messages=list or CS.Messages; CS.MsgIdx=0 end
 _UM.CS=CS
 end -- CS
 
-do -- [uncode] Auto Queue: マッチメイキングに自動再キュー
-local AQ={}; AQ.Enabled=false; AQ.Mode="1v1"; AQ.Interval=6.0
-local function _aqQueue()
+do -- [uncode] Auto Queue v2: ハブ→Duelsエリア→キュー自動化
+local AQ={}; AQ.Enabled=false; AQ.Mode="1v1"; AQ.Interval=5.0
+
+-- ハブの「To Duels」ボタンをGUI検索してクリック
+local function _aqClickToDuels()
     pcall(function()
+        local pg = LP:FindFirstChildOfClass("PlayerGui")
+        if not pg then return end
+        for _, v in ipairs(pg:GetDescendants()) do
+            if v:IsA("TextButton") or v:IsA("ImageButton") then
+                local t = (v.Name .. (v:IsA("TextButton") and v.Text or "")):lower()
+                if t:find("duel") or t:find("fight") or t:find("battle") then
+                    v.MouseButton1Click:Fire()
+                end
+            end
+        end
+    end)
+end
+
+-- ProximityPrompt / ClickDetector 経由でDuelsエリアに入る
+local function _aqClickDetector()
+    pcall(function()
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("ClickDetector") then
+                local pn = (v.Parent and v.Parent.Name or ""):lower()
+                if pn:find("duel") or pn:find("portal") or pn:find("enter") then
+                    fireclickdetector(v)
+                end
+            end
+            if v:IsA("ProximityPrompt") then
+                local pn = (v.ActionText .. v.ObjectText):lower()
+                if pn:find("duel") or pn:find("fight") then
+                    fireproximityprompt(v)
+                end
+            end
+        end
+    end)
+end
+
+-- Matchmaking Remoteでキュー参加
+local function _aqJoinRemote()
+    pcall(function()
+        -- 方法1: MatchmakingController経由
         local ok,ctrl=pcall(function()
             local ps=LP:FindFirstChild("PlayerScripts")
             local c=ps and ps:FindFirstChild("Controllers",true)
@@ -448,11 +487,25 @@ local function _aqQueue()
             return mc and require(mc) or nil
         end)
         if ok and ctrl and ctrl.QueueInto then ctrl:QueueInto(AQ.Mode);return end
+        -- 方法2: Remote直接
         local r=RS:FindFirstChild("Remotes"); if not r then return end
         local mm=r:FindFirstChild("Matchmaking"); if not mm then return end
-        local jq=mm:FindFirstChild("JoinQueue"); if jq then jq:InvokeServer(AQ.Mode) end
+        local jq=mm:FindFirstChild("JoinQueue")
+        if jq then
+            if jq:IsA("RemoteFunction") then jq:InvokeServer(AQ.Mode)
+            else jq:FireServer(AQ.Mode) end
+        end
     end)
 end
+
+local function _aqQueue()
+    _aqClickToDuels()     -- GUIのTo Duelsボタンを押す
+    task.wait(0.3)
+    _aqClickDetector()    -- ClickDetector/ProximityPromptも試す
+    task.wait(0.3)
+    _aqJoinRemote()       -- キュー参加Remote
+end
+
 function AQ.enable()
     AQ.Enabled=true
     task.spawn(function() while AQ.Enabled do _aqQueue(); task.wait(AQ.Interval) end end)
@@ -462,7 +515,11 @@ function AQ.disable()
     pcall(function()
         local r=RS:FindFirstChild("Remotes"); if not r then return end
         local mm=r:FindFirstChild("Matchmaking"); if not mm then return end
-        local lq=mm:FindFirstChild("LeaveQueue"); if lq then lq:FireServer() end
+        local lq=mm:FindFirstChild("LeaveQueue")
+        if lq then
+            if lq:IsA("RemoteFunction") then lq:InvokeServer()
+            else lq:FireServer() end
+        end
     end)
 end
 _UM.AQ=AQ
