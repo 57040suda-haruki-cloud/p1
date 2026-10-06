@@ -1007,11 +1007,16 @@ end
 _UM.WFOV=WFOV
 end -- WFOV
 
-do -- [uncode] Weapon Picker v3: Heartbeat 常時ループ方式
--- v2 の問題: task.spawn ループはタイミング次第で武器選択フェーズと合わない
--- v3 の解決: RunService.Heartbeat を永続ループとして使い、
---   キャラクター不在中 (=選択フェーズ) は毎 0.08s に FireServer を連打する。
---   イベントのタイミングに依存せず、選択ウィンドウが開いている間を確実にカバーする。
+do -- [uncode] Weapon Picker v4
+-- v3 の残課題:
+--   ① キャラクター存在中の間隔が 2s → Rivals の武器選択は CharacterRemoving 前
+--      (ロビー/マッチ開始直前) に表示されるため 2s では遅すぎる
+--   ② RemoteEvent のみ対応 → PickWeapons が RemoteFunction の場合に全て空振り
+--   ③ PlayerGui への選択 UI 出現を未検知
+-- v4 の修正:
+--   ① キャラクター存在中も 0.3s 間隔 (選択ウィンドウ ~15s で約 50 回カバー)
+--   ② RemoteEvent (FireServer) ＋ RemoteFunction (InvokeServer) 両対応
+--   ③ PlayerGui.ChildAdded で選択 UI 出現を直接検知して即 fire
 local WPK = {}
 WPK.Enabled = false
 WPK.Slot1   = "Assault Rifle"
@@ -1030,26 +1035,29 @@ local function _wpkClearConns()
 end
 local function _wpkTrack(c) _wpkConns[#_wpkConns+1] = c end
 
--- PickWeapons リモート取得 (パス変更対応: 既知パス → 全探索)
+-- PickWeapons リモート取得
+-- RemoteEvent / RemoteFunction どちらでも返す。3 段階探索。
 local function _wpkGetRemote()
     if _wpkRemote and _wpkRemote.Parent then return _wpkRemote end
     pcall(function()
         local rs  = cloneref(game:GetService("ReplicatedStorage"))
         local rem = rs:FindFirstChild("Remotes"); if not rem then return end
-        -- 1) 既知パス
+        -- 1) 既知パス (RemoteEvent または RemoteFunction)
         local r = rem:FindFirstChild("Replication")
         r = r and r:FindFirstChild("Fighter")
         r = r and r:FindFirstChild("PickWeapons")
         if r then _wpkRemote = r; return end
         -- 2) Remotes 以下を全探索
         for _, v in ipairs(rem:GetDescendants()) do
-            if v:IsA("RemoteEvent") and v.Name == "PickWeapons" then
+            if v.Name == "PickWeapons" and
+               (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) then
                 _wpkRemote = v; return
             end
         end
-        -- 3) ReplicatedStorage 全体を探索
+        -- 3) ReplicatedStorage 全体
         for _, v in ipairs(rs:GetDescendants()) do
-            if v:IsA("RemoteEvent") and v.Name == "PickWeapons" then
+            if v.Name == "PickWeapons" and
+               (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) then
                 _wpkRemote = v; return
             end
         end
@@ -1057,21 +1065,27 @@ local function _wpkGetRemote()
     return _wpkRemote
 end
 
--- 実際の FireServer
+-- RemoteEvent → FireServer / RemoteFunction → InvokeServer 自動判別
 local function _wpkFire()
     pcall(function()
         local r = _wpkGetRemote(); if not r then return end
-        r:FireServer({WPK.Slot1, WPK.Slot2, WPK.Slot3, WPK.Slot4})
+        local slots = {WPK.Slot1, WPK.Slot2, WPK.Slot3, WPK.Slot4}
+        if r:IsA("RemoteFunction") then
+            r:InvokeServer(slots)
+        else
+            r:FireServer(slots)
+        end
     end)
 end
 
--- hookfunction: ゲームUIから選択した場合もすり替え
+-- hookfunction: UI から選択した場合もすり替え (対応環境のみ)
 local function _wpkHook()
     if _wpkHooked or not hookfunction or not newcclosure then return end
     local r = _wpkGetRemote(); if not r then return end
     pcall(function()
+        local target = r:IsA("RemoteFunction") and r.InvokeServer or r.FireServer
         local orig
-        orig = hookfunction(r.FireServer, newcclosure(function(self, slots, ...)
+        orig = hookfunction(target, newcclosure(function(self, slots, ...)
             if WPK.Enabled and type(slots) == "table" then
                 slots = {WPK.Slot1, WPK.Slot2, WPK.Slot3, WPK.Slot4}
             end
@@ -1083,7 +1097,7 @@ end
 
 function WPK.pickOnce() pcall(_wpkFire) end
 
--- 武器リスト構築 (StarterPlayer から取得、失敗時はデフォルト)
+-- 武器リスト構築
 local function _wpkBuildList()
     pcall(function()
         local sp = cloneref(game:GetService("StarterPlayer"))
@@ -1119,31 +1133,26 @@ function WPK.enable()
     local RN  = cloneref(game:GetService("RunService"))
 
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- ① メイン: Heartbeat 常時ループ
-    --    キャラクター不在 (武器選択フェーズ) → 0.08s ごとに連打
-    --    キャラクター存在 (通常プレイ中)     → 2s ごとに送る (念のため)
+    -- ① Heartbeat 常時ループ
+    --    キャラクター不在: 0.08s / キャラクター存在: 0.3s
+    --    (Rivals の選択 UI はキャラ削除前に出るため 0.3s 必須)
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     local _hbAcc = 0
     _wpkTrack(RN.Heartbeat:Connect(function(dt)
         if not WPK.Enabled then return end
         _hbAcc = _hbAcc + dt
-        local interval = LP.Character and 2.0 or 0.08
+        local interval = LP.Character and 0.3 or 0.08
         if _hbAcc < interval then return end
         _hbAcc = 0
         _wpkFire()
     end))
 
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- ② CharacterRemoving: 即座にタイマーリセット → 次フレームで fire
+    -- ② CharacterRemoving → CharacterAdded: タイマーリセット + バースト
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     _wpkTrack(LP.CharacterRemoving:Connect(function()
-        _hbAcc = 999  -- 即座に次フレームで fire させる
+        _hbAcc = 999
     end))
-
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- ③ CharacterAdded: スポーン直後に 10 回バースト (0.15s 間隔)
-    --    スポーン後にも武器が決まっていない場合があるため
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     _wpkTrack(LP.CharacterAdded:Connect(function()
         if not WPK.Enabled then return end
         task.spawn(function()
@@ -1155,10 +1164,30 @@ function WPK.enable()
     end))
 
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- ④ サーバー通知監視: match/round/start/select 系リモートを検知したら即 fire
+    -- ③ PlayerGui.ChildAdded: 武器選択 UI の出現を直接検知
+    --    新しい ScreenGui が追加されたとき = 選択画面が開いた可能性が高い
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     pcall(function()
-        local rs  = cloneref(game:GetService("ReplicatedStorage"))
+        local pg = LP:FindFirstChild("PlayerGui"); if not pg then return end
+        _wpkTrack(pg.ChildAdded:Connect(function(child)
+            if not WPK.Enabled then return end
+            if not child:IsA("ScreenGui") then return end
+            -- 即 fire + 2s 間バースト
+            _hbAcc = 999
+            task.spawn(function()
+                local t = 0
+                while WPK.Enabled and t < 2 do
+                    _wpkFire(); task.wait(0.1); t = t + 0.1
+                end
+            end)
+        end))
+    end)
+
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- ④ RS のサーバー通知リモート監視
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    pcall(function()
+        local rs = cloneref(game:GetService("ReplicatedStorage"))
         for _, v in ipairs(rs:GetDescendants()) do
             if v:IsA("RemoteEvent") then
                 local n = v.Name:lower()
@@ -1172,7 +1201,7 @@ function WPK.enable()
         end
     end)
 
-    -- 初回: すでに選択画面の場合に即 fire
+    -- 初回即 fire
     _wpkFire()
 end
 
