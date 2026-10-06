@@ -5756,6 +5756,310 @@ return {
     _UM.IJMP = IJMP
     end
 
+    do -- [uncode] Auto Ban v1 (Harion互換: Duels.Vote:FireServer(weapon))
+    local AUBA = {}
+    AUBA.Enabled = false; AUBA.Slot1 = "None"; AUBA.Slot2 = "None"; AUBA.Delay = 1.0
+    local _aubaLoop = false; local _aubaRemote = nil
+    local function _aubaGetRemote()
+        if _aubaRemote and _aubaRemote.Parent then return _aubaRemote end
+        pcall(function()
+            local rs = cloneref(game:GetService("ReplicatedStorage"))
+            local r = rs:FindFirstChild("Remotes")
+            r = r and r:FindFirstChild("Duels")
+            r = r and r:FindFirstChild("Vote")
+            if r then _aubaRemote = r end
+        end)
+        return _aubaRemote
+    end
+    local function _aubaFire(name)
+        if not name or name == "None" or name == "" then return end
+        pcall(function() local r = _aubaGetRemote(); if r then r:FireServer(name) end end)
+    end
+    function AUBA.enable()
+        AUBA.Enabled = true
+        if not _aubaLoop then
+            _aubaLoop = true
+            task.spawn(function()
+                while AUBA.Enabled do
+                    _aubaFire(AUBA.Slot1)
+                    task.wait(math.max(AUBA.Delay * 0.5, 0.1))
+                    if not AUBA.Enabled then break end
+                    _aubaFire(AUBA.Slot2)
+                    task.wait(math.max(AUBA.Delay * 0.5, 0.1))
+                end
+                _aubaLoop = false
+            end)
+        end
+    end
+    function AUBA.disable() AUBA.Enabled = false end
+    _UM.AUBA = AUBA
+    end -- AUBA
+
+    do -- [uncode] Auto Respawn v1 (Harion互換: Duels.RespawnNow:FireServer())
+    local ARSP = {}
+    ARSP.Enabled = false
+    local _arspConns = {}
+    local function _arspClear()
+        for _, c in ipairs(_arspConns) do pcall(function() c:Disconnect() end) end
+        _arspConns = {}
+    end
+    local function _arspGetRemote()
+        local rs = cloneref(game:GetService("ReplicatedStorage"))
+        local r = rs:FindFirstChild("Remotes")
+        r = r and r:FindFirstChild("Duels")
+        return r and r:FindFirstChild("RespawnNow")
+    end
+    local function _arspSetup(char)
+        if not ARSP.Enabled or not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid"); if not hum then return end
+        local c = hum.Died:Connect(function()
+            if not ARSP.Enabled then return end
+            task.wait(0.1)
+            pcall(function() local rem = _arspGetRemote(); if rem then rem:FireServer() end end)
+        end)
+        _arspConns[#_arspConns+1] = c
+    end
+    function ARSP.enable()
+        ARSP.Enabled = true
+        _arspClear()
+        local lp = cloneref(game:GetService("Players")).LocalPlayer
+        _arspSetup(lp.Character)
+        local c = lp.CharacterAdded:Connect(function(char) task.wait(0.2); _arspSetup(char) end)
+        _arspConns[#_arspConns+1] = c
+    end
+    function ARSP.disable() ARSP.Enabled = false; _arspClear() end
+    _UM.ARSP = ARSP
+    end -- ARSP
+
+    do -- [uncode] Device Spoofer v1 (Harion互換: Fighter.SetControls:FireServer(mode))
+    local DVSP = {}
+    DVSP.Enabled = false; DVSP.Mode = "Touch"
+    local _dvspConns = {}
+    local function _dvspFire()
+        pcall(function()
+            local rs = cloneref(game:GetService("ReplicatedStorage"))
+            local r = rs:FindFirstChild("Remotes")
+            r = r and r:FindFirstChild("Replication")
+            r = r and r:FindFirstChild("Fighter")
+            r = r and r:FindFirstChild("SetControls")
+            if r then r:FireServer(DVSP.Mode) end
+        end)
+    end
+    function DVSP.enable()
+        DVSP.Enabled = true
+        _dvspFire()
+        local lp = cloneref(game:GetService("Players")).LocalPlayer
+        local c = lp.CharacterAdded:Connect(function()
+            if not DVSP.Enabled then return end
+            task.wait(0.5); _dvspFire()
+        end)
+        _dvspConns[#_dvspConns+1] = c
+    end
+    function DVSP.disable()
+        DVSP.Enabled = false
+        for _, c in ipairs(_dvspConns) do pcall(function() c:Disconnect() end) end
+        _dvspConns = {}
+    end
+    _UM.DVSP = DVSP
+    end -- DVSP
+
+    do -- [uncode] Collect Drops v1 (Harion互換: firetouchinterest on _drop parts)
+    local CDROP = {}
+    CDROP.Enabled = false
+    local _cdropConns = {}; local _cdropTracked = {}
+    local function _cdropTrack(obj)
+        if obj.Name == "_drop" and obj:IsA("BasePart") then _cdropTracked[obj] = true end
+    end
+    local function _cdropUntrack(obj) _cdropTracked[obj] = nil end
+    function CDROP.enable()
+        CDROP.Enabled = true
+        _cdropTracked = {}
+        pcall(function() for _, obj in ipairs(workspace:GetChildren()) do _cdropTrack(obj) end end)
+        local c1 = workspace.ChildAdded:Connect(_cdropTrack)
+        local c2 = workspace.ChildRemoved:Connect(_cdropUntrack)
+        _cdropConns[#_cdropConns+1] = c1; _cdropConns[#_cdropConns+1] = c2
+        local lp = cloneref(game:GetService("Players")).LocalPlayer
+        local _next = 0
+        local c3 = RunService.Heartbeat:Connect(function()
+            if not CDROP.Enabled then return end
+            local now = os.clock(); if now < _next then return end
+            _next = now + 0.2
+            local char = lp.Character; if not char then return end
+            local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+            local hum  = char:FindFirstChildOfClass("Humanoid")
+            local needHP = hum and hum.Health < hum.MaxHealth
+            for obj in next, _cdropTracked do
+                if not obj.Parent then
+                    _cdropTracked[obj] = nil
+                else
+                    local isAmmo   = obj:FindFirstChild("Ammo")   ~= nil
+                    local isHealth = obj:FindFirstChild("Health")  ~= nil
+                    if isAmmo or (isHealth and needHP) then
+                        pcall(function() firetouchinterest(hrp, obj, 0) end)
+                        pcall(function() firetouchinterest(hrp, obj, 1) end)
+                    end
+                end
+            end
+        end)
+        _cdropConns[#_cdropConns+1] = c3
+    end
+    function CDROP.disable()
+        CDROP.Enabled = false
+        for _, c in ipairs(_cdropConns) do pcall(function() c:Disconnect() end) end
+        _cdropConns = {}; _cdropTracked = {}
+    end
+    _UM.CDROP = CDROP
+    end -- CDROP
+
+    do -- [uncode] Custom Crosshair v1 (Drawing API 4-line crosshair)
+    local CXHR = {}
+    CXHR.Enabled = false; CXHR.Size = 12; CXHR.Gap = 4
+    CXHR.Thickness = 2; CXHR.Color = Color3.fromRGB(255,255,255)
+    local _cxhrLines = {}; local _cxhrConns = {}
+    local function _cxhrMakeLine()
+        local l = Drawing.new("Line")
+        l.Thickness = CXHR.Thickness; l.Color = CXHR.Color
+        l.Transparency = 1; l.Visible = false
+        return l
+    end
+    local function _cxhrDraw(vp)
+        local cx = vp.X*0.5; local cy = vp.Y*0.5
+        local s = CXHR.Size; local g = CXHR.Gap
+        local col = CXHR.Color; local th = CXHR.Thickness
+        local pts = {
+            {Vector2.new(cx-g-s,cy), Vector2.new(cx-g,cy)},
+            {Vector2.new(cx+g,cy),   Vector2.new(cx+g+s,cy)},
+            {Vector2.new(cx,cy-g-s), Vector2.new(cx,cy-g)},
+            {Vector2.new(cx,cy+g),   Vector2.new(cx,cy+g+s)},
+        }
+        for i, pt in ipairs(pts) do
+            local l = _cxhrLines[i]; if not l then return end
+            l.From = pt[1]; l.To = pt[2]
+            l.Color = col; l.Thickness = th; l.Visible = true
+        end
+    end
+    function CXHR.enable()
+        CXHR.Enabled = true
+        if #_cxhrLines < 4 then
+            _cxhrLines = {}
+            for _ = 1, 4 do _cxhrLines[#_cxhrLines+1] = _cxhrMakeLine() end
+        end
+        local cam = workspace.CurrentCamera
+        local c = RunService.RenderStepped:Connect(function()
+            if not CXHR.Enabled then return end
+            _cxhrDraw(cam.ViewportSize)
+        end)
+        _cxhrConns[#_cxhrConns+1] = c
+    end
+    function CXHR.disable()
+        CXHR.Enabled = false
+        for _, l in ipairs(_cxhrLines) do pcall(function() l.Visible = false end) end
+        for _, c in ipairs(_cxhrConns) do pcall(function() c:Disconnect() end) end
+        _cxhrConns = {}
+    end
+    _UM.CXHR = CXHR
+    end -- CXHR
+
+    do -- [uncode] Disable Viewmodel v1 (LocalTransparencyModifier)
+    local DVM = {}
+    DVM.Enabled = false
+    local _dvmConns = {}
+    local function _dvmHide()
+        pcall(function()
+            local cam = workspace.CurrentCamera
+            for _, v in ipairs(cam:GetChildren()) do
+                if v:IsA("Model") then
+                    for _, p in ipairs(v:GetDescendants()) do
+                        if p:IsA("BasePart") then p.LocalTransparencyModifier = 1 end
+                    end
+                end
+            end
+        end)
+    end
+    local function _dvmRestore()
+        pcall(function()
+            local cam = workspace.CurrentCamera
+            for _, v in ipairs(cam:GetChildren()) do
+                if v:IsA("Model") then
+                    for _, p in ipairs(v:GetDescendants()) do
+                        if p:IsA("BasePart") then p.LocalTransparencyModifier = 0 end
+                    end
+                end
+            end
+        end)
+    end
+    function DVM.enable()
+        DVM.Enabled = true
+        _dvmHide()
+        local lp = cloneref(game:GetService("Players")).LocalPlayer
+        local c1 = lp.CharacterAdded:Connect(function()
+            task.wait(0.5); if DVM.Enabled then _dvmHide() end
+        end)
+        local cam = workspace.CurrentCamera
+        local c2  = cam.ChildAdded:Connect(function()
+            task.wait(0.2); if DVM.Enabled then _dvmHide() end
+        end)
+        _dvmConns[#_dvmConns+1] = c1; _dvmConns[#_dvmConns+1] = c2
+    end
+    function DVM.disable()
+        DVM.Enabled = false
+        for _, c in ipairs(_dvmConns) do pcall(function() c:Disconnect() end) end
+        _dvmConns = {}; _dvmRestore()
+    end
+    _UM.DVM = DVM
+    end -- DVM
+
+    do -- [uncode] Remove Vignette v1 (PlayerGui内vignetteを非表示)
+    local NOVIG = {}
+    NOVIG.Enabled = false
+    local _novigConns = {}; local _novigHidden = {}
+    local function _novigApply(gui)
+        local n = gui.Name:lower()
+        if not (n:find("vignette") or n:find("vig") or n:find("blood") or n:find("overlay")) then return end
+        if _novigHidden[gui] ~= nil then return end
+        if gui:IsA("ScreenGui") then
+            _novigHidden[gui] = gui.Enabled; gui.Enabled = false
+        elseif gui:IsA("GuiObject") then
+            _novigHidden[gui] = gui.Visible; gui.Visible = false
+        end
+    end
+    local function _novigScan()
+        pcall(function()
+            local lp = cloneref(game:GetService("Players")).LocalPlayer
+            local pg = lp:FindFirstChildOfClass("PlayerGui"); if not pg then return end
+            for _, d in ipairs(pg:GetDescendants()) do _novigApply(d) end
+        end)
+    end
+    local function _novigRestore()
+        for obj, val in pairs(_novigHidden) do
+            pcall(function()
+                if obj:IsA("ScreenGui") then obj.Enabled = val
+                elseif obj:IsA("GuiObject") then obj.Visible = val end
+            end)
+        end
+        _novigHidden = {}
+    end
+    function NOVIG.enable()
+        NOVIG.Enabled = true
+        _novigScan()
+        local lp = cloneref(game:GetService("Players")).LocalPlayer
+        local pg = lp:FindFirstChildOfClass("PlayerGui")
+        if pg then
+            local c = pg.DescendantAdded:Connect(function(obj)
+                if not NOVIG.Enabled then return end
+                task.wait(0.1); _novigApply(obj)
+            end)
+            _novigConns[#_novigConns+1] = c
+        end
+    end
+    function NOVIG.disable()
+        NOVIG.Enabled = false
+        for _, c in ipairs(_novigConns) do pcall(function() c:Disconnect() end) end
+        _novigConns = {}; _novigRestore()
+    end
+    _UM.NOVIG = NOVIG
+    end -- NOVIG
+
     -- Part3: Movement features (FLY, PH, TP3, FC, SB, ANT, AJ, TGS, ORB)
     -- _E1のローカル変数200上限対策として分離
     local _E3; local _ok3,_err3 = pcall(function()
@@ -6137,6 +6441,9 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
     local CSPM   = _UM.CSPM;  local DESP  = _UM.DESP;  local TRAC  = _UM.TRAC
     local FOVC   = _UM.FOVC;  local CHMS  = _UM.CHMS
     local BHOP   = _UM.BHOP;  local IJMP  = _UM.IJMP
+    local AUBA   = _UM.AUBA;  local ARSP  = _UM.ARSP;  local DVSP  = _UM.DVSP
+    local CDROP  = _UM.CDROP; local CXHR  = _UM.CXHR;  local DVM   = _UM.DVM
+    local NOVIG  = _UM.NOVIG
     -- VFX内部ヘルパーのエイリアス
     local _vfxCC       = VFXCFG and VFXCFG.applyCC
     local _vfxBloom    = VFXCFG and VFXCFG.applyBloom
@@ -6726,6 +7033,86 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         B.miscRight:AddSlider("UC_CSPM_INT",{
             Text="Interval (s)",Default=15,Min=5,Max=100,Rounding=0,
             Callback=function(v) if CSPM then CSPM.Interval=v/10 end end})
+    end)
+
+    -- ============================================================
+    -- [uncode] Custom Crosshair + Disable Viewmodel + Remove Vignette (Visuals)
+    -- ============================================================
+    pcall(function()
+        if not B.visRight then return end
+        B.visRight:AddDivider()
+        BT(B.visRight,"UC_CXHR","Custom Crosshair",false,function(v)
+            if CXHR then if v then CXHR.enable() else CXHR.disable() end end
+        end)
+        B.visRight:AddSlider("UC_CXHR_SZ",{Text="  Size",Default=12,Min=2,Max=40,Rounding=0,
+            Callback=function(v) if CXHR then CXHR.Size=v end end})
+        B.visRight:AddSlider("UC_CXHR_GP",{Text="  Gap",Default=4,Min=0,Max=20,Rounding=0,
+            Callback=function(v) if CXHR then CXHR.Gap=v end end})
+        B.visRight:AddSlider("UC_CXHR_TH",{Text="  Thickness",Default=2,Min=1,Max=6,Rounding=0,
+            Callback=function(v) if CXHR then CXHR.Thickness=v end end})
+        B.visRight:AddDivider()
+        BT(B.visRight,"UC_DVM","Disable Viewmodel",false,function(v)
+            if DVM then if v then DVM.enable() else DVM.disable() end end
+        end)
+        BT(B.visRight,"UC_NOVIG","Remove Vignette",false,function(v)
+            if NOVIG then if v then NOVIG.enable() else NOVIG.disable() end end
+        end)
+    end)
+
+    -- ============================================================
+    -- [uncode] Auto Ban + Collect Drops + Auto Respawn + Device Spoofer (Misc)
+    -- ============================================================
+    pcall(function()
+        if not B.miscRight then return end
+        B.miscRight:AddDivider()
+        -- Auto Ban
+        BT(B.miscRight,"UC_AUBA","Auto Ban",false,function(v)
+            if AUBA then if v then AUBA.enable() else AUBA.disable() end end
+        end)
+        if B.miscRight.AddInput then
+            B.miscRight:AddInput("UC_AUBA_S1",{Text="  Ban Weapon 1",Default="None",
+                Callback=function(v) if AUBA then AUBA.Slot1=v end end})
+            B.miscRight:AddInput("UC_AUBA_S2",{Text="  Ban Weapon 2",Default="None",
+                Callback=function(v) if AUBA then AUBA.Slot2=v end end})
+        else
+            B.miscRight:AddDropdown("UC_AUBA_S1",{Text="  Ban Slot 1",Default="None",
+                Values={"None","Assault Rifle","Shotgun","SMG","Sniper Rifle","Handgun","Fists","Grenade"},
+                Callback=function(v) if AUBA then AUBA.Slot1=v end end})
+            B.miscRight:AddDropdown("UC_AUBA_S2",{Text="  Ban Slot 2",Default="None",
+                Values={"None","Assault Rifle","Shotgun","SMG","Sniper Rifle","Handgun","Fists","Grenade"},
+                Callback=function(v) if AUBA then AUBA.Slot2=v end end})
+        end
+        B.miscRight:AddSlider("UC_AUBA_DL",{Text="  Interval (s)",Default=10,Min=2,Max=60,Rounding=0,
+            Callback=function(v) if AUBA then AUBA.Delay=v/10 end end})
+        B.miscRight:AddDivider()
+        -- Auto Respawn
+        BT(B.miscRight,"UC_ARSP","Auto Respawn",false,function(v)
+            if ARSP then if v then ARSP.enable() else ARSP.disable() end end
+        end)
+        -- Collect Drops
+        BT(B.miscRight,"UC_CDROP","Collect Drops",false,function(v)
+            if CDROP then if v then CDROP.enable() else CDROP.disable() end end
+        end)
+        B.miscRight:AddDivider()
+        -- Device Spoofer
+        BT(B.miscRight,"UC_DVSP","Device Spoofer",false,function(v)
+            if DVSP then if v then DVSP.enable() else DVSP.disable() end end
+        end)
+        B.miscRight:AddDropdown("UC_DVSP_MD",{Text="  Device Mode",Default="Touch",
+            Values={"Touch","Gamepad","MouseKeyboard","VR"},
+            Callback=function(v)
+                if DVSP then
+                    DVSP.Mode = v
+                    if DVSP.Enabled then pcall(function()
+                        local rs = cloneref(game:GetService("ReplicatedStorage"))
+                        local r = rs:FindFirstChild("Remotes")
+                        r = r and r:FindFirstChild("Replication")
+                        r = r and r:FindFirstChild("Fighter")
+                        r = r and r:FindFirstChild("SetControls")
+                        if r then r:FireServer(v) end
+                    end) end
+                end
+            end})
     end)
 
     print("[UNCODE v1] Features wired OK")
