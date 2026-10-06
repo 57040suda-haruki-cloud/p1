@@ -4399,313 +4399,7 @@ function SkinSwap.disable()
     _restoreSkin()
 end
 
-local FLY = {}
-FLY.Enabled = false
-FLY.Speed   = 60
-local _flyGyro, _flyVel
-local _fw, _fb, _fl, _fr, _fu, _fd = 0,0,0,0,0,0
-
-local function _flyClean()
-    pcall(function() if _flyGyro then _flyGyro:Destroy() end end)
-    pcall(function() if _flyVel  then _flyVel:Destroy()  end end)
-    _flyGyro, _flyVel = nil, nil
-    _fw,_fb,_fl,_fr,_fu,_fd = 0,0,0,0,0,0
-    pcall(function()
-        local h = _hum(); if h then h.PlatformStand = false end
-        WS_.CurrentCamera.CameraType = Enum.CameraType.Custom
-    end)
-end
-
-local function _flyStart()
-    _flyClean()
-    if not _alive() then return end
-    local root = _root(); if not root then return end
-    _flyGyro = Instance.new("BodyGyro")
-    _flyGyro.P = 9e4; _flyGyro.MaxTorque = Vector3.new(9e9,9e9,9e9)
-    _flyGyro.CFrame = root.CFrame; _flyGyro.Parent = root
-    _flyVel = Instance.new("BodyVelocity")
-    _flyVel.MaxForce = Vector3.new(9e9,9e9,9e9); _flyVel.Velocity = Vector3.zero
-    _flyVel.Parent = root
-    local h = _hum(); if h then h.PlatformStand = true end
-end
-
-local function _flyKey(inp, on)
-    if UI_:GetFocusedTextBox() then return end
-    local k = inp.KeyCode
-    if     k==Enum.KeyCode.W then _fw = on and 1 or 0
-    elseif k==Enum.KeyCode.S then _fb = on and 1 or 0
-    elseif k==Enum.KeyCode.A then _fl = on and 1 or 0
-    elseif k==Enum.KeyCode.D then _fr = on and 1 or 0
-    elseif k==Enum.KeyCode.Space or k==Enum.KeyCode.E then _fu = on and 1 or 0
-    elseif k==Enum.KeyCode.LeftControl or k==Enum.KeyCode.Q then _fd = on and 1 or 0
-    end
-end
-
-function FLY.enable()
-    FLY.Enabled = true
-    _flyStart()
-    _conn("FLY", UI_.InputBegan:Connect(function(i,p) if not p then _flyKey(i,true) end end))
-    _conn("FLY", UI_.InputEnded:Connect( function(i)  _flyKey(i,false) end))
-    _conn("FLY", LP_.CharacterAdded:Connect(function()
-        task.wait(0.25); if FLY.Enabled then _flyStart() end
-    end))
-    _conn("FLY", RN_.RenderStepped:Connect(function()
-        if not _alive() then return end
-        if not _flyGyro or not _flyVel or not _flyGyro.Parent then _flyStart(); return end
-        local cam = WS_.CurrentCamera
-        local h = _hum(); if h then h.PlatformStand = true end
-        pcall(function() cam.CameraType = Enum.CameraType.Track end)
-        _flyGyro.CFrame = cam.CFrame
-        local mv = (cam.CFrame.LookVector*(_fw-_fb))
-                 + (cam.CFrame.RightVector*(_fr-_fl))
-                 + (cam.CFrame.UpVector   *(_fu-_fd))
-        _flyVel.Velocity = mv.Magnitude > 0 and (mv.Unit * FLY.Speed) or Vector3.zero
-    end))
-end
-
-function FLY.disable()
-    FLY.Enabled = false
-    _stop("FLY")
-    _flyClean()
-end
-
-local PH = {}
-PH.Enabled = false
-local _phModified = {}
-
-function PH.enable()
-    PH.Enabled = true
-    _conn("PH", RN_.Stepped:Connect(function()
-        if not PH.Enabled then return end
-        local c = _char()
-        if not c then table.clear(_phModified); return end
-        for _, p in ipairs(c:GetDescendants()) do
-            if p:IsA("BasePart") and p.CanCollide then
-                p.CanCollide = false; _phModified[p] = true
-            end
-        end
-    end))
-end
-
-function PH.disable()
-    PH.Enabled = false
-    _stop("PH")
-    for p in pairs(_phModified) do
-        pcall(function() p.CanCollide = true end)
-    end
-    table.clear(_phModified)
-end
-
-local TP3 = {}
-TP3.Enabled  = false
-TP3.Distance = 8
-
-function TP3.enable()
-    TP3.Enabled = true
-    _conn("TP3", RN_.RenderStepped:Connect(function()
-        if not TP3.Enabled then return end
-        local cam = WS_.CurrentCamera
-        if not _root() then return end
-        pcall(function()
-            cam.CameraType = Enum.CameraType.Custom
-            local cf   = cam.CFrame
-            local back = cf.LookVector * -TP3.Distance
-            cam.CFrame = CFrame.new(cf.Position + back, cf.Position + back + cf.LookVector)
-        end)
-    end))
-end
-
-function TP3.disable()
-    TP3.Enabled = false
-    _stop("TP3")
-    pcall(function() WS_.CurrentCamera.CameraType = Enum.CameraType.Custom end)
-end
-
-local FC = {}
-FC.Enabled = false
-FC.Speed   = 40
-local _fcPart
-local _ffw,_ffb,_ffl,_ffr,_ffu,_ffd = 0,0,0,0,0,0
-
-function FC.enable()
-    FC.Enabled = true
-    local cam = WS_.CurrentCamera
-    _fcPart = Instance.new("Part")
-    _fcPart.Anchored = true; _fcPart.CanCollide = false
-    _fcPart.Transparency = 1; _fcPart.Size = Vector3.new(0.1,0.1,0.1)
-    _fcPart.CFrame = cam.CFrame; _fcPart.Parent = workspace
-    pcall(function() cam.CameraType = Enum.CameraType.Scriptable end)
-    _conn("FC", UI_.InputBegan:Connect(function(i,p)
-        if p then return end
-        local k = i.KeyCode
-        if k==Enum.KeyCode.W then _ffw=1
-        elseif k==Enum.KeyCode.S then _ffb=1
-        elseif k==Enum.KeyCode.A then _ffl=1
-        elseif k==Enum.KeyCode.D then _ffr=1
-        elseif k==Enum.KeyCode.E or k==Enum.KeyCode.Space then _ffu=1
-        elseif k==Enum.KeyCode.Q or k==Enum.KeyCode.LeftControl then _ffd=1
-        end
-    end))
-    _conn("FC", UI_.InputEnded:Connect(function(i)
-        local k = i.KeyCode
-        if k==Enum.KeyCode.W then _ffw=0
-        elseif k==Enum.KeyCode.S then _ffb=0
-        elseif k==Enum.KeyCode.A then _ffl=0
-        elseif k==Enum.KeyCode.D then _ffr=0
-        elseif k==Enum.KeyCode.E or k==Enum.KeyCode.Space then _ffu=0
-        elseif k==Enum.KeyCode.Q or k==Enum.KeyCode.LeftControl then _ffd=0
-        end
-    end))
-    _conn("FC", RN_.RenderStepped:Connect(function()
-        if not FC.Enabled or not _fcPart then return end
-        local cf = cam.CFrame
-        local mv = (cf.LookVector*(_ffw-_ffb))+(cf.RightVector*(_ffr-_ffl))+(cf.UpVector*(_ffu-_ffd))
-        pcall(function()
-            _fcPart.CFrame = CFrame.new(
-                _fcPart.CFrame.Position + (mv.Magnitude>0 and mv.Unit*FC.Speed*0.016 or Vector3.zero),
-                _fcPart.CFrame.Position + (mv.Magnitude>0 and mv.Unit*FC.Speed*0.016 or Vector3.zero) + cf.LookVector
-            )
-            cam.CFrame = CFrame.new(_fcPart.CFrame.Position, _fcPart.CFrame.Position + cf.LookVector)
-        end)
-    end))
-end
-
-function FC.disable()
-    FC.Enabled = false
-    _stop("FC")
-    pcall(function() if _fcPart then _fcPart:Destroy() end end)
-    _fcPart = nil
-    _ffw,_ffb,_ffl,_ffr,_ffu,_ffd = 0,0,0,0,0,0
-    pcall(function() WS_.CurrentCamera.CameraType = Enum.CameraType.Custom end)
-end
-
-local SB = {}
-SB.Enabled = false
-SB.Speed   = 10
-
-function SB.enable()
-    SB.Enabled = true
-    local ang = 0
-    _conn("SB", RN_.RenderStepped:Connect(function(dt)
-        if not SB.Enabled then return end
-        local root = _root(); if not root then return end
-        ang = (ang + SB.Speed * dt * 360) % 360
-        pcall(function()
-            local cf = root.CFrame
-            root.CFrame = CFrame.new(cf.Position) * CFrame.Angles(0, math.rad(ang), 0)
-        end)
-    end))
-end
-
-function SB.disable()
-    SB.Enabled = false
-    _stop("SB")
-end
-
-local ANT = {}
-ANT.Enabled = false
-ANT.Jitter  = 180
-
-function ANT.enable()
-    ANT.Enabled = true
-    _conn("ANT", RN_.RenderStepped:Connect(function()
-        if not ANT.Enabled then return end
-        local root = _root(); if not root then return end
-        pcall(function()
-            root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(ANT.Jitter), 0)
-        end)
-    end))
-end
-
-function ANT.disable()
-    ANT.Enabled = false
-    _stop("ANT")
-end
-
-local AJ = {}
-AJ.Enabled = false
-local _ajUsed = false
-
-function AJ.enable()
-    AJ.Enabled = true
-    _conn("AJ", UI_.InputBegan:Connect(function(i, p)
-        if p or not AJ.Enabled then return end
-        if i.KeyCode ~= Enum.KeyCode.Space then return end
-        local h = _hum(); if not h then return end
-        local state = h:GetState()
-        if state == Enum.HumanoidStateType.Freefall or state == Enum.HumanoidStateType.Jumping then
-            if not _ajUsed then
-                _ajUsed = true
-                local root = _root()
-                if root then
-                    local vel = root.AssemblyLinearVelocity
-                    root.AssemblyLinearVelocity = Vector3.new(vel.X, 50, vel.Z)
-                end
-            end
-        else
-            _ajUsed = false
-        end
-    end))
-    _conn("AJ", LP_.CharacterAdded:Connect(function() _ajUsed = false end))
-end
-
-function AJ.disable()
-    AJ.Enabled = false
-    _stop("AJ")
-    _ajUsed = false
-end
-
-local TGS = {}
-TGS.Enabled = false
-TGS.Speed   = 3
-TGS.Radius  = 12
-local _tgsAngle = 0
-
-function TGS.enable()
-    TGS.Enabled = true
-    _conn("TGS", RN_.Heartbeat:Connect(function(dt)
-        if not TGS.Enabled then return end
-        local root = _root(); if not root then return end
-        local enemy = _closestEnemy(800)
-        if not enemy or not enemy.Character then return end
-        local eHRP = enemy.Character:FindFirstChild("HumanoidRootPart"); if not eHRP then return end
-        _tgsAngle = _tgsAngle + TGS.Speed * dt
-        local offset = Vector3.new(math.cos(_tgsAngle)*TGS.Radius, 0, math.sin(_tgsAngle)*TGS.Radius)
-        pcall(function() root.CFrame = CFrame.new(eHRP.Position + offset, eHRP.Position) end)
-    end))
-end
-
-function TGS.disable()
-    TGS.Enabled = false
-    _stop("TGS")
-end
-
-local ORB = {}
-ORB.Enabled = false
-ORB.Speed   = 2
-ORB.Radius  = 20
-ORB.YOffset = 3
-local _orbAngle = 0
-
-function ORB.enable()
-    ORB.Enabled = true
-    _conn("ORB", RN_.Heartbeat:Connect(function(dt)
-        if not ORB.Enabled then return end
-        local root = _root(); if not root then return end
-        local enemy = _closestEnemy(9999)
-        if not enemy or not enemy.Character then return end
-        local eHRP = enemy.Character:FindFirstChild("HumanoidRootPart"); if not eHRP then return end
-        _orbAngle = _orbAngle + ORB.Speed * dt
-        local ePos = eHRP.Position
-        local offset = Vector3.new(math.cos(_orbAngle)*ORB.Radius, ORB.YOffset, math.sin(_orbAngle)*ORB.Radius)
-        pcall(function() root.CFrame = CFrame.new(ePos + offset, ePos) end)
-    end))
-end
-
-function ORB.disable()
-    ORB.Enabled = false
-    _stop("ORB")
-end
+-- FLY〜ORB は _E3 IIFE に移動済み (ローカル変数200上限対策)
 
 local KA = {}
 KA.Enabled = false
@@ -4894,8 +4588,6 @@ return {
     SilentShot=SilentShot, AimSmooth=AimSmooth, AutoShoot=AutoShoot,
     MaxMode=MaxMode, TRIG=TRIG,
     SkinSwap=SkinSwap, KA=KA, AP=AP,
-    FLY=FLY, PH=PH, TP3=TP3, FC=FC,
-    SB=SB, ANT=ANT, AJ=AJ, TGS=TGS, ORB=ORB,
 }
         end)()
     end)
@@ -5670,10 +5362,360 @@ return {
         end)()
     end)
     if not _ok2 then print("[UNCODE v1] Part2 err:"..tostring(_err2)) end
-    -- 両パーツを統合して _UCEngine を完成
+    pcall(collectgarbage,"collect"); task.wait(0.5)
+    pcall(collectgarbage,"collect")
+    -- Part3: Movement features (FLY, PH, TP3, FC, SB, ANT, AJ, TGS, ORB)
+    -- _E1のローカル変数200上限対策として分離
+    local _E3; local _ok3,_err3 = pcall(function()
+        _E3 = (function()
+local PL_3 = cloneref(game:GetService("Players"))
+local RN_3 = game:GetService("RunService")
+local UI_3 = game:GetService("UserInputService")
+local LP_3 = PL_3.LocalPlayer
+local WS_3 = workspace
+local _pool3 = {}
+local function _conn(key,c) if not _pool3[key] then _pool3[key]={} end table.insert(_pool3[key],c); return c end
+local function _stop(key) for _,c in ipairs(_pool3[key] or {}) do pcall(function() c:Disconnect() end) end _pool3[key]={} end
+local function _char() return LP_3.Character end
+local function _root() local c=_char(); return c and c:FindFirstChild("HumanoidRootPart") end
+local function _hum() local c=_char(); return c and c:FindFirstChildOfClass("Humanoid") end
+local function _alive() local c=_char(); local h=c and c:FindFirstChildOfClass("Humanoid"); return h and h.Health>0 and c:FindFirstChild("HumanoidRootPart")~=nil end
+local function _closestEnemy(fov)
+    fov=fov or 9999
+    local cam=WS_3.CurrentCamera
+    local center=Vector2.new(cam.ViewportSize.X/2,cam.ViewportSize.Y/2)
+    local best,bestD=nil,fov
+    for _,p in ipairs(PL_3:GetPlayers()) do
+        if p~=LP_3 and p.Character then
+            local hrp=p.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local sp,vis=cam:WorldToViewportPoint(hrp.Position)
+                if vis then local d=(Vector2.new(sp.X,sp.Y)-center).Magnitude; if d<bestD then bestD=d;best=p end end
+            end
+        end
+    end
+    return best
+end
+
+local FLY = {}
+FLY.Enabled = false
+FLY.Speed   = 60
+local _flyGyro, _flyVel
+local _fw, _fb, _fl, _fr, _fu, _fd = 0,0,0,0,0,0
+
+local function _flyClean()
+    pcall(function() if _flyGyro then _flyGyro:Destroy() end end)
+    pcall(function() if _flyVel  then _flyVel:Destroy()  end end)
+    _flyGyro, _flyVel = nil, nil
+    _fw,_fb,_fl,_fr,_fu,_fd = 0,0,0,0,0,0
+    pcall(function()
+        local h = _hum(); if h then h.PlatformStand = false end
+        WS_3.CurrentCamera.CameraType = Enum.CameraType.Custom
+    end)
+end
+
+local function _flyStart()
+    _flyClean()
+    if not _alive() then return end
+    local root = _root(); if not root then return end
+    _flyGyro = Instance.new("BodyGyro")
+    _flyGyro.P = 9e4; _flyGyro.MaxTorque = Vector3.new(9e9,9e9,9e9)
+    _flyGyro.CFrame = root.CFrame; _flyGyro.Parent = root
+    _flyVel = Instance.new("BodyVelocity")
+    _flyVel.MaxForce = Vector3.new(9e9,9e9,9e9); _flyVel.Velocity = Vector3.zero
+    _flyVel.Parent = root
+    local h = _hum(); if h then h.PlatformStand = true end
+end
+
+local function _flyKey(inp, on)
+    if UI_3:GetFocusedTextBox() then return end
+    local k = inp.KeyCode
+    if     k==Enum.KeyCode.W then _fw = on and 1 or 0
+    elseif k==Enum.KeyCode.S then _fb = on and 1 or 0
+    elseif k==Enum.KeyCode.A then _fl = on and 1 or 0
+    elseif k==Enum.KeyCode.D then _fr = on and 1 or 0
+    elseif k==Enum.KeyCode.Space or k==Enum.KeyCode.E then _fu = on and 1 or 0
+    elseif k==Enum.KeyCode.LeftControl or k==Enum.KeyCode.Q then _fd = on and 1 or 0
+    end
+end
+
+function FLY.enable()
+    FLY.Enabled = true
+    _flyStart()
+    _conn("FLY", UI_3.InputBegan:Connect(function(i,p) if not p then _flyKey(i,true) end end))
+    _conn("FLY", UI_3.InputEnded:Connect( function(i)  _flyKey(i,false) end))
+    _conn("FLY", LP_3.CharacterAdded:Connect(function()
+        task.wait(0.25); if FLY.Enabled then _flyStart() end
+    end))
+    _conn("FLY", RN_3.RenderStepped:Connect(function()
+        if not _alive() then return end
+        if not _flyGyro or not _flyVel or not _flyGyro.Parent then _flyStart(); return end
+        local cam = WS_3.CurrentCamera
+        local h = _hum(); if h then h.PlatformStand = true end
+        pcall(function() cam.CameraType = Enum.CameraType.Track end)
+        _flyGyro.CFrame = cam.CFrame
+        local mv = (cam.CFrame.LookVector*(_fw-_fb))
+                 + (cam.CFrame.RightVector*(_fr-_fl))
+                 + (cam.CFrame.UpVector   *(_fu-_fd))
+        _flyVel.Velocity = mv.Magnitude > 0 and (mv.Unit * FLY.Speed) or Vector3.zero
+    end))
+end
+
+function FLY.disable()
+    FLY.Enabled = false
+    _stop("FLY")
+    _flyClean()
+end
+
+local PH = {}
+PH.Enabled = false
+local _phModified = {}
+
+function PH.enable()
+    PH.Enabled = true
+    _conn("PH", RN_3.Stepped:Connect(function()
+        if not PH.Enabled then return end
+        local c = _char()
+        if not c then table.clear(_phModified); return end
+        for _, p in ipairs(c:GetDescendants()) do
+            if p:IsA("BasePart") and p.CanCollide then
+                p.CanCollide = false; _phModified[p] = true
+            end
+        end
+    end))
+end
+
+function PH.disable()
+    PH.Enabled = false
+    _stop("PH")
+    for p in pairs(_phModified) do
+        pcall(function() p.CanCollide = true end)
+    end
+    table.clear(_phModified)
+end
+
+local TP3 = {}
+TP3.Enabled  = false
+TP3.Distance = 8
+
+function TP3.enable()
+    TP3.Enabled = true
+    _conn("TP3", RN_3.RenderStepped:Connect(function()
+        if not TP3.Enabled then return end
+        local cam = WS_3.CurrentCamera
+        if not _root() then return end
+        pcall(function()
+            cam.CameraType = Enum.CameraType.Custom
+            local cf   = cam.CFrame
+            local back = cf.LookVector * -TP3.Distance
+            cam.CFrame = CFrame.new(cf.Position + back, cf.Position + back + cf.LookVector)
+        end)
+    end))
+end
+
+function TP3.disable()
+    TP3.Enabled = false
+    _stop("TP3")
+    pcall(function() WS_3.CurrentCamera.CameraType = Enum.CameraType.Custom end)
+end
+
+local FC = {}
+FC.Enabled = false
+FC.Speed   = 40
+local _fcPart
+local _ffw,_ffb,_ffl,_ffr,_ffu,_ffd = 0,0,0,0,0,0
+
+function FC.enable()
+    FC.Enabled = true
+    local cam = WS_3.CurrentCamera
+    _fcPart = Instance.new("Part")
+    _fcPart.Anchored = true; _fcPart.CanCollide = false
+    _fcPart.Transparency = 1; _fcPart.Size = Vector3.new(0.1,0.1,0.1)
+    _fcPart.CFrame = cam.CFrame; _fcPart.Parent = WS_3
+    pcall(function() cam.CameraType = Enum.CameraType.Scriptable end)
+    _conn("FC", UI_3.InputBegan:Connect(function(i,p)
+        if p then return end
+        local k = i.KeyCode
+        if k==Enum.KeyCode.W then _ffw=1
+        elseif k==Enum.KeyCode.S then _ffb=1
+        elseif k==Enum.KeyCode.A then _ffl=1
+        elseif k==Enum.KeyCode.D then _ffr=1
+        elseif k==Enum.KeyCode.E or k==Enum.KeyCode.Space then _ffu=1
+        elseif k==Enum.KeyCode.Q or k==Enum.KeyCode.LeftControl then _ffd=1
+        end
+    end))
+    _conn("FC", UI_3.InputEnded:Connect(function(i)
+        local k = i.KeyCode
+        if k==Enum.KeyCode.W then _ffw=0
+        elseif k==Enum.KeyCode.S then _ffb=0
+        elseif k==Enum.KeyCode.A then _ffl=0
+        elseif k==Enum.KeyCode.D then _ffr=0
+        elseif k==Enum.KeyCode.E or k==Enum.KeyCode.Space then _ffu=0
+        elseif k==Enum.KeyCode.Q or k==Enum.KeyCode.LeftControl then _ffd=0
+        end
+    end))
+    _conn("FC", RN_3.RenderStepped:Connect(function()
+        if not FC.Enabled or not _fcPart then return end
+        local cf = cam.CFrame
+        local mv = (cf.LookVector*(_ffw-_ffb))+(cf.RightVector*(_ffr-_ffl))+(cf.UpVector*(_ffu-_ffd))
+        pcall(function()
+            _fcPart.CFrame = CFrame.new(
+                _fcPart.CFrame.Position + (mv.Magnitude>0 and mv.Unit*FC.Speed*0.016 or Vector3.zero),
+                _fcPart.CFrame.Position + (mv.Magnitude>0 and mv.Unit*FC.Speed*0.016 or Vector3.zero) + cf.LookVector
+            )
+            cam.CFrame = CFrame.new(_fcPart.CFrame.Position, _fcPart.CFrame.Position + cf.LookVector)
+        end)
+    end))
+end
+
+function FC.disable()
+    FC.Enabled = false
+    _stop("FC")
+    pcall(function() if _fcPart then _fcPart:Destroy() end end)
+    _fcPart = nil
+    _ffw,_ffb,_ffl,_ffr,_ffu,_ffd = 0,0,0,0,0,0
+    pcall(function() WS_3.CurrentCamera.CameraType = Enum.CameraType.Custom end)
+end
+
+local SB = {}
+SB.Enabled = false
+SB.Speed   = 10
+
+function SB.enable()
+    SB.Enabled = true
+    local ang = 0
+    _conn("SB", RN_3.RenderStepped:Connect(function(dt)
+        if not SB.Enabled then return end
+        local root = _root(); if not root then return end
+        ang = (ang + SB.Speed * dt * 360) % 360
+        pcall(function()
+            local cf = root.CFrame
+            root.CFrame = CFrame.new(cf.Position) * CFrame.Angles(0, math.rad(ang), 0)
+        end)
+    end))
+end
+
+function SB.disable()
+    SB.Enabled = false
+    _stop("SB")
+end
+
+local ANT = {}
+ANT.Enabled = false
+ANT.Jitter  = 180
+
+function ANT.enable()
+    ANT.Enabled = true
+    _conn("ANT", RN_3.RenderStepped:Connect(function()
+        if not ANT.Enabled then return end
+        local root = _root(); if not root then return end
+        pcall(function()
+            root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(ANT.Jitter), 0)
+        end)
+    end))
+end
+
+function ANT.disable()
+    ANT.Enabled = false
+    _stop("ANT")
+end
+
+local AJ = {}
+AJ.Enabled = false
+local _ajUsed = false
+
+function AJ.enable()
+    AJ.Enabled = true
+    _conn("AJ", UI_3.InputBegan:Connect(function(i, p)
+        if p or not AJ.Enabled then return end
+        if i.KeyCode ~= Enum.KeyCode.Space then return end
+        local h = _hum(); if not h then return end
+        local state = h:GetState()
+        if state == Enum.HumanoidStateType.Freefall or state == Enum.HumanoidStateType.Jumping then
+            if not _ajUsed then
+                _ajUsed = true
+                local root = _root()
+                if root then
+                    local vel = root.AssemblyLinearVelocity
+                    root.AssemblyLinearVelocity = Vector3.new(vel.X, 50, vel.Z)
+                end
+            end
+        else
+            _ajUsed = false
+        end
+    end))
+    _conn("AJ", LP_3.CharacterAdded:Connect(function() _ajUsed = false end))
+end
+
+function AJ.disable()
+    AJ.Enabled = false
+    _stop("AJ")
+    _ajUsed = false
+end
+
+local TGS = {}
+TGS.Enabled = false
+TGS.Speed   = 3
+TGS.Radius  = 12
+local _tgsAngle = 0
+
+function TGS.enable()
+    TGS.Enabled = true
+    _conn("TGS", RN_3.Heartbeat:Connect(function(dt)
+        if not TGS.Enabled then return end
+        local root = _root(); if not root then return end
+        local enemy = _closestEnemy(800)
+        if not enemy or not enemy.Character then return end
+        local eHRP = enemy.Character:FindFirstChild("HumanoidRootPart"); if not eHRP then return end
+        _tgsAngle = _tgsAngle + TGS.Speed * dt
+        local offset = Vector3.new(math.cos(_tgsAngle)*TGS.Radius, 0, math.sin(_tgsAngle)*TGS.Radius)
+        pcall(function() root.CFrame = CFrame.new(eHRP.Position + offset, eHRP.Position) end)
+    end))
+end
+
+function TGS.disable()
+    TGS.Enabled = false
+    _stop("TGS")
+end
+
+local ORB = {}
+ORB.Enabled = false
+ORB.Speed   = 2
+ORB.Radius  = 20
+ORB.YOffset = 3
+local _orbAngle = 0
+
+function ORB.enable()
+    ORB.Enabled = true
+    _conn("ORB", RN_3.Heartbeat:Connect(function(dt)
+        if not ORB.Enabled then return end
+        local root = _root(); if not root then return end
+        local enemy = _closestEnemy(9999)
+        if not enemy or not enemy.Character then return end
+        local eHRP = enemy.Character:FindFirstChild("HumanoidRootPart"); if not eHRP then return end
+        _orbAngle = _orbAngle + ORB.Speed * dt
+        local ePos = eHRP.Position
+        local offset = Vector3.new(math.cos(_orbAngle)*ORB.Radius, ORB.YOffset, math.sin(_orbAngle)*ORB.Radius)
+        pcall(function() root.CFrame = CFrame.new(ePos + offset, ePos) end)
+    end))
+end
+
+function ORB.disable()
+    ORB.Enabled = false
+    _stop("ORB")
+end
+
+return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
+        end)()
+    end)
+    if not _ok3 then print("[UNCODE v1] Part3 err:"..tostring(_err3)) end
+    pcall(collectgarbage,"collect"); task.wait(0.5)
+    pcall(collectgarbage,"collect")
+    -- 全パーツを統合して _UCEngine を完成
     _UCEngine = {}
     if _E1 then for k,v in pairs(_E1) do _UCEngine[k]=v end end
     if _E2 then for k,v in pairs(_E2) do _UCEngine[k]=v end end
+    if _E3 then for k,v in pairs(_E3) do _UCEngine[k]=v end end
     print("[UNCODE v1] Feature engine ready (" .. tostring(_UCEngine ~= nil) .. ")")
     pcall(collectgarbage,"collect"); task.wait(0.3)
 
