@@ -5954,11 +5954,12 @@ return {
             _aubaLoop = true
             task.spawn(function()
                 while AUBA.Enabled do
+                    -- 毎回 Slot1 を必ず送る
                     _aubaFire(AUBA.Slot1)
-                    task.wait(math.max(AUBA.Delay * 0.5, 0.1))
-                    if not AUBA.Enabled then break end
+                    task.wait(0.05)
+                    -- Slot2 も毎回送る (None なら _aubaFire が無視)
                     _aubaFire(AUBA.Slot2)
-                    task.wait(math.max(AUBA.Delay * 0.5, 0.1))
+                    task.wait(math.max(AUBA.Delay, 0.2))
                 end
                 _aubaLoop = false
             end)
