@@ -2715,7 +2715,7 @@ end)
 -- Tab order: VoidSpam → Combat → HvH → others → Settings(last)
 local Tabs = {}
 Tabs.VoidSpam     = Window:AddTab("VoidSpam",    "activity")
-Tabs.Combat       = Window:AddTab({ Title = "Combat",   Icon = "6034684950" })
+Tabs.Combat       = Window:AddTab("Combat",      "crosshair")
 Tabs.HvH          = Window:AddTab("HvH",          "crosshair")
 Tabs.Orbit        = Window:AddTab("Orbit",         "refresh-cw")
 Tabs.Prediction   = Window:AddTab("Prediction",    "crosshair")
