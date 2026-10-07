@@ -30,7 +30,7 @@
   "RbEvasion": "Translocate",
   "RbOnEmpty": "SwapOrReload",
   "RbEvasionRadius": 200,
-  "RbTranslocateOffset": -5,
+  "RbTranslocateOffset": -50,
 
   "TbEnabled": true,
   "TbVisible": false,

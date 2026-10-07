@@ -3983,6 +3983,34 @@ AddBindableToggle(PLS, "SpfPing", "Spoof Ping (Low)", false, function(v)
     if v then _kSet({"PlayerSpoofer","LocalPlayer","Ping","Value"}, "Low") end
 end)
 
+-- ── World / Removables (Kicia) ─────────────────────────────────
+local PLW = Tabs.Player:AddLeftGroupbox("World")
+
+AddBindableToggle(PLW, "WrNoFlashbang", "No Flashbang", false, function(v)
+    _kSet({"Removables","NoFlashbang"}, v)
+end)
+AddBindableToggle(PLW, "WrNoBurnEffect", "No Burn Effect", false, function(v)
+    _kSet({"Removables","NoBurnEffect"}, v)
+end)
+AddBindableToggle(PLW, "WrNoAdsVignette", "No ADS Vignette", false, function(v)
+    _kSet({"Removables","NoAdsVignette"}, v)
+end)
+AddBindableToggle(PLW, "WrNoScopeOverlay", "No Scope Overlay", false, function(v)
+    _kSet({"Removables","NoScopeOverlay"}, v)
+end)
+AddBindableToggle(PLW, "WrNoScopeReticle", "No Scope Reticle", false, function(v)
+    _kSet({"Removables","NoScopeReticle"}, v)
+end)
+AddBindableToggle(PLW, "WrNoGunTracers", "No Gun Tracers", false, function(v)
+    _kSet({"Removables","NoGunTracers"}, v)
+end)
+AddBindableToggle(PLW, "WrNoMuzzleFlash", "No Muzzle Flash", false, function(v)
+    _kSet({"Removables","NoMuzzleFlash"}, v)
+end)
+AddBindableToggle(PLW, "WrNoHitmarker", "No Hitmarker", false, function(v)
+    _kSet({"Removables","NoHitmarker"}, v)
+end)
+
 end -- Player Tab scope
 
 -- ============================================================
@@ -71064,7 +71092,8 @@ CfgG:AddButton("Load Rage Config", function()
     _T("RbEnabled", true)   _T("RbHackers", true)   _T("RbHealthLead", true)
     _T("RbPrimary", true)   _T("RbSecondary", true)   _T("RbMelee", true)
     _O("RbStability", 0)   _O("RbShootFrames", 1)   _O("RbEvasion", "Translocate")
-    _O("RbOnEmpty", "SwapOrReload")   _O("RbEvasionRadius", 200)   _O("RbTranslocateOffset", -5)
+    _O("RbOnEmpty", "SwapOrReload")   _O("RbEvasionRadius", 200)   _O("RbTranslocateOffset", -50)
+    _kSet({"Ragebot","Evasion","Mode"}, "Translocate")   _kSet({"Ragebot","Evasion","Translocate","Offset"}, -50)
     -- Triggerbot
     _T("TbEnabled", true)   _T("TbVisible", false)
     -- Flickbot (max)
