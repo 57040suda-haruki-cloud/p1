@@ -4265,6 +4265,7 @@ end -- Player Tab scope
 -- ============================================================
 
 do -- Combat/HvH UI scope (register isolation)
+warn("[UNCODE] Combat/HvH tab init — build 20261007-c")
 
 -- Combat tab: Silent Aim, Aimbot, Visuals
 local HvHTab   = Tabs.Combat
@@ -71617,5 +71618,5 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
 pcall(function() SaveManager:LoadAutoloadConfig() end)
 
-Library:Notify({ Title = "UNCODE v1", Description = "Rivals HvH — powered by Kicia Rebuild engine", Time = 4 })
+Library:Notify({ Title = "UNCODE v1  [build 20261007-c]", Description = "Rivals HvH | Combat・HvH・Player・Settings ✓ loaded", Time = 6 })
 end)()
