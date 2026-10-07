@@ -2722,7 +2722,6 @@ local Tabs = {
     Riot = Window:AddTab("Riot", "flame"),
     Settings = Window:AddTab("Settings", "settings"),
     SkinChanger = Window:AddTab("SkinChanger", "shirt"),
-    HvH = Window:AddTab("HvH", "crosshair"),
 }
 
 do
@@ -3843,11 +3842,10 @@ local HvHL1    = HvHTab:AddLeftGroupbox("Silent Aim")
 local HvHR1    = HvHTab:AddRightGroupbox("Aimbot")
 local HvHL4    = HvHTab:AddLeftGroupbox("Visuals")
 local HvHR4    = HvHTab:AddRightGroupbox("Visual Config")
--- Rage / Triggerbot / Flickbot → HvH tab (Tabs.HvH)
-local HvHL2    = Tabs.HvH:AddLeftGroupbox("Ragebot")
-local HvHR2    = Tabs.HvH:AddRightGroupbox("Rage Config")
-local HvHL3    = Tabs.HvH:AddLeftGroupbox("Triggerbot / Flickbot")
-local HvHR3    = Tabs.HvH:AddRightGroupbox("Flickbot Config")
+local HvHL2    = HvHTab:AddLeftGroupbox("Ragebot")
+local HvHR2    = HvHTab:AddRightGroupbox("Rage Config")
+local HvHL3    = HvHTab:AddLeftGroupbox("Triggerbot / Flickbot")
+local HvHR3    = HvHTab:AddRightGroupbox("Flickbot Config")
 
 -- Helper: write a value to the Kicia ReactiveStore.
 -- getgenv()._UNC_KiciaStore is set just before Kicia's boot call below.
