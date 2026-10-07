@@ -1,14 +1,13 @@
 --==========================================================================
 --  Kicia Rebuild + UNCODE Extras  -  Rivals
---  Base : Kicia Rebuild (kicia_fully_fixed.lua)  ~90%
---  Extra: UNCODE v2 modules                      ~10%
+--  Base   : Kicia Rebuild v3 (kicia_fully_fixed.lua)   ~90%
+--  Extras : UNCODE v2 modules                           ~10%
 --
---  Panel  : RightAlt
---  F3     : Full Auto
---  F4     : Notify Hit
---  F5     : Target HUD
---  F6     : Info Spoof
---  F7     : Indicators
+--  UNCODE panel  : RightAlt
+--  F3   full auto       F7   anti afk
+--  F4   notify hit      F8   speed hack
+--  F5   target hud      F9   indicators
+--  F6   info spoof      F10  auto respawn
 --==========================================================================
 --==========================================================================
 --  Kicia Rebuild  -  Rivals
@@ -66263,6 +66262,322 @@ PlayerIdentities = playerIdentities,
 end
 end
 
+
+
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  UNCODE Extras — module definitions (tbl17.uc_*)                        ║
+-- ║  Injected into Kicia's tbl17 module system.  Uses Trove + K.onUnload.   ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+do -- uc_core  (shared pool / helpers for UNCODE modules)
+local function fn35()
+    local RS   = game:GetService("RunService")
+    local UIS  = game:GetService("UserInputService")
+    local Plrs = game:GetService("Players")
+    local LP   = Plrs.LocalPlayer
+    local Cam  = workspace.CurrentCamera
+
+    local ucTrove = Trove.new("UCExtras")
+    K.onUnload(function() ucTrove:Clean() end)
+
+    -- connection manager keyed by name
+    local _pool = {}
+    local function _conn(key, c)
+        if _pool[key] then pcall(function() _pool[key]:Disconnect() end) end
+        _pool[key] = c
+        ucTrove:Add(c)
+    end
+    local function _stop(key)
+        if _pool[key] then pcall(function() _pool[key]:Disconnect() end); _pool[key] = nil end
+    end
+
+    local function _char()  return LP and LP.Character end
+    local function _root()  local c=_char(); return c and c:FindFirstChild("HumanoidRootPart") end
+    local function _hum()   local c=_char(); return c and c:FindFirstChildOfClass("Humanoid") end
+
+    local function Notify_(msg, dur)
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification",
+                { Title="UNCODE", Text=tostring(msg), Duration=dur or 3 })
+        end)
+    end
+
+    -- ── FullAuto ────────────────────────────────────────────────────────────
+    local FullAuto = { Enabled=false, FireRate=0.05, _last=0 }
+    function FullAuto.enable()
+        FullAuto.Enabled = true
+        _conn("FA", RS.Heartbeat:Connect(function()
+            if not FullAuto.Enabled then return end
+            local c = _char(); if not c then return end
+            local tool = c:FindFirstChildOfClass("Tool"); if not tool then return end
+            local now = tick()
+            if now - FullAuto._last < FullAuto.FireRate then return end
+            if not UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then return end
+            FullAuto._last = now
+            pcall(function()
+                for _,v in ipairs(tool:GetDescendants()) do
+                    if v:IsA("RemoteEvent") then
+                        local n = v.Name:lower()
+                        if n:find("fire") or n:find("shoot") or n:find("attack") then
+                            v:FireServer(); break
+                        end
+                    end
+                end
+            end)
+        end))
+    end
+    function FullAuto.disable() FullAuto.Enabled=false; _stop("FA") end
+
+    -- ── NHIT (notify on damage deal) ────────────────────────────────────────
+    local NHIT = { Enabled=false, Duration=3, Template="{NAME}  {DMG} dmg", _prev={} }
+    local function nhFmt(t, name, dmg)
+        return t:gsub("{NAME}", tostring(name or "?")):gsub("{DMG}", tostring(math.floor(dmg or 0)))
+               :gsub("{PART}", "Body"):gsub("{WEAPON}", "")
+    end
+    function NHIT.enable()
+        NHIT.Enabled = true
+        NHIT._prev   = {}
+        _conn("NHIT", RS.Heartbeat:Connect(function()
+            if not NHIT.Enabled then return end
+            local myR = _root(); if not myR then return end
+            for _,p in ipairs(Plrs:GetPlayers()) do
+                if p ~= LP and p.Character then
+                    local h = p.Character:FindFirstChildOfClass("Humanoid")
+                    if h then
+                        local prev = NHIT._prev[p.Name] or h.Health
+                        local curr = h.Health
+                        if curr < prev - 0.5 then
+                            local r = p.Character:FindFirstChild("HumanoidRootPart")
+                            if r and (myR.Position-r.Position).Magnitude < 600 then
+                                Notify_(nhFmt(NHIT.Template, p.DisplayName, prev-curr), NHIT.Duration)
+                            end
+                        end
+                        NHIT._prev[p.Name] = curr
+                    end
+                end
+            end
+        end))
+    end
+    function NHIT.disable() NHIT.Enabled=false; _stop("NHIT"); NHIT._prev={} end
+
+    -- ── InfoSpoof ───────────────────────────────────────────────────────────
+    local InfoSpoof = { Enabled=false, DeviceType="computer" }
+    function InfoSpoof.enable()
+        InfoSpoof.Enabled = true
+        pcall(function()
+            local rs2 = cloneref(game:GetService("ReplicatedStorage"))
+            for _,r in ipairs(rs2:GetDescendants()) do
+                if r:IsA("RemoteFunction") then
+                    local nm = r.Name:lower()
+                    if nm:find("device") or nm:find("platform") or nm:find("info") then
+                        r.OnClientInvoke = function() return InfoSpoof.DeviceType end
+                    end
+                end
+            end
+        end)
+    end
+    function InfoSpoof.disable() InfoSpoof.Enabled=false end
+
+    -- ── THUD (target HUD via Drawing) ───────────────────────────────────────
+    local THUD = { Enabled=false, Scale=1.0, _drw={} }
+    local function thClear()
+        for _,d in pairs(THUD._drw) do pcall(function() d:Remove() end) end
+        THUD._drw = {}
+    end
+    local function thD(t, p)
+        local d = Drawing.new(t)
+        for k,v in pairs(p) do pcall(function() d[k]=v end) end
+        table.insert(THUD._drw, d); return d
+    end
+    function THUD.enable()
+        THUD.Enabled = true
+        _conn("THUD", RS.Heartbeat:Connect(function()
+            thClear()
+            if not THUD.Enabled then return end
+            local myR = _root(); if not myR then return end
+            local best, bestD = nil, math.huge
+            for _,p in ipairs(Plrs:GetPlayers()) do
+                if p ~= LP and p.Character then
+                    local r = p.Character:FindFirstChild("HumanoidRootPart")
+                    local h = p.Character:FindFirstChildOfClass("Humanoid")
+                    if r and h and h.Health > 0 then
+                        local d2 = (myR.Position-r.Position).Magnitude
+                        if d2 < bestD then bestD=d2; best=p end
+                    end
+                end
+            end
+            if not best then return end
+            local hum = best.Character:FindFirstChildOfClass("Humanoid"); if not hum then return end
+            local vp  = Cam.ViewportSize
+            local sc  = math.clamp(THUD.Scale, 0.5, 2.5)
+            local W,H = math.floor(170*sc), math.floor(44*sc)
+            local cx  = vp.X * 0.5
+            local cy  = vp.Y * 0.85
+            local x,y = cx-W/2, cy-H/2
+            local hp,mhp = hum.Health, hum.MaxHealth
+            local hpr = math.clamp(hp/math.max(mhp,1), 0, 1)
+            -- bg + border
+            thD("Square",{Position=Vector2.new(x,y),Size=Vector2.new(W,H),Color=Color3.fromRGB(6,6,10),Transparency=0.18,Filled=true,Visible=true})
+            thD("Square",{Position=Vector2.new(x,y),Size=Vector2.new(W,H),Color=Color3.fromRGB(55,55,75),Transparency=0,Filled=false,Thickness=1,Visible=true})
+            -- accent bar top
+            thD("Square",{Position=Vector2.new(x,y),Size=Vector2.new(W,3),Color=Color3.fromRGB(80,120,255),Transparency=0,Filled=true,Visible=true})
+            -- name
+            thD("Text",{Position=Vector2.new(x+6,y+6),Text=best.DisplayName,Color=Color3.fromRGB(235,235,240),Size=math.floor(12*sc),Font=2,Visible=true,Outline=true,OutlineColor=Color3.fromRGB(0,0,0)})
+            -- dist
+            local dstr = math.floor(bestD).."m"
+            thD("Text",{Position=Vector2.new(x+W-6-#dstr*7,y+6),Text=dstr,Color=Color3.fromRGB(140,145,165),Size=math.floor(11*sc),Font=2,Visible=true,Outline=true,OutlineColor=Color3.fromRGB(0,0,0)})
+            -- hp bar bg
+            local bx,by,bw,bh = x+6, y+H-10*sc, W-12, 5*sc
+            thD("Square",{Position=Vector2.new(bx,by),Size=Vector2.new(bw,bh),Color=Color3.fromRGB(35,12,12),Transparency=0,Filled=true,Visible=true})
+            -- hp bar fill (green→red)
+            local fc = Color3.fromRGB(math.floor(210*(1-hpr)),math.floor(195*hpr),35)
+            thD("Square",{Position=Vector2.new(bx,by),Size=Vector2.new(math.max(bw*hpr,1),bh),Color=fc,Transparency=0,Filled=true,Visible=true})
+            -- hp text
+            thD("Text",{Position=Vector2.new(cx,y+H-14*sc),Text=math.floor(hp).." / "..math.floor(mhp),
+                Color=Color3.fromRGB(210,215,220),Size=math.floor(10*sc),Font=2,Center=true,Visible=true,
+                Outline=true,OutlineColor=Color3.fromRGB(0,0,0)})
+        end))
+    end
+    function THUD.disable() THUD.Enabled=false; _stop("THUD"); thClear() end
+    K.onUnload(function() thClear() end)
+
+    -- ── INDIC (corner status labels) ────────────────────────────────────────
+    local INDIC = { Enabled=false, _drw={} }
+    local function indClear()
+        for _,d in pairs(INDIC._drw) do pcall(function() d:Remove() end) end
+        INDIC._drw = {}
+    end
+    local INDIC_FLAGS = {
+        { get=function() return FullAuto.Enabled end,  label="FULL AUTO",   col=Color3.fromRGB(255,195,50)  },
+        { get=function() return NHIT.Enabled      end, label="NOTIFY HIT",  col=Color3.fromRGB(85,200,255)  },
+        { get=function() return THUD.Enabled      end, label="TARGET HUD",  col=Color3.fromRGB(140,255,145) },
+        { get=function() return InfoSpoof.Enabled end, label="SPOOFED",     col=Color3.fromRGB(195,125,255) },
+    }
+    function INDIC.enable()
+        INDIC.Enabled = true
+        _conn("INDIC", RS.Heartbeat:Connect(function()
+            indClear()
+            if not INDIC.Enabled then return end
+            local vp = Cam.ViewportSize
+            local iy = 8
+            for _,flag in ipairs(INDIC_FLAGS) do
+                if flag.get() then
+                    local lbl = "◈ "..flag.label
+                    local d = Drawing.new("Text")
+                    local tw = #lbl * 7
+                    pcall(function()
+                        d.Text         = lbl
+                        d.Color        = flag.col
+                        d.Size         = 13
+                        d.Font         = 2
+                        d.Position     = Vector2.new(vp.X - tw - 8, iy)
+                        d.Visible      = true
+                        d.Outline      = true
+                        d.OutlineColor = Color3.fromRGB(0, 0, 0)
+                    end)
+                    table.insert(INDIC._drw, d)
+                    iy = iy + 16
+                end
+            end
+        end))
+    end
+    function INDIC.disable() INDIC.Enabled=false; _stop("INDIC"); indClear() end
+    K.onUnload(function() indClear() end)
+
+    -- ── AntiAFK ─────────────────────────────────────────────────────────────
+    local AntiAFK = { Enabled=false }
+    function AntiAFK.enable()
+        AntiAFK.Enabled = true
+        local VJS = game:GetService("VirtualUser")
+        _conn("AFK", RS.Heartbeat:Connect(function()
+            if not AntiAFK.Enabled then return end
+            local now = tick()
+            if now % 60 < 0.05 then
+                pcall(function()
+                    VJS:CaptureController()
+                    VJS:ClickButton2(Vector2.new())
+                end)
+            end
+        end))
+    end
+    function AntiAFK.disable() AntiAFK.Enabled=false; _stop("AFK") end
+
+    -- ── AutoRespawn ─────────────────────────────────────────────────────────
+    local AutoRespawn = { Enabled=false, Delay=1.5, _pending=false }
+    function AutoRespawn.enable()
+        AutoRespawn.Enabled = true
+        _conn("ARsp", Plrs.LocalPlayer.CharacterAdded:Connect(function(char)
+            if not AutoRespawn.Enabled then return end
+        end))
+        _conn("ARsp2", RS.Heartbeat:Connect(function()
+            if not AutoRespawn.Enabled then return end
+            local h = _hum()
+            if h and h.Health <= 0 and not AutoRespawn._pending then
+                AutoRespawn._pending = true
+                task.delay(AutoRespawn.Delay, function()
+                    AutoRespawn._pending = false
+                    if not AutoRespawn.Enabled then return end
+                    pcall(function()
+                        local rs2 = cloneref(game:GetService("ReplicatedStorage"))
+                        local rem = rs2:FindFirstChild("Remotes")
+                        if rem then
+                            local duels = rem:FindFirstChild("Duels")
+                            if duels then
+                                local rsp = duels:FindFirstChild("RespawnNow")
+                                if rsp then rsp:FireServer() end
+                            end
+                        end
+                    end)
+                end)
+            end
+        end))
+    end
+    function AutoRespawn.disable() AutoRespawn.Enabled=false; _stop("ARsp"); _stop("ARsp2"); AutoRespawn._pending=false end
+
+    -- ── WalkSpeed / JumpPower ────────────────────────────────────────────────
+    local SpeedHack = { Enabled=false, Speed=16, JumpPow=50 }
+    function SpeedHack.apply()
+        if not SpeedHack.Enabled then return end
+        local h = _hum(); if not h then return end
+        pcall(function()
+            h.WalkSpeed  = SpeedHack.Speed
+            h.JumpPower  = SpeedHack.JumpPow
+        end)
+    end
+    function SpeedHack.enable()
+        SpeedHack.Enabled = true
+        _conn("SPD", RS.Heartbeat:Connect(SpeedHack.apply))
+    end
+    function SpeedHack.disable()
+        SpeedHack.Enabled = false
+        _stop("SPD")
+        local h = _hum()
+        if h then pcall(function() h.WalkSpeed=16; h.JumpPower=50 end) end
+    end
+
+    return {
+        ucTrove    = ucTrove,
+        Notify_    = Notify_,
+        FullAuto   = FullAuto,
+        NHIT       = NHIT,
+        InfoSpoof  = InfoSpoof,
+        THUD       = THUD,
+        INDIC      = INDIC,
+        AntiAFK    = AntiAFK,
+        AutoRespawn= AutoRespawn,
+        SpeedHack  = SpeedHack,
+    }
+end
+
+tbl17.uc_core = function()
+    local uc = tbl17.cache.uc_core
+    if not uc then
+        uc = { c = fn35() }
+        tbl17.cache.uc_core = uc
+    end
+    return uc.c
+end
+end -- uc_core
+
 tbl17.j1 = function()
 local j1 = tbl17.cache.j1
 
@@ -66424,316 +66739,295 @@ end
 
 tbl17.j1()(boot)
 
--- ╔══════════════════════════════════════════════════════════╗
--- ║  UNCODE Extras  —  injected into Kicia Rebuild           ║
--- ║  Toggle panel : RightAlt  |  keybinds listed inside      ║
--- ╚══════════════════════════════════════════════════════════╝
-local _UC = {}
-;(function()
-    local RS     = game:GetService("RunService")
-    local UIS    = game:GetService("UserInputService")
-    local Plrs   = game:GetService("Players")
-    local LP     = Plrs.LocalPlayer
-    local Cam    = workspace.CurrentCamera
-    local cloneref2 = (function()
-        local ok, fn = pcall(function() return getfenv(0).cloneref end)
-        return (ok and type(fn)=="function") and fn or function(x) return x end
-    end)()
-    local function _char() return LP and LP.Character end
-    local function _root() local c=_char(); return c and c:FindFirstChild("HumanoidRootPart") end
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  UNCODE Extras — ScreenGui panel                                        ║
+-- ║  RightAlt = toggle   F3-F8 = feature keys                               ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+task.defer(function()
+    -- wait a frame so kicia finishes mounting its own UI first
+    local UC   = tbl17.uc_core()
+    local UIS  = game:GetService("UserInputService")
+    local RS   = game:GetService("RunService")
 
-    -- connection pool
-    local _pool = {}
-    local function _conn(key, c)
-        if _pool[key] then pcall(function() _pool[key]:Disconnect() end) end
-        _pool[key] = c
-    end
-    local function _stop(key)
-        if _pool[key] then pcall(function() _pool[key]:Disconnect() end); _pool[key]=nil end
-    end
-
-    -- simple notify (uses Kicia's reporter if present, else warn)
-    local function Notify_(msg, dur)
-        pcall(function()
-            local nb = game:GetService("StarterGui")
-            nb:SetCore("SendNotification",{Title="UC",Text=tostring(msg),Duration=dur or 3})
-        end)
-    end
-
-    -- ── FullAuto ──────────────────────────────────────────────
-    local FullAuto = { Enabled=false, FireRate=0.05 }
-    local _faLast  = 0
-    function FullAuto.enable()
-        FullAuto.Enabled = true
-        _conn("FA", RS.Heartbeat:Connect(function()
-            if not FullAuto.Enabled then return end
-            local c = _char(); if not c then return end
-            local tool = c:FindFirstChildOfClass("Tool"); if not tool then return end
-            local now  = tick()
-            if now - _faLast < FullAuto.FireRate then return end
-            if not UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then return end
-            _faLast = now
-            pcall(function()
-                for _,v in ipairs(tool:GetDescendants()) do
-                    if v:IsA("RemoteEvent") then
-                        local n = v.Name:lower()
-                        if n:find("fire") or n:find("shoot") or n:find("attack") then
-                            v:FireServer(); break
-                        end
-                    end
-                end
-            end)
-        end))
-    end
-    function FullAuto.disable() FullAuto.Enabled=false; _stop("FA") end
-    _UC.FullAuto = FullAuto
-
-    -- ── NHIT (notify on hit) ──────────────────────────────────
-    local NHIT = { Enabled=false, Duration=3, Template="{NAME} ☆ {DMG}" }
-    local _nhPrev = {}
-    local function _nhFmt(t, name, dmg)
-        return t:gsub("{NAME}", name or "?")
-                :gsub("{DMG}",  tostring(math.floor(dmg or 0)))
-                :gsub("{PART}", "Body")
-                :gsub("{WEAPON}", "")
-    end
-    function NHIT.enable()
-        NHIT.Enabled = true
-        _conn("NHIT", RS.Heartbeat:Connect(function()
-            if not NHIT.Enabled then return end
-            local myR = _root(); if not myR then return end
-            for _,p in ipairs(Plrs:GetPlayers()) do
-                if p ~= LP and p.Character then
-                    local h = p.Character:FindFirstChildOfClass("Humanoid")
-                    if h then
-                        local prev = _nhPrev[p.Name] or h.Health
-                        local curr = h.Health
-                        if curr < prev - 0.5 then
-                            local r = p.Character:FindFirstChild("HumanoidRootPart")
-                            if r and (myR.Position-r.Position).Magnitude < 600 then
-                                Notify_(_nhFmt(NHIT.Template, p.DisplayName, prev-curr), NHIT.Duration)
-                            end
-                        end
-                        _nhPrev[p.Name] = curr
-                    end
-                end
-            end
-        end))
-    end
-    function NHIT.disable() NHIT.Enabled=false; _stop("NHIT"); _nhPrev={} end
-    _UC.NHIT = NHIT
-
-    -- ── InfoSpoof ─────────────────────────────────────────────
-    local InfoSpoof = { Enabled=false, DeviceType="computer" }
-    function InfoSpoof.enable()
-        InfoSpoof.Enabled = true
-        pcall(function()
-            local rs2 = cloneref2(game:GetService("ReplicatedStorage"))
-            for _,r in ipairs(rs2:GetDescendants()) do
-                if r:IsA("RemoteFunction") then
-                    local nm = r.Name:lower()
-                    if nm:find("device") or nm:find("platform") or nm:find("info") then
-                        r.OnClientInvoke = function() return InfoSpoof.DeviceType end
-                    end
-                end
-            end
-        end)
-    end
-    function InfoSpoof.disable() InfoSpoof.Enabled=false end
-    _UC.InfoSpoof = InfoSpoof
-
-    -- ── THUD (target HUD) ────────────────────────────────────
-    local THUD = { Enabled=false, OffsetX=50, OffsetY=83, UIScale=100 }
-    local _thDrw = {}
-    local function _thClear()
-        for _,d in pairs(_thDrw) do pcall(function() d:Remove() end) end
-        _thDrw = {}
-    end
-    local function _td(t, p)
-        local d = Drawing.new(t)
-        for k,v in pairs(p) do pcall(function() d[k]=v end) end
-        table.insert(_thDrw, d); return d
-    end
-    function THUD.enable()
-        THUD.Enabled = true
-        _conn("THUD", RS.Heartbeat:Connect(function()
-            _thClear()
-            if not THUD.Enabled then return end
-            local myR = _root(); if not myR then return end
-            local best, bestD = nil, math.huge
-            for _,p in ipairs(Plrs:GetPlayers()) do
-                if p ~= LP and p.Character then
-                    local r = p.Character:FindFirstChild("HumanoidRootPart")
-                    local h = p.Character:FindFirstChildOfClass("Humanoid")
-                    if r and h and h.Health > 0 then
-                        local d = (myR.Position - r.Position).Magnitude
-                        if d < bestD then bestD=d; best=p end
-                    end
-                end
-            end
-            if not best then return end
-            local hum  = best.Character:FindFirstChildOfClass("Humanoid"); if not hum then return end
-            local vp   = Cam.ViewportSize
-            local sc   = math.clamp(THUD.UIScale/100, 0.5, 2.5)
-            local cx   = vp.X * (THUD.OffsetX/100)
-            local cy   = vp.Y * (THUD.OffsetY/100)
-            local hp, mhp = hum.Health, hum.MaxHealth
-            local hpr  = math.clamp(hp/math.max(mhp,1), 0, 1)
-            local W, H = math.floor(160*sc), math.floor(40*sc)
-            local x, y = cx - W/2, cy - H/2
-            -- bg
-            _td("Square",{Position=Vector2.new(x,y),Size=Vector2.new(W,H),Color=Color3.fromRGB(10,10,14),Transparency=0.25,Filled=true,Visible=true})
-            -- border
-            _td("Square",{Position=Vector2.new(x,y),Size=Vector2.new(W,H),Color=Color3.fromRGB(60,60,80),Transparency=0,Filled=false,Thickness=1,Visible=true})
-            -- name
-            _td("Text",{Position=Vector2.new(x+4,y+3),Text=best.DisplayName,Color=Color3.fromRGB(230,230,230),Size=math.floor(12*sc),Font=2,Visible=true,Outline=true,OutlineColor=Color3.fromRGB(0,0,0)})
-            -- dist
-            _td("Text",{Position=Vector2.new(x+W-4,y+3),Text=math.floor(bestD).."m",Color=Color3.fromRGB(160,160,180),Size=math.floor(11*sc),Font=2,Visible=true,Outline=true,OutlineColor=Color3.fromRGB(0,0,0)})
-            -- hp bar bg
-            local bx,by,bw,bh = x+4, y+H-10*sc, W-8, 5*sc
-            _td("Square",{Position=Vector2.new(bx,by),Size=Vector2.new(bw,bh),Color=Color3.fromRGB(40,10,10),Transparency=0,Filled=true,Visible=true})
-            -- hp bar fill
-            local fc = Color3.fromRGB(math.floor(220*(1-hpr)), math.floor(200*hpr), 40)
-            _td("Square",{Position=Vector2.new(bx,by),Size=Vector2.new(bw*hpr,bh),Color=fc,Transparency=0,Filled=true,Visible=true})
-            -- hp label
-            _td("Text",{Position=Vector2.new(cx,y+H-13*sc),Text=math.floor(hp).."/"..math.floor(mhp),Color=Color3.fromRGB(220,220,220),Size=math.floor(10*sc),Font=2,Center=true,Visible=true,Outline=true,OutlineColor=Color3.fromRGB(0,0,0)})
-        end))
-    end
-    function THUD.disable() THUD.Enabled=false; _stop("THUD"); _thClear() end
-    _UC.THUD = THUD
-
-    -- ── INDIC (status indicators) ────────────────────────────
-    local INDIC = { Enabled=false }
-    local _indDrw = {}
-    local function _indClear()
-        for _,d in pairs(_indDrw) do pcall(function() d:Remove() end) end
-        _indDrw = {}
-    end
-    function INDIC.enable()
-        INDIC.Enabled = true
-        _conn("INDIC", RS.Heartbeat:Connect(function()
-            _indClear()
-            if not INDIC.Enabled then return end
-            local vp  = Cam.ViewportSize
-            local x   = vp.X - 5
-            local y   = 5
-            local function addLabel(txt, col)
-                local d = Drawing.new("Text")
-                pcall(function()
-                    d.Text     = txt
-                    d.Color    = col or Color3.fromRGB(230,230,230)
-                    d.Size     = 13
-                    d.Font     = 2
-                    d.Position = Vector2.new(x, y)
-                    d.Visible  = true
-                    d.Outline  = true
-                    d.OutlineColor = Color3.fromRGB(0,0,0)
-                end)
-                -- right-align: offset by text width (approx)
-                local tw = #txt * 7
-                pcall(function() d.Position = Vector2.new(x - tw, y) end)
-                table.insert(_indDrw, d)
-                y = y + 16
-            end
-            if FullAuto.Enabled  then addLabel("◈ FULL AUTO",  Color3.fromRGB(255,200,60)) end
-            if NHIT.Enabled      then addLabel("◈ NOTIFY HIT", Color3.fromRGB(90,200,255)) end
-            if THUD.Enabled      then addLabel("◈ TARGET HUD", Color3.fromRGB(160,255,160)) end
-            if InfoSpoof.Enabled then addLabel("◈ SPOOFED",    Color3.fromRGB(200,130,255)) end
-        end))
-    end
-    function INDIC.disable() INDIC.Enabled=false; _stop("INDIC"); _indClear() end
-    _UC.INDIC = INDIC
-
-    -- ── Drawing panel ────────────────────────────────────────
-    -- RightAlt toggles the mini panel.
-    -- Panel uses Drawing quads + text; no Gui needed.
-    local PNL = { Visible=false, Drawings={} }
-    local MENU_KEY = Enum.KeyCode.RightAlt
-
-    local FEATURES = {
-        { label="full auto",   obj=FullAuto,   key=Enum.KeyCode.F3 },
-        { label="notify hit",  obj=NHIT,       key=Enum.KeyCode.F4 },
-        { label="target hud",  obj=THUD,       key=Enum.KeyCode.F5 },
-        { label="info spoof",  obj=InfoSpoof,  key=Enum.KeyCode.F6 },
-        { label="indicators",  obj=INDIC,      key=Enum.KeyCode.F7 },
+    -- ── theme (matches kicia dark) ──────────────────────────────────────────
+    local TH = {
+        BG       = Color3.fromRGB(10,  10,  16),
+        SURFACE  = Color3.fromRGB(18,  18,  26),
+        BORDER   = Color3.fromRGB(50,  52,  72),
+        ACCENT   = Color3.fromRGB(85, 130, 255),
+        TEXT     = Color3.fromRGB(220, 222, 235),
+        SUBTEXT  = Color3.fromRGB(120, 123, 145),
+        ON_COL   = Color3.fromRGB(90,  230, 130),
+        OFF_COL  = Color3.fromRGB(155, 158, 175),
+        HOVER    = Color3.fromRGB(30,  32,  48),
+        DANGER   = Color3.fromRGB(230, 65,  65),
     }
 
-    local function pnlClear()
-        for _,d in ipairs(PNL.Drawings) do pcall(function() d:Remove() end) end
-        PNL.Drawings = {}
+    -- ── ScreenGui ───────────────────────────────────────────────────────────
+    local function makeGui()
+        local ok, g = pcall(function()
+            local hg = gethui and gethui() or game:GetService("CoreGui")
+            local sg = Instance.new("ScreenGui")
+            sg.Name            = "UCExtrasGui"
+            sg.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
+            sg.DisplayOrder    = 999
+            sg.ResetOnSpawn    = false
+            sg.Parent          = hg
+            return sg
+        end)
+        return ok and g or nil
     end
 
-    local function pnlDraw()
-        pnlClear()
-        if not PNL.Visible then return end
-        local W, rowH, pad = 180, 20, 6
-        local rows = #FEATURES + 2  -- header + sep + features
-        local H    = rows * rowH + pad * 2
-        local vp   = Cam.ViewportSize
-        local x, y = vp.X - W - 10, 10
+    local gui = makeGui()
+    if not gui then
+        warn("[UNCODE] ScreenGui failed; using Drawing fallback")
+        return
+    end
+    K.onUnload(function() pcall(function() gui:Destroy() end) end)
 
-        local function D(t, p)
-            local d = Drawing.new(t)
-            for k,v in pairs(p) do pcall(function() d[k]=v end) end
-            table.insert(PNL.Drawings, d); return d
+    -- ── helpers ─────────────────────────────────────────────────────────────
+    local function frame(parent, bg, border, size, pos, zIndex)
+        local f = Instance.new("Frame")
+        f.BackgroundColor3  = bg     or TH.SURFACE
+        f.BorderSizePixel   = 0
+        f.Size              = size   or UDim2.new(0,200,0,300)
+        f.Position          = pos    or UDim2.new(0,0,0,0)
+        f.ZIndex            = zIndex or 2
+        f.Parent            = parent
+        if border then
+            local s = Instance.new("UIStroke"); s.Color=border; s.Thickness=1; s.Parent=f
         end
-
-        -- bg
-        D("Square",{Position=Vector2.new(x,y),Size=Vector2.new(W,H),Color=Color3.fromRGB(8,8,12),Transparency=0.15,Filled=true,Visible=true})
-        D("Square",{Position=Vector2.new(x,y),Size=Vector2.new(W,H),Color=Color3.fromRGB(50,50,80),Transparency=0,Filled=false,Thickness=1,Visible=true})
-
-        -- title
-        D("Text",{Position=Vector2.new(x+W/2,y+pad),Text="UNCODE EXTRAS",Color=Color3.fromRGB(100,160,255),Size=13,Font=2,Center=true,Visible=true,Outline=true,OutlineColor=Color3.fromRGB(0,0,0)})
-
-        -- divider
-        D("Line",{From=Vector2.new(x+4,y+pad+rowH),To=Vector2.new(x+W-4,y+pad+rowH),Color=Color3.fromRGB(50,50,80),Thickness=1,Visible=true})
-
-        -- rows
-        for i, feat in ipairs(FEATURES) do
-            local ry  = y + pad + rowH + (i-1)*rowH + 4
-            local on  = feat.obj.Enabled
-            local col = on and Color3.fromRGB(100,255,140) or Color3.fromRGB(160,160,175)
-            local sym = on and "●" or "○"
-            local kn  = feat.key.Name
-            D("Text",{Position=Vector2.new(x+8,ry),Text=sym.." "..feat.label,Color=col,Size=12,Font=2,Visible=true,Outline=true,OutlineColor=Color3.fromRGB(0,0,0)})
-            D("Text",{Position=Vector2.new(x+W-6,ry),Text="["..kn.."]",Color=Color3.fromRGB(100,100,120),Size=11,Font=2,Visible=true})
-        end
-
-        -- footer hint
-        local fy = y + H - rowH + 2
-        D("Text",{Position=Vector2.new(x+W/2,fy),Text="RightAlt = close",Color=Color3.fromRGB(80,80,100),Size=10,Font=2,Center=true,Visible=true})
+        return f
     end
 
-    -- keybind handler
+    local function label(parent, txt, col, size, bold, z)
+        local l = Instance.new("TextLabel")
+        l.BackgroundTransparency = 1
+        l.Text          = txt
+        l.TextColor3    = col  or TH.TEXT
+        l.TextSize      = size or 13
+        l.Font          = bold and Enum.Font.GothamBold or Enum.Font.Gotham
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.Size          = UDim2.new(1,0,0,16)
+        l.ZIndex        = z or 3
+        l.Parent        = parent
+        return l
+    end
+
+    local function corner(parent, r)
+        local c = Instance.new("UICorner"); c.CornerRadius=UDim.new(0,r or 4); c.Parent=parent; return c
+    end
+
+    -- ── Window (drag-able) ──────────────────────────────────────────────────
+    local WIN_W, WIN_H = 240, 0  -- height calculated dynamically
+    local win = frame(gui, TH.BG, TH.BORDER,
+        UDim2.new(0,WIN_W,0,10),
+        UDim2.new(1,-WIN_W-10,0,40), 5)
+    corner(win, 6)
+    win.ClipsDescendants = true
+    win.Visible = false
+
+    -- title bar
+    local titleBar = frame(win, TH.ACCENT, nil, UDim2.new(1,0,0,28), UDim2.new(0,0,0,0), 6)
+    corner(titleBar, 6)
+    local titleLbl = label(titleBar, "  UNCODE  extras", Color3.fromRGB(255,255,255), 12, true, 7)
+    titleLbl.Size = UDim2.new(1,0,1,0)
+    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- drag
+    do
+        local drag, dragStart, startPos = false, nil, nil
+        titleBar.InputBegan:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                drag=true; dragStart=i.Position
+                startPos = win.Position
+            end
+        end)
+        gui.InputChanged:Connect(function(i)
+            if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+                local d = i.Position - dragStart
+                win.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X,
+                                          startPos.Y.Scale, startPos.Y.Offset+d.Y)
+            end
+        end)
+        gui.InputEnded:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.MouseButton1 then drag=false end
+        end)
+    end
+
+    -- content scroll
+    local content = Instance.new("ScrollingFrame")
+    content.BackgroundTransparency = 1
+    content.BorderSizePixel = 0
+    content.Size = UDim2.new(1,0,1,-28)
+    content.Position = UDim2.new(0,0,0,28)
+    content.CanvasSize = UDim2.new(0,0,0,0)
+    content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    content.ScrollBarThickness = 3
+    content.ScrollBarImageColor3 = TH.ACCENT
+    content.ZIndex = 6
+    content.Parent = win
+
+    local list = Instance.new("UIListLayout")
+    list.SortOrder = Enum.SortOrder.LayoutOrder
+    list.Padding = UDim.new(0,2)
+    list.Parent = content
+
+    local pad = Instance.new("UIPadding")
+    pad.PaddingLeft=UDim.new(0,6); pad.PaddingRight=UDim.new(0,6)
+    pad.PaddingTop=UDim.new(0,6);  pad.PaddingBottom=UDim.new(0,6)
+    pad.Parent = content
+
+    -- ── Toggle row builder ──────────────────────────────────────────────────
+    local rows = {}
+    local function addRow(featLabel, keyHint, onEnable, onDisable, getState, order)
+        local row = frame(content, TH.SURFACE, TH.BORDER,
+            UDim2.new(1,0,0,28), nil, 7)
+        corner(row, 4)
+        row.LayoutOrder = order
+
+        -- left: state dot + label
+        local dot = Instance.new("TextLabel")
+        dot.BackgroundTransparency = 1
+        dot.Size = UDim2.new(0,12,1,0)
+        dot.Position = UDim2.new(0,6,0,0)
+        dot.Text = "●"
+        dot.TextSize = 10
+        dot.Font = Enum.Font.GothamBold
+        dot.ZIndex = 8
+        dot.Parent = row
+
+        local lbl2 = Instance.new("TextLabel")
+        lbl2.BackgroundTransparency=1
+        lbl2.Size=UDim2.new(1,-80,1,0)
+        lbl2.Position=UDim2.new(0,22,0,0)
+        lbl2.Text=featLabel
+        lbl2.TextColor3=TH.TEXT
+        lbl2.TextSize=12
+        lbl2.Font=Enum.Font.Gotham
+        lbl2.TextXAlignment=Enum.TextXAlignment.Left
+        lbl2.ZIndex=8
+        lbl2.Parent=row
+
+        -- right: key hint
+        local hint = Instance.new("TextLabel")
+        hint.BackgroundTransparency=1
+        hint.Size=UDim2.new(0,50,1,0)
+        hint.Position=UDim2.new(1,-54,0,0)
+        hint.Text="["..keyHint.."]"
+        hint.TextColor3=TH.SUBTEXT
+        hint.TextSize=10
+        hint.Font=Enum.Font.Gotham
+        hint.TextXAlignment=Enum.TextXAlignment.Right
+        hint.ZIndex=8
+        hint.Parent=row
+
+        -- clickable overlay
+        local btn = Instance.new("TextButton")
+        btn.BackgroundTransparency=1
+        btn.Size=UDim2.new(1,0,1,0)
+        btn.Text=""
+        btn.ZIndex=9
+        btn.Parent=row
+
+        local function refresh()
+            local on = getState()
+            dot.TextColor3 = on and TH.ON_COL or TH.OFF_COL
+            row.BackgroundColor3 = on and Color3.fromRGB(16,22,18) or TH.SURFACE
+        end
+        refresh()
+
+        btn.MouseButton1Click:Connect(function()
+            if getState() then onDisable() else onEnable() end
+            refresh()
+        end)
+
+        -- hover
+        btn.MouseEnter:Connect(function() row.BackgroundColor3 = TH.HOVER end)
+        btn.MouseLeave:Connect(function() refresh() end)
+
+        table.insert(rows, { refresh=refresh, key=keyHint })
+        return refresh
+    end
+
+    -- section header
+    local function addHeader(txt, order)
+        local h = Instance.new("TextLabel")
+        h.BackgroundTransparency=1
+        h.Size=UDim2.new(1,0,0,18)
+        h.Text=" "..txt
+        h.TextColor3=TH.ACCENT
+        h.TextSize=11
+        h.Font=Enum.Font.GothamBold
+        h.TextXAlignment=Enum.TextXAlignment.Left
+        h.ZIndex=7
+        h.LayoutOrder=order
+        h.Parent=content
+    end
+
+    -- ── populate ─────────────────────────────────────────────────────────────
+    -- combat
+    addHeader("combat", 10)
+    local r1 = addRow("full auto",   "F3", UC.FullAuto.enable,    UC.FullAuto.disable,    function() return UC.FullAuto.Enabled    end, 11)
+    addHeader("movement",20)
+    local r5 = addRow("speed hack",  "F8", UC.SpeedHack.enable,   UC.SpeedHack.disable,   function() return UC.SpeedHack.Enabled   end, 21)
+    addHeader("utility", 30)
+    local r2 = addRow("notify hit",  "F4", UC.NHIT.enable,        UC.NHIT.disable,        function() return UC.NHIT.Enabled        end, 31)
+    local r3 = addRow("target hud",  "F5", UC.THUD.enable,        UC.THUD.disable,        function() return UC.THUD.Enabled        end, 32)
+    local r4 = addRow("info spoof",  "F6", UC.InfoSpoof.enable,   UC.InfoSpoof.disable,   function() return UC.InfoSpoof.Enabled   end, 33)
+    local r6 = addRow("anti afk",    "F7", UC.AntiAFK.enable,     UC.AntiAFK.disable,     function() return UC.AntiAFK.Enabled     end, 34)
+    local r7 = addRow("indicators",  "F9", UC.INDIC.enable,       UC.INDIC.disable,       function() return UC.INDIC.Enabled       end, 35)
+    addHeader("match", 40)
+    local r8 = addRow("auto respawn","F10",UC.AutoRespawn.enable,  UC.AutoRespawn.disable, function() return UC.AutoRespawn.Enabled end, 41)
+
+    -- footer hint
+    local foot = Instance.new("TextLabel")
+    foot.BackgroundTransparency=1
+    foot.Size=UDim2.new(1,0,0,16)
+    foot.Text="RightAlt = toggle panel"
+    foot.TextColor3=TH.SUBTEXT
+    foot.TextSize=10
+    foot.Font=Enum.Font.Gotham
+    foot.TextXAlignment=Enum.TextXAlignment.Center
+    foot.ZIndex=7
+    foot.LayoutOrder=99
+    foot.Parent=content
+
+    -- dynamic height
+    list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        local h = math.clamp(list.AbsoluteContentSize.Y + 28 + 12, 120, 420)
+        win.Size = UDim2.new(0,WIN_W,0,h)
+    end)
+
+    -- ── keybinds ─────────────────────────────────────────────────────────────
+    local KB = {
+        [Enum.KeyCode.F3]  = { UC.FullAuto,    r1  },
+        [Enum.KeyCode.F4]  = { UC.NHIT,        r2  },
+        [Enum.KeyCode.F5]  = { UC.THUD,        r3  },
+        [Enum.KeyCode.F6]  = { UC.InfoSpoof,   r4  },
+        [Enum.KeyCode.F7]  = { UC.AntiAFK,     r6  },
+        [Enum.KeyCode.F8]  = { UC.SpeedHack,   r5  },
+        [Enum.KeyCode.F9]  = { UC.INDIC,       r7  },
+        [Enum.KeyCode.F10] = { UC.AutoRespawn, r8  },
+    }
+
     UIS.InputBegan:Connect(function(inp, gp)
         if gp then return end
-        if inp.KeyCode == MENU_KEY then
-            PNL.Visible = not PNL.Visible
-            pnlDraw()
+        if inp.KeyCode == Enum.KeyCode.RightAlt then
+            win.Visible = not win.Visible
             return
         end
-        for _, feat in ipairs(FEATURES) do
-            if inp.KeyCode == feat.key then
-                if feat.obj.Enabled then
-                    feat.obj.disable()
-                else
-                    feat.obj.enable()
-                end
-                if PNL.Visible then pnlDraw() end
-                break
-            end
+        local entry = KB[inp.KeyCode]
+        if entry then
+            local feat, refresh = entry[1], entry[2]
+            if feat.Enabled then feat.disable() else feat.enable() end
+            if refresh then refresh() end
         end
     end)
 
-    -- keep panel fresh every ~0.5s (state changes from external calls)
-    RS.Heartbeat:Connect(function()
-        if not PNL.Visible then return end
-        -- only redraw periodically to avoid spam
-    end)
-
-    -- expose
-    getgenv()._UCExtras = _UC
-    Notify_("UNCODE Extras loaded  |  RightAlt = panel", 5)
-end)()
--- ── end UNCODE Extras ────────────────────────────────────────
+    -- ── startup notify ───────────────────────────────────────────────────────
+    UC.Notify_("UNCODE Extras ready  │  RightAlt = panel", 5)
+    getgenv()._UCExtras = UC
+end)
+-- ── end UNCODE Extras ────────────────────────────────────────────────────────
 
