@@ -3927,22 +3927,22 @@ AddBindableToggle(PLS, "SpfName", "Spoof Name", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","Name","Enabled"}, v)
 end)
 PLS2:AddLabel("Spoofed Name:")
-PLS2:AddTextBox({
-    Label = "Name", Default = "Player", Placeholder = "Player", FocusLostOnly = true,
-    OnChanged = function(v)
-        _kSet({"PlayerSpoofer","LocalPlayer","Name","Value"}, v)
-    end
-})
+pcall(function()
+    PLS2:AddTextBox("SpfNameVal", {
+        Text = "Name", Default = "Player", Numeric = false, Finished = false,
+        Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Name","Value"}, v) end
+    })
+end)
 
 AddBindableToggle(PLS, "SpfDisplayName", "Spoof Display Name", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","DisplayName","Enabled"}, v)
 end)
-PLS2:AddTextBox({
-    Label = "Display Name", Default = "Player", Placeholder = "Player", FocusLostOnly = true,
-    OnChanged = function(v)
-        _kSet({"PlayerSpoofer","LocalPlayer","DisplayName","Value"}, v)
-    end
-})
+pcall(function()
+    PLS2:AddTextBox("SpfDisplayNameVal", {
+        Text = "Display Name", Default = "Player", Numeric = false, Finished = false,
+        Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","DisplayName","Value"}, v) end
+    })
+end)
 
 AddBindableToggle(PLS, "SpfElo", "Spoof Ranked Elo", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","RankedElo","Enabled"}, v)
@@ -3998,10 +3998,12 @@ end)
 AddBindableToggle(PLS, "SpfAvatar", "Spoof Avatar (User ID)", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","Avatar","Enabled"}, v)
 end)
-PLS2:AddTextBox({
-    Label = "Avatar User ID", Default = "20349956", Placeholder = "20349956", FocusLostOnly = true,
-    OnChanged = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Avatar","Value"}, v) end
-})
+pcall(function()
+    PLS2:AddTextBox("SpfAvatarVal", {
+        Text = "Avatar User ID", Default = "20349956", Numeric = false, Finished = false,
+        Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Avatar","Value"}, v) end
+    })
+end)
 
 AddBindableToggle(PLS, "SpfCasualWins", "Spoof Casual Wins", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","CasualWins","Enabled"}, v)
@@ -4052,10 +4054,12 @@ PLS2:AddDropdown("SpfNametagStatusVal", {
 AddBindableToggle(PLS, "SpfFavoriteMap", "Spoof Favorite Map", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","FavoriteMap","Enabled"}, v)
 end)
-PLS2:AddTextBox({
-    Label = "Favorite Map", Default = "Arena", Placeholder = "Arena", FocusLostOnly = true,
-    OnChanged = function(v) _kSet({"PlayerSpoofer","LocalPlayer","FavoriteMap","Value"}, v) end
-})
+pcall(function()
+    PLS2:AddTextBox("SpfFavoriteMapVal", {
+        Text = "Favorite Map", Default = "Arena", Numeric = false, Finished = false,
+        Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","FavoriteMap","Value"}, v) end
+    })
+end)
 
 AddBindableToggle(PLS, "SpfNosniyTeam", "Nosniy Games Team Badge", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","NosniyTeam","Enabled"}, v)
@@ -4265,7 +4269,7 @@ end -- Player Tab scope
 -- ============================================================
 
 do -- Combat/HvH UI scope (register isolation)
-warn("[UNCODE] Combat/HvH tab init — build 20261007-c")
+warn("[UNCODE] Combat/HvH tab init — build 20261007-d")
 
 -- Combat tab: Silent Aim, Aimbot, Visuals
 local HvHTab   = Tabs.Combat
@@ -71618,5 +71622,5 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
 pcall(function() SaveManager:LoadAutoloadConfig() end)
 
-Library:Notify({ Title = "UNCODE v1  [build 20261007-c]", Description = "Rivals HvH | Combat・HvH・Player・Settings ✓ loaded", Time = 6 })
+Library:Notify({ Title = "UNCODE v1  [build 20261007-d]", Description = "Rivals HvH | Combat・HvH・Player・Settings ✓ loaded", Time = 6 })
 end)()
