@@ -3927,9 +3927,9 @@ AddBindableToggle(PLS, "SpfName", "Spoof Name", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","Name","Enabled"}, v)
 end)
 PLS2:AddLabel("Spoofed Name:")
-PLS2:AddTextbox("SpfNameVal", {
-    Text = "Name", Default = "Player", Numeric = false, Finished = false,
-    Callback = function(v)
+PLS2:AddTextBox({
+    Label = "Name", Default = "Player", Placeholder = "Player", FocusLostOnly = true,
+    OnChanged = function(v)
         _kSet({"PlayerSpoofer","LocalPlayer","Name","Value"}, v)
     end
 })
@@ -3937,9 +3937,9 @@ PLS2:AddTextbox("SpfNameVal", {
 AddBindableToggle(PLS, "SpfDisplayName", "Spoof Display Name", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","DisplayName","Enabled"}, v)
 end)
-PLS2:AddTextbox("SpfDisplayNameVal", {
-    Text = "Display Name", Default = "Player", Numeric = false, Finished = false,
-    Callback = function(v)
+PLS2:AddTextBox({
+    Label = "Display Name", Default = "Player", Placeholder = "Player", FocusLostOnly = true,
+    OnChanged = function(v)
         _kSet({"PlayerSpoofer","LocalPlayer","DisplayName","Value"}, v)
     end
 })
@@ -3998,9 +3998,9 @@ end)
 AddBindableToggle(PLS, "SpfAvatar", "Spoof Avatar (User ID)", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","Avatar","Enabled"}, v)
 end)
-PLS2:AddTextbox("SpfAvatarVal", {
-    Text = "Avatar User ID", Default = "20349956", Numeric = false, Finished = false,
-    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Avatar","Value"}, v) end
+PLS2:AddTextBox({
+    Label = "Avatar User ID", Default = "20349956", Placeholder = "20349956", FocusLostOnly = true,
+    OnChanged = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Avatar","Value"}, v) end
 })
 
 AddBindableToggle(PLS, "SpfCasualWins", "Spoof Casual Wins", false, function(v)
@@ -4052,9 +4052,9 @@ PLS2:AddDropdown("SpfNametagStatusVal", {
 AddBindableToggle(PLS, "SpfFavoriteMap", "Spoof Favorite Map", false, function(v)
     _kSet({"PlayerSpoofer","LocalPlayer","FavoriteMap","Enabled"}, v)
 end)
-PLS2:AddTextbox("SpfFavoriteMapVal", {
-    Text = "Favorite Map", Default = "Arena", Numeric = false, Finished = false,
-    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","FavoriteMap","Value"}, v) end
+PLS2:AddTextBox({
+    Label = "Favorite Map", Default = "Arena", Placeholder = "Arena", FocusLostOnly = true,
+    OnChanged = function(v) _kSet({"PlayerSpoofer","LocalPlayer","FavoriteMap","Value"}, v) end
 })
 
 AddBindableToggle(PLS, "SpfNosniyTeam", "Nosniy Games Team Badge", false, function(v)
