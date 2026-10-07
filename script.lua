@@ -2363,7 +2363,7 @@ do
 end
 
 local Window=Library:CreateWindow({
-    Title="uncode v4",
+    Title="UNCODE v2  [Rivals]",
     NotifySide="Right",ShowCustomCursor=true,AutoShow=true,Center=true,
     Resizable=true,TabPadding=8,MenuFadeTime=0.2,
 })
@@ -2371,7 +2371,7 @@ task.wait()
 local function Notify(t,d) pcall(function() Library:Notify(t, d or 3) end) end
 
 local Tabs={}
-for _,nm in ipairs({"Combat","HVH","World","Visuals","Misc","Config"}) do
+for _,nm in ipairs({"main","world","esp","visuals","character","misc","settings"}) do
     Tabs[nm]=Window:AddTab(nm)
 end
 
@@ -2383,7 +2383,7 @@ end
 local _ucBoxes = {}  
 
 pcall(function()
-    local CL=Tabs.HVH:AddLeftGroupbox("Ragebot / HVH")
+    local CL=Tabs.main:AddLeftGroupbox("silent aim")
     BT(CL,"RB_On","Ragebot Enabled",false)
     CL:AddDropdown("RB_Prio",{Text="Priority",Default="Closest",Values={"Closest","Low HP","FOV"}})
     CL:AddDropdown("RB_Weapon",{Text="Weapon",Default="Sword",Values={"Sword","Revolver","Katana","Knife","Fist","Hammer"}})
@@ -2393,14 +2393,14 @@ pcall(function()
     BT(CL,"RB_Burst","Multi-Angle Burst (4x)",true)
     CL:AddDropdown("RB_BurstN",{Text="Burst Count",Default="4x",Values={"2x","3x","4x","6x","8x"}})
 
-    local CR=Tabs.HVH:AddRightGroupbox("Resolver / Backtrack")
+    local CR=Tabs.main:AddRightGroupbox("triggerbot")
     BT(CR,"Resolver_On","Resolver (Anti-Kicia/Transcrait)",true)
     CR:AddLabel("12-angle . hit-bias learning")
     BT(CR,"BT_On","Backtrack",false)
     CR:AddSlider("BT_Delay",{Text="BT Ticks",Default=8,Min=1,Max=20,Rounding=0})
     CR:AddDropdown("BT_Mode",{Text="BT Mode",Default="Position Only",Values={"Position Only","Full CFrame","Velocity-predicted"}})
 
-    local CL2=Tabs.Combat:AddLeftGroupbox("KX Aimbot"); _ucBoxes.combatKX=CL2
+    local CL2=Tabs.main:AddLeftGroupbox("aimbot"); _ucBoxes.combatKX=CL2
     BT(CL2,"KX_On","KX Aimbot",false)
     CL2:AddSlider("KX_Smooth",{Text="Smoothness",Default=12,Min=1,Max=50,Rounding=0})
     CL2:AddSlider("KX_FOV",{Text="FOV px",Default=120,Min=10,Max=360,Rounding=0})
@@ -2412,7 +2412,7 @@ pcall(function()
     CL2:AddDropdown("KX_Priority",{Text="Priority",Default="Closest",Values={"Closest","Lowest HP","Highest Threat"}})
 
 
-    local CR2=Tabs.Combat:AddRightGroupbox("Remote Hook")
+    local CR2=Tabs.main:AddRightGroupbox("weapons")
     BT(CR2,"PB_On","Position Spoof",false,function(v) PB.enabled=v end)
     BT(CR2,"PB_Pred","Prediction",false,function(v) PB.pred=v end)
     CR2:AddSlider("PB_Expand",{Text="Expand",Default=18,Min=0,Max=200,Rounding=0,Callback=function(v) PB.expand=v*0.01 end})
@@ -2420,7 +2420,7 @@ pcall(function()
     CR2:AddSlider("PB_PredMult",{Text="Pred Mult",Default=1,Min=1,Max=10,Rounding=1,Callback=function(v) PB.predMult=v end})
     CR2:AddButton({Text="Re-hook Remotes",Func=function() hookRemotes(); Notify("Remotes re-hooked",2) end})
 
-    local CL3=Tabs.Combat:AddLeftGroupbox("Weapon Mods"); _ucBoxes.combatWP=CL3
+    local CL3=Tabs.main:AddLeftGroupbox("weapon mods"); _ucBoxes.combatWP=CL3
     BT(CL3,"WP_NoSpread","No Spread",false)
     BT(CL3,"WP_FullAuto","Full Auto",false)
     BT(CL3,"WP_InfAmmo","Infinite Ammo",false)
@@ -2430,6 +2430,14 @@ pcall(function()
     BT(CL3,"WP_Heavy","Force Heavy Attack",false)
     CL3:AddSlider("WP_Reach",{Text="Reach Extender",Default=1,Min=1,Max=50,Rounding=0})
     CL3:AddSlider("WP_FireRate",{Text="Fire Rate x",Default=1,Min=1,Max=10,Rounding=1})
+    CL3:AddDivider()
+    BT(CL3,"UC_FULLAUTO","full auto",false,function(v)
+        if _UM.FullAuto then if v then _UM.FullAuto.enable() else _UM.FullAuto.disable() end end
+    end)
+    CL3:AddSlider("UC_FA_RATE",{Text="firerate",Default=10,Min=1,Max=30,Suffix="x",
+        Callback=function(v)
+            if _UM.FullAuto then _UM.FullAuto.FireRate = 1/(math.max(v,1)*10) end
+        end})
 end)
 
 
@@ -2456,7 +2464,7 @@ end)
 
 pcall(function()
     local VOID_MODES={"Quantum","Chaos","Drift","Still","Circle","Figure8","WideSweep","FastBounce","Blink","GridHop","HeightWave","SquareLoop","CrossSweep","Stairs","NoiseCloud","Spiral","Loop","SlowDrift"}
-    local VL=Tabs.HVH:AddLeftGroupbox("Void Control")
+    local VL=Tabs.main:AddLeftGroupbox("ragebot")
     BT(VL,"Void_On","Enable Void",false,function(v) VCFG.enabled=v; if v then startVoid() else stopVoid() end end)
     VL:AddDropdown("VoidMode",{Text="Mode",Default="Quantum",Values=VOID_MODES,Callback=function(v) VCFG.method=v; vElapsed=0 end})
     VL:AddSlider("VoidSpeed",{Text="Speed (x109 B/s)",Default=1,Min=1,Max=500,Rounding=0,Callback=function(v) VCFG.speed=v*1e9 end})
@@ -2465,7 +2473,7 @@ pcall(function()
     VL:AddSlider("VoidChaos",{Text="Chaos Factor %",Default=98,Min=1,Max=100,Rounding=0,Callback=function(v) VCFG.chaos=v*0.01 end})
     VL:AddButton({Text="Reset Pattern",Func=function() vElapsed=0; vX=math.random(-1e8,1e8); vZ=math.random(-1e8,1e8); vYOff=0; Notify("Pattern reset",2) end})
 
-    local VR=Tabs.HVH:AddRightGroupbox("Evasion & Godmode")
+    local VR=Tabs.main:AddRightGroupbox("evasion")
     BT(VR,"VoidEvade","Void Evasion",true,function(v) VCFG.evade=v end)
     VR:AddSlider("VoidEvR",{Text="Evade Radius (x109)",Default=8,Min=1,Max=500,Rounding=0,Callback=function(v) VCFG.evadeR=v*1e9 end})
     VR:AddSlider("VoidEvS",{Text="Evade Speed (x109)",Default=6,Min=1,Max=500,Rounding=0,Callback=function(v) VCFG.evadeS=v*1e9 end})
@@ -2483,14 +2491,14 @@ end)
 task.wait() 
 
 pcall(function()
-    local OL=Tabs.HVH:AddLeftGroupbox("Orbit"); _ucBoxes.orbitLeft=OL
+    local OL=Tabs.main:AddLeftGroupbox("orbit"); _ucBoxes.orbitLeft=OL
     BT(OL,"Orbit_On","Enable Orbit",false,function(v) OCFG.enabled=v; if v then startOrbit() else stopOrbit() end end)
     OL:AddDropdown("OrbitMode",{Text="Mode",Default="Circle",Values={"Circle","Figure8","SpiralIn","SpiralOut","Bounce"},Callback=function(v) OCFG.mode=v; oCurR=OCFG.dist end})
     OL:AddSlider("OrbitSpeed",{Text="Speed (deg/s)",Default=90,Min=5,Max=720,Rounding=0,Callback=function(v) OCFG.speed=v end})
     OL:AddSlider("OrbitDist",{Text="Radius",Default=8,Min=1,Max=200,Rounding=0,Callback=function(v) OCFG.dist=v; oCurR=v end})
     OL:AddSlider("OrbitHeight",{Text="Height Offset",Default=0,Min=-50,Max=50,Rounding=0,Callback=function(v) OCFG.height=v end})
     OL:AddSlider("OrbitLerp",{Text="Smoothing",Default=30,Min=1,Max=100,Rounding=0,Callback=function(v) OCFG.lerp=v/100 end})
-    local OR=Tabs.HVH:AddRightGroupbox("Advanced")
+    local OR=Tabs.main:AddRightGroupbox("advanced")
     BT(OR,"OrbitFace","Face Target",true,function(v) OCFG.faceTarget=v end)
     BT(OR,"OrbitPred","Prediction",false,function(v) OCFG.predict=v end)
     OR:AddSlider("OrbitPredStr",{Text="Pred Strength %",Default=20,Min=0,Max=100,Rounding=0,Callback=function(v) OCFG.predStr=v/100 end})
@@ -2499,7 +2507,7 @@ end)
 task.wait() 
 
 pcall(function()
-    local AL=Tabs.HVH:AddLeftGroupbox("Anti-Aim"); _ucBoxes.aaLeft=AL
+    local AL=Tabs.character:AddLeftGroupbox("anti aim"); _ucBoxes.aaLeft=AL
     BT(AL,"AA_On","Enable Anti-Aim",false,function(v) ACFG.enabled=v; if v then startAntiAim() else stopAntiAim() end end)
     AL:AddDropdown("AA_Mode",{Text="Mode",Default="Spin",Values={"Spin","Jitter","Static"},Callback=function(v) ACFG.mode=v end})
     AL:AddSlider("AA_Speed",{Text="Speed (deg/s)",Default=5000,Min=100,Max=5000,Rounding=0,Callback=function(v) ACFG.speed=v end})
@@ -2507,7 +2515,7 @@ pcall(function()
     BT(AL,"AA_Rand","Randomize Speed",true,function(v) ACFG.randSpeed=v end)
     BT(AL,"AA_JitPitch","Jitter Pitch (2D)",true,function(v) ACFG.jitterPitch=v end)
 
-    local AR=Tabs.HVH:AddRightGroupbox("Prediction Dodge")
+    local AR=Tabs.character:AddRightGroupbox("prediction")
     BT(AR,"Dodge_On","Enable Dodge",false,function(v) DCFG.enabled=v; if v then startDodge() else stopDodge() end end)
     AR:AddSlider("Dodge_R",{Text="Danger Radius",Default=20,Min=5,Max=100,Rounding=0,Callback=function(v) DCFG.radius=v end})
     AR:AddSlider("Dodge_D",{Text="Dodge Distance",Default=30,Min=5,Max=150,Rounding=0,Callback=function(v) DCFG.dist=v end})
@@ -2518,13 +2526,13 @@ end)
 task.wait() 
 
 pcall(function()
-    local GL=Tabs.HVH:AddLeftGroupbox("Riot - Erratic + Spin")
+    local GL=Tabs.main:AddLeftGroupbox("spin / erratic")
     BT(GL,"Riot_On","Enable Riot",false,function(v) RCFG.enabled=v; if v then startRiot() else stopRiot() end end)
     GL:AddSlider("Riot_Speed",{Text="Interval (s)",Default=0.03,Min=0.01,Max=0.5,Rounding=2,Callback=function(v) RCFG.speed=v end})
     GL:AddSlider("Riot_Range",{Text="Jump Range",Default=50,Min=10,Max=200,Rounding=0,Callback=function(v) RCFG.range=v end})
     GL:AddSlider("Riot_EvR",{Text="Evade Trigger",Default=30,Min=0,Max=100,Rounding=0,Callback=function(v) RCFG.evadeRange=v end})
     GL:AddSlider("Riot_Spin",{Text="Spin Speed (deg/s)",Default=180,Min=0,Max=720,Rounding=0,Callback=function(v) RCFG.spinSpeed=v end})
-    local GR=Tabs.HVH:AddRightGroupbox("Riot Abuse 3D")
+    local GR=Tabs.main:AddRightGroupbox("riot abuse")
     BT(GR,"RAbuse_On","Enable Riot Abuse",false,function(v) RABCFG.enabled=v; if v then startRiotAbuse() else stopRiotAbuse() end end)
     GR:AddDropdown("RAbuse_Mode",{Text="Mode",Default="Stick",Values={"Stick","Bounce"},Callback=function(v) RABCFG.mode=v end})
     GR:AddSlider("RAbuse_H",{Text="Height Offset",Default=3,Min=-50,Max=50,Rounding=1,Callback=function(v) RABCFG.height=v end})
@@ -2535,19 +2543,19 @@ end)
 task.wait()
 
 pcall(function()
-    local RL=Tabs.HVH:AddLeftGroupbox("RAGE"); _ucBoxes.hvhRage=RL
+    local RL=Tabs.main:AddLeftGroupbox("rage"); _ucBoxes.hvhRage=RL
     RL:AddLabel("Void Movement / Spin / Desync")
 end)
 task.wait()
 
 pcall(function()
-    local SL=Tabs.Visuals:AddLeftGroupbox("ESP"); _ucBoxes.visLeft=SL
+    local SL=Tabs.esp:AddLeftGroupbox("esp"); _ucBoxes.visLeft=SL
     BT(SL,"ESP_On","ESP Enabled",false)
     BT(SL,"ESP_Name","Show Name",true)
     BT(SL,"ESP_HP","Show Health",true)
     BT(SL,"ESP_Dist","Show Distance",true)
 
-    local SR=Tabs.World:AddLeftGroupbox("World / Shaders"); _ucBoxes.visRight=SR
+    local SR=Tabs.world:AddLeftGroupbox("color correction"); _ucBoxes.visRight=SR
     BT(SR,"Fullbright","Full Bright",false)
     BT(SR,"NoFog","No Fog",true,function(v) Lighting.FogEnd=v and 100000 or (origLighting and origLighting.FogEnd or 1000); Lighting.FogStart=v and 100000 or 0 end)
     BT(SR,"NoShadows","No Shadows",false,function(v) Lighting.GlobalShadows=not v end)
@@ -2589,7 +2597,41 @@ end)
 task.wait() 
 
 pcall(function()
-    local ML=Tabs.Misc:AddLeftGroupbox("Movement"); _ucBoxes.miscLeft=ML
+    local ML=Tabs.character:AddLeftGroupbox("movement"); _ucBoxes.miscLeft=ML
+pcall(function()
+    local ChR = Tabs.character:AddRightGroupbox("character")
+    BT(ChR,"UC_NC2","noclip",false,function(v)
+        if _UM.PH then if v then _UM.PH.enable() else _UM.PH.disable() end end
+    end)
+    BT(ChR,"UC_FLY2","fly",false,function(v)
+        if _UM.FLY then if v then _UM.FLY.enable() else _UM.FLY.disable() end end
+    end)
+    ChR:AddSlider("UC_FLY_SPD2",{Text="fly speed",Default=57,Min=5,Max=200,Rounding=0,
+        Callback=function(v) if _UM.FLY then _UM.FLY.Speed=v end end})
+    ChR:AddDivider()
+    ChR:AddLabel("third person")
+    BT(ChR,"UC_TP2","enabled",false,function(v)
+        if _UM.TP3 then if v then _UM.TP3.enable() else _UM.TP3.disable() end end
+    end)
+    ChR:AddDivider()
+    ChR:AddLabel("animation player")
+    BT(ChR,"UC_ANMP","enabled",false,function(v)
+        if _UM.ANIM then if v then _UM.ANIM.enable() else _UM.ANIM.disable() end end
+    end)
+    ChR:AddDropdown("UC_ANMP_SEL",{Text="animation",Default="Dance",
+        Values=_UM.ANIM and _UM.ANIM.List or {"Dance","Walk","Run","Idle"},
+        Callback=function(v) if _UM.ANIM then _UM.ANIM.setAnim(v) end end})
+    ChR:AddInput("UC_ANMP_CID",{Text="custom animation",Default="120847719901855",
+        Placeholder="rbxassetid...",ClearTextOnFocus=false,
+        Callback=function(v) if _UM.ANIM then _UM.ANIM.CustomID=v end end})
+    ChR:AddSlider("UC_ANMP_SPD",{Text="speed",Default=1,Min=0.1,Max=5,Rounding=1,
+        Callback=function(v)
+            if _UM.ANIM then
+                _UM.ANIM.Speed=v
+                if _UM.ANIM._track then pcall(function() _UM.ANIM._track:AdjustSpeed(v) end) end
+            end
+        end})
+end)
     BT(ML,"SpeedOn","Speed Hack",false,function(v) if not v and hum then hum.WalkSpeed=16 end end)
     ML:AddSlider("SpeedVal",{Text="Walk Speed",Default=60,Min=16,Max=300,Rounding=0})
     BT(ML,"InfJump","Infinite Jump",false)
@@ -2608,9 +2650,35 @@ pcall(function()
         pcall(function() root.CFrame=r.CFrame*CFrame.new(0,0,3) end)
     end})
 
-    local MR=Tabs.Misc:AddRightGroupbox("Spoof / Cosmetics"); _ucBoxes.miscRight=MR
+    pcall(function()
+    local NHBox = Tabs.misc:AddLeftGroupbox("notify hit")
+    BT(NHBox,"UC_NHIT","enabled",false,function(v)
+        if _UM.NHIT then if v then _UM.NHIT.enable() else _UM.NHIT.disable() end end
+    end)
+    NHBox:AddSlider("UC_NHIT_DUR",{Text="notify duration",Default=3,Min=1,Max=10,Suffix="s",
+        Callback=function(v) if _UM.NHIT then _UM.NHIT.Duration=v end end})
+    NHBox:AddInput("UC_NHIT_TMPL",{Text="random notify text",Default="{NAME}☆☆{DMG}",
+        Placeholder="{NAME},{DMG},{PART},{WEAPON}",ClearTextOnFocus=false,
+        Callback=function(v) if _UM.NHIT then _UM.NHIT.Template=v end end})
+    NHBox:AddLabel("add custom text")
+    NHBox:AddLabel("ex: {NAME}, {DMG}, {PART}")
+    NHBox:AddLabel("ALL FORMATTING:")
+    NHBox:AddLabel("{NAME}, {DMG}, {PART}, {WEAPON}")
+end)
+local MR=Tabs.misc:AddRightGroupbox("spoof / cosmetics"); _ucBoxes.miscRight=MR
     MR:AddLabel("Skin Changer → Visuals tab")
     MR:AddLabel("Unlock All  → Visuals > Appearance/Unlock")
+    MR:AddDivider()
+    MR:AddLabel("info spoofer")
+    BT(MR,"UC_ISPOOF","enabled",false,function(v)
+        if _UM.InfoSpoof then if v then _UM.InfoSpoof.enable() else _UM.InfoSpoof.disable() end end
+    end)
+    MR:AddDropdown("UC_ISPOOF_DEV",{Text="device",Default="computer",
+        Values={"computer","tablet","phone"},
+        Callback=function(v) if _UM.InfoSpoof then _UM.InfoSpoof.DeviceType=v end end})
+    MR:AddInput("UC_ISPOOF_NAME",{Text="other name",Default="sensei...",
+        Placeholder="display name...",ClearTextOnFocus=false,
+        Callback=function(v) if _UM.InfoSpoof then _UM.InfoSpoof.CustomName=v end end})
     MR:AddDivider()
     MR:AddLabel("Name Spoofer")
     BT(MR,"NS_On","Enable Name Spoof",false,function(v) NSCFG.enabled=v; if v then startNameSpoof() end end)
@@ -2659,7 +2727,7 @@ pcall(function()
         Notify("Preset: "..name,3)
     end
 
-    local CL=Tabs.Config:AddLeftGroupbox("Community Presets")
+    local CL=Tabs.settings:AddLeftGroupbox("community presets")
     CL:AddDropdown("PresetSel",{Text="Preset",Default="Anti-Kicia v3",Values={"Anti-Kicia v3","Anti-Transcrait","Rage Max","Balanced HVH","Safe / Legit","Orbit Spam","Full Defense","Speed Rush"}})
     CL:AddButton({Text="> Apply Preset",Func=function() applyPreset(Options.PresetSel and Options.PresetSel.Value or "Anti-Kicia v3") end})
     CL:AddLabel("Anti-Kicia v3: Resolver+BT+Evade+God")
@@ -2668,7 +2736,7 @@ pcall(function()
     CL:AddLabel("Balanced: KX+Jitter+Quantum")
     CL:AddLabel("Safe: KX only")
 
-    local CR=Tabs.Config:AddRightGroupbox("Custom Configs")
+    local CR=Tabs.settings:AddRightGroupbox("custom configs")
     CR:AddInput("CfgName",{Text="Config Name",Default="",Placeholder="my_cfg",ClearTextOnFocus=false})
     CR:AddButton({Text="Save",Func=function()
         local n=Options.CfgName and Options.CfgName.Value or ""
@@ -3091,7 +3159,7 @@ end)
 
 pcall(function()
 
-    local VT = Tabs.Visuals
+    local VT = Tabs.visuals
 
     local EL = VT:AddLeftGroupbox("Full ESP")
     EL:AddToggle("RVESP_Box",     {Text="Corner Box",    Default=false,  Callback=function(v) RV.ESP.Box=v end})
@@ -3166,7 +3234,7 @@ pcall(function()
     VM2:AddSlider("RVVM_ArmTr",  {Text="Arm Transp %",     Default=32,  Min=0,Max=100,Rounding=0, Callback=function(v) RV.Viewmodel.ArmTrans=v end})
     VM2:AddToggle("RVVM_NoClth", {Text="Remove Clothes",   Default=false, Callback=function(v) RV.Viewmodel.ArmNoClothes=v end})
 
-    local WR2 = Tabs.World:AddRightGroupbox("World (Advanced)")
+    local WR2 = Tabs.world:AddRightGroupbox("atmosphere")
     WR2:AddToggle("RVCC_On",    {Text="Color Correction",  Default=false, Callback=function(v) RV.CC.Enabled=v; pcall(RVApplyWorld) end})
     WR2:AddSlider("RVCC_Sat",   {Text="Saturation",   Default=0.1, Min=-1,Max=1,  Rounding=2, Callback=function(v) RV.CC.Saturation=v; pcall(RVApplyWorld) end})
     WR2:AddSlider("RVCC_Cont",  {Text="Contrast",     Default=0,   Min=-1,Max=1,  Rounding=2, Callback=function(v) RV.CC.Contrast=v;   pcall(RVApplyWorld) end})
@@ -4067,7 +4135,7 @@ _RV_SRC = nil; pcall(collectgarbage,"collect") -- Free 83KB embedded module sour
 
 pcall(function()
 
-    local VT = Tabs.Visuals
+    local VT = Tabs.visuals
 
     local AUL = VT:AddLeftGroupbox("Aura")
     BT(AUL,"Aura_On","Aura Enabled",false,function(v)
@@ -4958,10 +5026,114 @@ function TRIG.disable()
     _trigLocked = nil; _trigCandidate = nil
 end
 
+    -- ============================================================
+    -- [uncode] FullAuto: 半自動武器をフルオートに強制
+    -- ============================================================
+    local FullAuto = {}
+    FullAuto.Enabled  = false
+    FullAuto.FireRate = 0.05  -- 秒間隔
+    local _faLast = 0
+    function FullAuto.enable()
+        FullAuto.Enabled = true
+        _conn("FullAuto", RunService.Heartbeat:Connect(function()
+            if not FullAuto.Enabled then return end
+            local c = _char(); if not c then return end
+            local tool = c:FindFirstChildOfClass("Tool"); if not tool then return end
+            local now = tick()
+            if now - _faLast < FullAuto.FireRate then return end
+            if not UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then return end
+            _faLast = now
+            pcall(function()
+                for _, v in ipairs(tool:GetDescendants()) do
+                    if v:IsA("RemoteEvent") and (v.Name:lower():find("fire") or v.Name:lower():find("shoot") or v.Name:lower():find("attack")) then
+                        v:FireServer()
+                        break
+                    end
+                end
+            end)
+        end))
+    end
+    function FullAuto.disable()
+        FullAuto.Enabled = false
+        _stop("FullAuto")
+    end
+
+    -- ============================================================
+    -- [uncode] NHIT: ヒット時カスタム通知 — {NAME} {DMG} {PART} {WEAPON}
+    -- ============================================================
+    local NHIT = {}
+    NHIT.Enabled  = false
+    NHIT.Duration = 3
+    NHIT.Template = "{NAME}☆☆{DMG}"
+    local _nhitPrev = {}
+    local function _nhitFmt(tmpl, name, dmg, part)
+        return tmpl
+            :gsub("{NAME}",   name or "?")
+            :gsub("{DMG}",    tostring(math.floor(dmg or 0)))
+            :gsub("{PART}",   part or "Body")
+            :gsub("{WEAPON}", "")
+    end
+    function NHIT.enable()
+        NHIT.Enabled = true
+        _conn("NHIT", RunService.Heartbeat:Connect(function()
+            if not NHIT.Enabled then return end
+            local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            if not myRoot then return end
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LP and p.Character then
+                    local h = p.Character:FindFirstChildOfClass("Humanoid")
+                    if h then
+                        local prev = _nhitPrev[p.Name] or h.Health
+                        local curr = h.Health
+                        if curr < prev - 0.5 then
+                            local r = p.Character:FindFirstChild("HumanoidRootPart")
+                            if r and (myRoot.Position - r.Position).Magnitude < 600 then
+                                Notify_(_nhitFmt(NHIT.Template, p.DisplayName, prev - curr, "Body"), NHIT.Duration)
+                            end
+                        end
+                        _nhitPrev[p.Name] = curr
+                    end
+                end
+            end
+        end))
+    end
+    function NHIT.disable()
+        NHIT.Enabled = false
+        _stop("NHIT")
+        _nhitPrev = {}
+    end
+
+    -- ============================================================
+    -- [uncode] InfoSpoof: デバイス情報スプーフ
+    -- ============================================================
+    local InfoSpoof = {}
+    InfoSpoof.Enabled    = false
+    InfoSpoof.DeviceType = "computer"  -- "computer" / "tablet" / "phone"
+    InfoSpoof.CustomName = "sensei"
+    function InfoSpoof.enable()
+        InfoSpoof.Enabled = true
+        pcall(function()
+            local rs2 = cloneref(game:GetService("ReplicatedStorage"))
+            for _, r in ipairs(rs2:GetDescendants()) do
+                if r:IsA("RemoteFunction") then
+                    local nm = r.Name:lower()
+                    if nm:find("device") or nm:find("platform") or nm:find("info") then
+                        r.OnClientInvoke = function() return InfoSpoof.DeviceType end
+                    end
+                end
+            end
+        end)
+    end
+    function InfoSpoof.disable()
+        InfoSpoof.Enabled = false
+        -- フック解除にはリロードが必要
+    end
+
     -- E1 exports → _UM
     _UM.SilentShot=SilentShot; _UM.AimSmooth=AimSmooth; _UM.AutoShoot=AutoShoot
     _UM.MaxMode=MaxMode; _UM.TRIG=TRIG
     _UM.SKINC=SKINC; _UM.SkinSwap=SKINC; _UM.KA=KA; _UM.AP=AP
+    _UM.FullAuto=FullAuto; _UM.NHIT=NHIT; _UM.InfoSpoof=InfoSpoof
     end -- E1
     pcall(collectgarbage,"collect")
     task.wait(0.8)
@@ -5713,11 +5885,151 @@ function FLAM.disable()
     table.clear(_flamClean)
 end
 
+    -- ============================================================
+    -- [uncode] THUD: ターゲットHUDオーバーレイ
+    -- ============================================================
+    local THUD = {}
+    THUD.Enabled  = false
+    THUD.OffsetX  = 50    -- 画面幅 %
+    THUD.OffsetY  = 83    -- 画面高 %
+    THUD.UIScale  = 100   -- %
+    THUD.ShowMode = "aimbot, ragebot"
+    THUD._drw     = {}
+    local function _thudClear()
+        for _, d in pairs(THUD._drw) do pcall(function() d:Remove() end) end
+        THUD._drw = {}
+    end
+    local function _tdrw(t, p)
+        local d = Drawing.new(t)
+        for k, v in pairs(p) do pcall(function() d[k] = v end) end
+        table.insert(THUD._drw, d)
+        return d
+    end
+    function THUD.enable()
+        THUD.Enabled = true
+        _conn("THUD", RunService.Heartbeat:Connect(function()
+            _thudClear()
+            if not THUD.Enabled then return end
+            local myRoot = _root(); if not myRoot then return end
+            local best, bestD = nil, math.huge
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LP and p.Character then
+                    local r = p.Character:FindFirstChild("HumanoidRootPart")
+                    local h = p.Character:FindFirstChildOfClass("Humanoid")
+                    if r and h and h.Health > 0 then
+                        local d = (myRoot.Position - r.Position).Magnitude
+                        if d < bestD then bestD = d; best = p end
+                    end
+                end
+            end
+            if not best then return end
+            local hum = best.Character:FindFirstChildOfClass("Humanoid")
+            if not hum then return end
+            local vp  = Camera.ViewportSize
+            local sc  = math.clamp(THUD.UIScale / 100, 0.5, 2.5)
+            local cx  = vp.X * (THUD.OffsetX / 100)
+            local cy  = vp.Y * (THUD.OffsetY / 100)
+            local hp, maxHp = hum.Health, hum.MaxHealth
+            local hpr = math.clamp(hp / math.max(maxHp, 1), 0, 1)
+            -- 背景
+            _tdrw("Square", {Position=Vector2.new(cx-95*sc, cy-55*sc), Size=Vector2.new(190*sc, 108*sc),
+                Color=Color3.fromRGB(8,8,12), Filled=true, Transparency=0.6, Visible=true})
+            -- 境界線
+            _tdrw("Square", {Position=Vector2.new(cx-95*sc, cy-55*sc), Size=Vector2.new(190*sc, 108*sc),
+                Color=Color3.fromRGB(50,50,80), Filled=false, Thickness=1, Visible=true})
+            -- 名前
+            _tdrw("Text", {Text=best.DisplayName, Position=Vector2.new(cx, cy-42*sc),
+                Size=math.floor(14*sc), Color=Color3.fromRGB(230,230,255), Center=true, Outline=true, Visible=true})
+            -- level/dist
+            _tdrw("Text", {Text=string.format("dist: %dm", math.floor(bestD)),
+                Position=Vector2.new(cx, cy-26*sc), Size=math.floor(10*sc),
+                Color=Color3.fromRGB(110,160,255), Center=true, Outline=true, Visible=true})
+            -- health ラベル
+            _tdrw("Text", {Text="health", Position=Vector2.new(cx-85*sc, cy-10*sc),
+                Size=math.floor(9*sc), Color=Color3.fromRGB(150,150,150), Outline=true, Visible=true})
+            _tdrw("Text", {
+                Text=string.format("%d / %d", math.floor(hp), math.floor(maxHp)),
+                Position=Vector2.new(cx+10*sc, cy-10*sc),
+                Size=math.floor(9*sc), Color=Color3.fromRGB(210,210,210), Outline=true, Visible=true})
+            -- ヘルスバー背景
+            _tdrw("Square", {Position=Vector2.new(cx-85*sc, cy+2*sc), Size=Vector2.new(170*sc, 8*sc),
+                Color=Color3.fromRGB(30,30,30), Filled=true, Visible=true})
+            -- ヘルスバー
+            local hc = Color3.fromRGB(math.floor(255*(1-hpr)), math.floor(200*hpr+50), 0)
+            _tdrw("Square", {Position=Vector2.new(cx-85*sc, cy+2*sc), Size=Vector2.new(170*sc*hpr, 8*sc),
+                Color=hc, Filled=true, Visible=true})
+            -- damage ratio
+            _tdrw("Text", {Text=string.format("damage ratio  5 â²  %dâ¼", math.floor(math.max(0,maxHp-hp))),
+                Position=Vector2.new(cx, cy+18*sc),
+                Size=math.floor(9*sc), Color=Color3.fromRGB(130,130,130), Center=true, Outline=true, Visible=true})
+        end))
+    end
+    function THUD.disable()
+        THUD.Enabled = false
+        _stop("THUD")
+        _thudClear()
+    end
+
+    -- ============================================================
+    -- [uncode] INDIC: アクティブ機能インジケーター
+    -- ============================================================
+    local INDIC = {}
+    INDIC.Enabled    = false
+    INDIC.ShowManip  = true
+    INDIC.ShowRage   = true
+    INDIC.ManipCol   = Color3.fromRGB(220, 50,  50)
+    INDIC.RageCol    = Color3.fromRGB(180, 30,  30)
+    INDIC.AmmoCol    = Color3.fromRGB(200, 200, 200)
+    INDIC._drw       = {}
+    local function _indicClear()
+        for _, d in pairs(INDIC._drw) do pcall(function() d:Remove() end) end
+        INDIC._drw = {}
+    end
+    function INDIC.enable()
+        INDIC.Enabled = true
+        _conn("INDIC", RunService.Heartbeat:Connect(function()
+            _indicClear()
+            if not INDIC.Enabled then return end
+            local vp = Camera.ViewportSize
+            local y  = 20
+            local function lbl(txt, col)
+                local d = Drawing.new("Text")
+                d.Text, d.Position, d.Size = txt, Vector2.new(vp.X - 140, y), 13
+                d.Color, d.Outline, d.Visible = col, true, true
+                table.insert(INDIC._drw, d)
+                y = y + 18
+            end
+            if INDIC.ShowManip and _UM.AimSmooth and _UM.AimSmooth.Enabled then
+                lbl("MANIPULATED", INDIC.ManipCol)
+            end
+            if INDIC.ShowRage and _UM.RAGE and _UM.RAGE.VoidEnabled then
+                lbl("RAGEBOT", INDIC.RageCol)
+            end
+            -- ammo indicator
+            pcall(function()
+                local c = LP.Character
+                local tool = c and c:FindFirstChildOfClass("Tool")
+                if tool then
+                    local ammoVal = tool:FindFirstChild("Ammo") or tool:FindFirstChild("ammo")
+                    if ammoVal and ammoVal:IsA("IntValue") then
+                        lbl(string.format("ammo  %d", ammoVal.Value), INDIC.AmmoCol)
+                    end
+                end
+            end)
+        end))
+    end
+    function INDIC.disable()
+        INDIC.Enabled = false
+        _stop("INDIC")
+        _indicClear()
+    end
+
     -- E2 exports → _UM
     _UM.ESP=ESP; _UM.VMR=VMR; _UM.NS=NS; _UM.HN=HN; _UM.BL=BL
     _UM.STD=STD; _UM.SHD=SHD; _UM.CMV=CMV
     _UM.WINGS=WINGS; _UM.AURA=AURA; _UM.TRAIL=TRAIL
     _UM.GLOW=GLOW; _UM.SPARKLE=SPARKLE; _UM.HALO=HALO; _UM.FLAM=FLAM
+    _UM.THUD=THUD; _UM.INDIC=INDIC
     end -- E2
     pcall(collectgarbage,"collect"); task.wait(0.5)
     pcall(collectgarbage,"collect")
@@ -7267,6 +7579,9 @@ end
     local AUBA   = _UM.AUBA;  local ARSP  = _UM.ARSP;  local DVSP  = _UM.DVSP
     local CDROP  = _UM.CDROP; local CXHR  = _UM.CXHR;  local DVM   = _UM.DVM
     local NOVIG  = _UM.NOVIG; local RAGE  = _UM.RAGE
+    local THUD   = _UM.THUD;  local INDIC = _UM.INDIC
+    local NHIT   = _UM.NHIT;  local InfoSpoof = _UM.InfoSpoof
+    local FullAuto = _UM.FullAuto
     -- VFX内部ヘルパーのエイリアス
     local _vfxCC       = VFXCFG and VFXCFG.applyCC
     local _vfxBloom    = VFXCFG and VFXCFG.applyBloom
@@ -7368,6 +7683,39 @@ end
 
     task.wait()
 
+    -- target hud
+    pcall(function()
+        local THBox = Tabs.visuals:AddLeftGroupbox("target hud")
+        BT(THBox,"UC_THUD","enabled",false,function(v) if v then E.THUD.enable() else E.THUD.disable() end end)
+        THBox:AddSlider("UC_THUD_OX",{Text="offset x",Default=50,Min=0,Max=100,Suffix="%",
+            Callback=function(v) if E.THUD then E.THUD.OffsetX=v end end})
+        THBox:AddSlider("UC_THUD_OY",{Text="offset y",Default=83,Min=0,Max=100,Suffix="%",
+            Callback=function(v) if E.THUD then E.THUD.OffsetY=v end end})
+        THBox:AddSlider("UC_THUD_SC",{Text="ui scale",Default=100,Min=50,Max=200,Suffix="%",
+            Callback=function(v) if E.THUD then E.THUD.UIScale=v end end})
+        THBox:AddDropdown("UC_THUD_MODE",{Text="show targets",Default="aimbot, ragebot",
+            Values={"aimbot, ragebot","all enemies","closest only"},
+            Callback=function(v) if E.THUD then E.THUD.ShowMode=v end end})
+    end)
+    -- indicators
+    pcall(function()
+        local INBox = Tabs.visuals:AddRightGroupbox("indicators")
+        BT(INBox,"UC_INDIC","enabled",false,function(v) if v then E.INDIC.enable() else E.INDIC.disable() end end)
+        BT(INBox,"UC_INDIC_MANIP","manipulated",true,function(v) if E.INDIC then E.INDIC.ShowManip=v end end)
+        INBox:AddColorpicker("UC_INDIC_MCOL",{Text="",Default=Color3.fromRGB(220,50,50),
+            Callback=function(v) if E.INDIC then E.INDIC.ManipCol=v end end})
+        BT(INBox,"UC_INDIC_RAGE","ragebot",true,function(v) if E.INDIC then E.INDIC.ShowRage=v end end)
+        INBox:AddColorpicker("UC_INDIC_RCOL",{Text="",Default=Color3.fromRGB(180,30,30),
+            Callback=function(v) if E.INDIC then E.INDIC.RageCol=v end end})
+        INBox:AddLabel("ragebot style")
+        INBox:AddDropdown("UC_INDIC_RSTYLE",{Text="",Default="text, status",
+            Values={"text, status","text only","icon"},
+            Callback=function(v) end})
+        INBox:AddDivider()
+        INBox:AddLabel("ammo")
+        INBox:AddColorpicker("UC_INDIC_ACOL",{Text="",Default=Color3.fromRGB(200,200,200),
+            Callback=function(v) if E.INDIC then E.INDIC.AmmoCol=v end end})
+    end)
     pcall(function()
         if not B.visLeft then return end
         B.visLeft:AddDivider()
@@ -8215,8 +8563,8 @@ end
     -- [harion] Full Drawing ESP + Highlight Particles UI (Visuals tab right)
     -- ============================================================
     pcall(function()
-        if not Tabs or not Tabs.Visuals then return end
-        local HB=Tabs.Visuals:AddRightGroupbox("Harion ESP")
+        if not Tabs or not Tabs.visuals then return end
+        local HB=Tabs.esp:AddRightGroupbox("harion esp")
         HB:AddLabel("── Full Drawing ESP ──")
         BT(HB,"UC_HFULL","Drawing ESP",false,function(v)
             if v then _UM.HESP_FULL.enable() else _UM.HESP_FULL.disable() end
@@ -8271,6 +8619,6 @@ end
     pcall(collectgarbage,"collect"); task.delay(1,function() pcall(collectgarbage,"collect") end)
     GE.UC4_Loaded=true; pcall(function() _G.UC4_Loaded=true end)
     GE.UC4_Running=nil;  pcall(function() _G.UC4_Running=nil end)
-    pcall(function() if Notify then Notify("uncode v8 ready", 5) end end)
-    print("[UNCODE v2] Ready")
+    pcall(function() if Notify then Notify("uncode v2 ready [UE style]", 5) end end)
+    print("[UNCODE v2] Ready — UE style")
 end) -- task.spawn: エンジン遅延ロード完了
