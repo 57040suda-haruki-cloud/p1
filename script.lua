@@ -1,12 +1,12 @@
 
-print("[UNCODE v1] Script loaded OK -- starting")
+print("[UNCODE v2] Script loaded OK -- starting")
 task.wait(0.1)
 do
 
     if not getgenv().__UC_HooksApplied then
         getgenv().__UC_HooksApplied = true
         pcall(function() if setthreadidentity then setthreadidentity(8) end end)
-        print("[UNCODE v1] Hooks applied (safe mode)")
+        print("[UNCODE v2] Hooks applied (safe mode)")
     end
 end
 
@@ -28,7 +28,7 @@ do
                 end
                 if i % 500 == 0 then task.wait() end
             end
-            print("[UNCODE v1] Kicia bypass done")
+            print("[UNCODE v2] Kicia bypass done")
         end)
     end)
 end
@@ -1690,7 +1690,7 @@ local function _wpnInstall()
         end
 
         _wst.Installed = true
-        print("[UNCODE v1] WeaponMods hooks installed")
+        print("[UNCODE v2] WeaponMods hooks installed")
     end)
 end
 
@@ -2287,101 +2287,12 @@ local function setupMovement()
     end))
 end
 
-local cosHooked=false
-local _cosLib=nil -- cached CosmeticLibrary ref for manual equip
-local function hookCosmetics()
-    if cosHooked then return end; cosHooked=true
-    pcall(function()
-        local m=RS:WaitForChild("Modules",8)
-        local cl=require(m:WaitForChild("CosmeticLibrary",5))
-        local dc=require(LP:WaitForChild("PlayerScripts",8):WaitForChild("Controllers",8):WaitForChild("PlayerDataController",5))
-        if cl then
-            _cosLib = cl
-            cl.OwnsCosmeticNormally=function() return true end
-            cl.OwnsCosmeticUniversally=function() return true end
-            cl.OwnsCosmeticForWeapon=function() return true end
-            local oc=cl.OwnsCosmetic
-            cl.OwnsCosmetic=function(self,inv,nm,wep)
-                if type(nm)=="string" and nm:find("MISSING_") then return oc(self,inv,nm,wep) end
-                return true
-            end
-            -- Hook equip/select functions so clicking equip in-game actually works
-            for _,fname in ipairs({"EquipCosmetic","SelectCosmetic","ApplyCosmetic","SetCosmetic","EquipSkin"}) do
-                if type(cl[fname])=="function" then
-                    local orig=cl[fname]
-                    cl[fname]=function(self,...) pcall(orig,self,...); return true end
-                end
-            end
-        end
-        if dc then
-            local g=dc.Get
-            dc.Get=function(self,k)
-                if k=="CosmeticInventory" then return setmetatable({},{__index=function() return true end}) end
-                return g(self,k)
-            end
-        end
-    end)
-    -- Hook Remotes/Cosmetics equip remote if present
-    pcall(function()
-        local rs=cloneref(game:GetService("ReplicatedStorage"))
-        local rem=rs:FindFirstChild("Remotes")
-        if not rem then return end
-        for _,rname in ipairs({"EquipCosmetic","Equip","EquipSkin","SetSkin","SelectSkin"}) do
-            local r=rem:FindFirstChild(rname,true)
-            if r and (r:IsA("RemoteEvent") or r:IsA("RemoteFunction")) then
-                -- Log for debugging; actual fire happens via UI or forceEquip
-                break
-            end
-        end
-    end)
-end
--- Force-equip a specific cosmetic by name via every available channel
-local function forceEquipCosmetic(cosName)
-    if not cosName or cosName=="" then return end
-    pcall(hookCosmetics)
-    -- Try CosmeticLibrary equip methods
-    if _cosLib then
-        for _,fname in ipairs({"EquipCosmetic","SelectCosmetic","ApplyCosmetic","SetCosmetic","EquipSkin"}) do
-            pcall(function() _cosLib[fname](_cosLib,cosName) end)
-        end
-    end
-    -- Try controllers
-    pcall(function()
-        local ctrl=require(LP:WaitForChild("PlayerScripts",5):WaitForChild("Controllers",5):WaitForChild("CosmeticController",3))
-        if ctrl then
-            for _,fname in ipairs({"EquipSkin","EquipCosmetic","SelectSkin","ApplySkin"}) do
-                pcall(function() ctrl[fname](ctrl,cosName) end)
-            end
-        end
-    end)
-    -- Try firing known equip remotes
-    pcall(function()
-        local rs=cloneref(game:GetService("ReplicatedStorage"))
-        local paths={
-            {"Remotes","Cosmetics","Equip"},
-            {"Remotes","EquipCosmetic"},
-            {"Remotes","Equip"},
-            {"Duels","EquipSkin"},
-            {"Remotes","SetSkin"},
-        }
-        for _,path in ipairs(paths) do
-            local r=rs
-            for _,seg in ipairs(path) do r=r and r:FindFirstChild(seg) end
-            if r then
-                if r:IsA("RemoteEvent") then pcall(function() r:FireServer(cosName) end)
-                elseif r:IsA("RemoteFunction") then pcall(function() r:InvokeServer(cosName) end) end
-            end
-        end
-    end)
-    Notify("Equip: "..cosName:sub(1,30),3)
-end
-
 local function fetch(path)
     local ok,r=pcall(function() return game:HttpGet("https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/"..path) end)
     return ok and r or nil
 end
 
-print("[UNCODE v1] Starting - loading UI library...")
+print("[UNCODE v2] Starting - loading UI library...")
 
 local Library,ThemeManager,SaveManager
 local Toggles={} local Options={}
@@ -2394,7 +2305,7 @@ do
     end)
     if not Library then
         -- Fallback: HTTP download
-        print("[UNCODE v1] Fetching LinoriaLib from network...")
+        print("[UNCODE v2] Fetching LinoriaLib from network...")
         libSrc=fetch("Library.lua")
         if not libSrc then
             pcall(function()
@@ -2445,7 +2356,7 @@ do
         Toggles=fakeToggles; Options=fakeOptions
         warn("[UNCODE] Running in headless mode (LinoriaLib unavailable)")
     else
-        print("[UNCODE v1] UI library loaded - building interface...")
+        print("[UNCODE v2] UI library loaded - building interface...")
     end
 
     task.wait()
@@ -2521,7 +2432,6 @@ pcall(function()
     CL3:AddSlider("WP_FireRate",{Text="Fire Rate x",Default=1,Min=1,Max=10,Rounding=1})
 end)
 
--- [KX aimbot removed: E.KA handles aimbot in IIFE Part1]
 
 
 -- FOV Circle
@@ -2543,7 +2453,6 @@ AB("fov_circle",Enum.RenderPriority.Camera.Value+1,function()
     end
 end)
 
--- [Ragebot removed: E.KA + E.AutoShoot handle combat in IIFE Part1]
 
 pcall(function()
     local VOID_MODES={"Quantum","Chaos","Drift","Still","Circle","Figure8","WideSweep","FastBounce","Blink","GridHop","HeightWave","SquareLoop","CrossSweep","Stairs","NoiseCloud","Spiral","Loop","SlowDrift"}
@@ -2668,7 +2577,6 @@ pcall(function()
         Callback=function(v) _UM.HSKYX.set(v) end})
 end)
 
--- [AC("esp") stub removed]
 AB("visloop",Enum.RenderPriority.Last.Value,function()
     do local _t=os.clock() if _t-(_vlT or 0)<0.1 then return end; _vlT=_t end
     if Toggles.Fullbright and Toggles.Fullbright.Value then
@@ -2701,16 +2609,8 @@ pcall(function()
     end})
 
     local MR=Tabs.Misc:AddRightGroupbox("Spoof / Cosmetics"); _ucBoxes.miscRight=MR
-    BT(MR,"UnlockAll","Unlock All Skins",false,function(v) if v then hookCosmetics() end end)
-    MR:AddInput("SkinName",{Text="Skin Name",Default="",Placeholder="e.g. Rival_Default",ClearTextOnFocus=false})
-    MR:AddButton({Text="Force Equip Skin",Func=function()
-        local n=Options.SkinName and Options.SkinName.Value or ""
-        if n=="" then Notify("Enter skin name",2); return end
-        task.spawn(forceEquipCosmetic,n)
-    end})
-    MR:AddButton({Text="Re-hook Cosmetics",Func=function()
-        cosHooked=false; _cosLib=nil; task.spawn(hookCosmetics); Notify("Re-hooked",2)
-    end})
+    MR:AddLabel("Skin Changer → Visuals tab")
+    MR:AddLabel("Unlock All  → Visuals > Appearance/Unlock")
     MR:AddDivider()
     MR:AddLabel("Name Spoofer")
     BT(MR,"NS_On","Enable Name Spoof",false,function(v) NSCFG.enabled=v; if v then startNameSpoof() end end)
@@ -2855,7 +2755,7 @@ pcall(function() if setfpscap then setfpscap(0) end end)
 Lighting.FogEnd=100000; Lighting.FogStart=100000
 
 Notify("uncode v4 loaded . RShift to toggle . AC bypass active",5)
-print("[UNCODE v1] Loaded - RightShift to toggle menu")
+print("[UNCODE v2] Loaded - RightShift to toggle menu")
 
 local Debris      = game:GetService("Debris")
 local SoundSvc    = game:GetService("SoundService")
@@ -2871,52 +2771,6 @@ local function GetRVChar(pl)
     pl=pl or LP; local c=pl and pl.Character
     if c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChildOfClass("Humanoid") then return c end
 end
-
-local RV = {
-    ESP = {
-        Box=false,BoxFill=Color3.fromRGB(140,230,105),BoxFill2=Color3.fromRGB(255,255,255),
-        Skeleton=false,SkelC=Color3.fromRGB(255,255,255),Outline=false,Thickness=2,
-        Name=false,NameA=Color3.fromRGB(255,255,255),Watermark=true,
-        WatermarkText="uncode",WatermarkColor=Color3.fromRGB(184,172,255),
-        Weapon=false,Distance=false,Healthbar=false,HB_A=Color3.fromRGB(120,255,120),
-        HBType="gradient",Slices=1,HBSpeed=1.5,HealthLerp=0.05,
-        IncludeTeam=false,MaxDistance=1200,NameType="DisplayName",Dormant=true,
-        FixedScale=100,
-    },
-    Crosshair = {
-        Enabled=false,C1=Color3.new(1,1,1),C2=Color3.new(1,1,1),C3=Color3.new(1,1,1),C4=Color3.new(1,1,1),
-        DisableGame=false,Gap=8,Size=17,Thick=1,RGB=true,RotSpeed=150,Pulse=true,
-        FollowMouse=true,Label=true,LabelText="uncode",Glow=true,
-    },
-    HitFX = { Enabled=false,Selected="fortnite damage",Material="ForceField",DisableNumbers=false },
-    HitSound = { Selected="bell",Volume=5,Pitch=1 },
-    Tracers = {
-        Enabled=false,Outline=false,OC1=Color3.fromRGB(140,90,255),OC2=Color3.fromRGB(80,150,255),
-        Selected="trail",Lifetime=0.3,Fade=0.4,PosLerp=0,Size=1,Length=4,Emission=1,Glow=5,Speed=5,
-    },
-    TargetHUD = { Enabled=false,OffX=17,OffY=70,ItemScale=150,UIScale=170,Mode="closest" },
-    Aura = {
-        Enabled=false,Mode="Cyber Blue",RGB=false,Intensity=1,Size=1,
-        Light=true,Ring=true,Trail=true,Pulse=true,
-    },
-    Appearance = {
-        Enabled=false,Color=Color3.fromRGB(255,0,0),Material="ForceField",
-        NoDecal=false,Transparency=100,Aura=false,
-    },
-    Viewmodel = {
-        OverrideEnabled=false,VMColor=Color3.fromRGB(184,172,255),VMMaterial="Neon",
-        VMWireframe=false,VMNoTextures=false,VMTrans=95,
-        ArmColor=Color3.new(1,1,1),ArmMaterial="Neon",ArmNoClothes=false,ArmTrans=32,
-        OverrideFPS=false,FPS=60,Recoil=100,
-    },
-    Light = {
-        Ambient=Color3.fromRGB(40,80,255),CSB=Color3.fromRGB(20,60,255),CST=Color3.fromRGB(20,60,255),
-        FogColor=Color3.fromRGB(80,40,255),UseFogEnd=false,FogEnd=995,UseFogStart=false,FogStart=0,
-        UseExposure=true,Exposure=-0.2,UseBright=true,Bright=3.7,UseClock=true,Clock=11.6,Shadows=false,
-    },
-    Sky = { Enabled=false,Selected="Vertical Milky Way",NoSunStars=false,Bloom=false,BInt=0.1,BSize=0,BThresh=0.88,SunRays=false },
-    CC  = { Enabled=false,Saturation=0.1,Contrast=0,Brightness=0,Tint=Color3.new(1,1,1) },
-}
 
 local RVBackup=nil; local RVFX={}; local RVSkyObj=nil
 
@@ -3073,88 +2927,6 @@ LP.CharacterAdded:Connect(function(c)
         end)
     end
 end)
-
-local UNLOCK_SRC = [==[
-local RS=game:GetService("ReplicatedStorage"); local LP=game:GetService("Players").LocalPlayer
-if not LP then return "no lp" end
-local PS=LP:WaitForChild("PlayerScripts",10); if not PS then return "no PS" end
-local ctrl=PS:WaitForChild("Controllers",10); if not ctrl then return "no ctrl" end
-local U=getgenv().UC_Unlock or {}; getgenv().UC_Unlock=U
-U.equipped=U.equipped or {}; U.active=true
-local CosLib=require(RS.Modules:WaitForChild("CosmeticLibrary",10))
-if U.installed and U.cosLib==CosLib then return U.status or "already on" end
-U.cosLib=CosLib
-local ItemLib=require(RS.Modules:WaitForChild("ItemLibrary",10))
-local DataCtrl=require(ctrl:WaitForChild("PlayerDataController",10))
-local steps,ok=0,0; U.stepErr={}
-local function step(fn) steps=steps+1; local ok2,err=pcall(fn); if ok2 then ok=ok+1 else U.stepErr["s"..steps]=tostring(err):sub(1,80) end end
-local function utype(c,n)
-    if c then local t=c.Type; if t=="Skin" or t=="Charm" or t=="Wrap" or t=="Wrapping" or t=="Dance" or t=="Emote" then return true end end
-    if type(n)=="string" then local ln=n:lower(); if ln:find("charm") or ln:find("wrap") or ln:find("dance") or ln:find("emote") then return true end end
-    return false
-end
-step(function()
-    local m=RS.Modules:FindFirstChild("EnumLibrary"); if m then local el=require(m); U.EnumLib=el; if el and el.WaitForEnumBuilder then el:WaitForEnumBuilder() end end
-end)
-step(function()
-    local cur=CosLib.OwnsCosmetic; assert(type(cur)=="function")
-    CosLib.OwnsCosmetic=function(self,inv,name,wep)
-        if not name or name=="" or name=="None" or (type(name)=="string" and name:find("MISSING_")) then return cur(self,inv,name,wep) end
-        if utype(CosLib.Cosmetics and CosLib.Cosmetics[name],name) then return true end
-        return cur(self,inv,name,wep)
-    end
-end)
-step(function()
-    local cur=DataCtrl.Get; assert(type(cur)=="function")
-    DataCtrl.Get=function(self,key,...)
-        if key=="CosmeticInventory" and U.active then return setmetatable({},{__index=function(_,k) return utype(CosLib.Cosmetics and CosLib.Cosmetics[k],k) end}) end
-        return cur(self,key,...)
-    end
-end)
-step(function()
-    local function equipRemote() local r=RS:FindFirstChild("Remotes"); if not r then return nil end; for _,c in ipairs(r:GetDescendants()) do if c:IsA("RemoteEvent") and (c.Name:lower():find("equip") or c.Name:lower():find("cosmetic")) then return c end end end
-    local rem=equipRemote(); if not rem then return end
-    local forwarder=function(self,...) local args={...}; local cosType,cosName,wepName,opts=args[1],args[2],args[3],args[4]
-        local c=type(cosName)=="string" and CosLib.Cosmetics and CosLib.Cosmetics[cosName] or nil
-        if c and utype(c,cosName) then
-            U.equipped[wepName]=U.equipped[wepName] or {}
-            U.equipped[wepName][cosType]={Name=cosName,Type=cosType}
-            task.defer(function() pcall(function() DataCtrl.CurrentData:Replicate("WeaponInventory") end) end)
-            return
-        end
-        return U.trueNamecall and U.trueNamecall(self,...)
-    end
-    if not U.trueNamecall or U.hookJob~=game.JobId then
-        local _busy2=false
-        local function safeHook(self,...)
-            if _busy2 then return U.trueNamecall and U.trueNamecall(self,...) end
-            _busy2=true
-            local ok4,m=pcall(function() return getnamecallmethod and getnamecallmethod() or "" end)
-            m=(ok4 and m) or ""
-            if (m=="FireServer" or m=="InvokeServer") and self==rem then
-                _busy2=false; return forwarder(self,...)
-            end
-            _busy2=false; return U.trueNamecall and U.trueNamecall(self,...)
-        end
-        local wrapHook=(newcclosure and newcclosure(safeHook)) or safeHook
-        local hOk,hRes=pcall(hookmetamethod,game,"__namecall",wrapHook)
-        if hOk then U.trueNamecall=hRes; U.hookJob=game.JobId end
-    end
-end)
-U.installed=true; U.status="ok("..ok.."/"..steps..")"
-return U.status
-]==]
-
-local unlockActive=false
-local function doUnlockAll()
-    if not unlockActive then return end
-    local fn,err=loadstring(UNLOCK_SRC,"UCUnlock")
-    if fn then
-        local ok2,res=pcall(fn)
-        Notify("Unlock All: "..(ok2 and tostring(res) or tostring(res)),3)
-    else
-        Notify("Unlock All load err: "..tostring(err),3)
-    end
 end
 
 local ARM_NAMES={LeftArm=true,RightArm=true,LeftHand=true,RightHand=true,Hand=true}
@@ -3406,12 +3178,6 @@ pcall(function()
     WR2:AddToggle("RVSky_Sun",  {Text="Sun Rays",         Default=false, Callback=function(v) RV.Sky.SunRays=v; pcall(RVApplyWorld) end})
     WR2:AddButton({Text="Apply World Settings",Func=function() pcall(RVApplyWorld); Notify("World applied",2) end})
     WR2:AddButton({Text="Restore World",Func=function() pcall(RVRestoreWorld); Notify("World restored",2) end})
-
-    local UK2 = Tabs.World:AddLeftGroupbox("Unlock All (NOKS)")
-    UK2:AddToggle("RVUL_On",    {Text="Unlock All Skins/Charms/Wraps", Default=false, Callback=function(v) unlockActive=v; if v then task.spawn(doUnlockAll) end end})
-    UK2:AddLabel("Includes: Skins / Charms / Wraps / Dances")
-    UK2:AddLabel("Excludes: Finishers (crash guard)")
-    UK2:AddButton({Text="Apply Unlock Now",Func=function() if unlockActive then task.spawn(doUnlockAll) else Notify("Enable unlock toggle first",2) end end})
 end)
 
 pcall(function()
@@ -3435,7 +3201,7 @@ pcall(function()
 end)
 
 Notify("Rivals Visuals V2 Ready",4)
-print("[UNCODE v1] Rivals Visuals V2 integrated")
+print("[UNCODE v2] Rivals Visuals V2 integrated")
 
 local _RV_SRC=[==[
 
@@ -4415,36 +4181,27 @@ task.spawn(function()
     pcall(collectgarbage,"collect") -- GC pass 1: clear setup overhead
     task.wait(0.3)
     pcall(collectgarbage,"collect") -- GC pass 2: ensure freed strings collected
-    local _E1; local _ok1,_err1 = pcall(function()
-        _E1 = (function()
-
-local RS_  = game:GetService("ReplicatedStorage")
-local PL_  = game:GetService("Players")
-local RN_  = game:GetService("RunService")
-local UI_  = game:GetService("UserInputService")
-local LP_  = PL_.LocalPlayer
-local WS_  = workspace
-local CG_  = game:GetService("CoreGui")
+    do -- E1: SilentShot, AimSmooth, AutoShoot, MaxMode, SKINC, KA, AP, TRIG
 
 local _util, _enums, _fc
-pcall(function() _util  = require(cloneref(RS_).Modules.Utility)    end)
-pcall(function() _enums = require(cloneref(RS_).Modules.EnumLibrary) end)
-pcall(function() _fc    = require(LP_.PlayerScripts.Controllers.FighterController) end)
+pcall(function() _util  = require(cloneref(RS).Modules.Utility)    end)
+pcall(function() _enums = require(cloneref(RS).Modules.EnumLibrary) end)
+pcall(function() _fc    = require(LP.PlayerScripts.Controllers.FighterController) end)
 
-local _pool = {}
+local _pool_e1 = {}
 local function _conn(key, c)
-    if not _pool[key] then _pool[key] = {} end
-    table.insert(_pool[key], c)
+    if not _pool_e1[key] then _pool_e1[key] = {} end
+    table.insert(_pool_e1[key], c)
     return c
 end
 local function _stop(key)
-    for _, c in ipairs(_pool[key] or {}) do
+    for _, c in ipairs(_pool_e1[key] or {}) do
         pcall(function() c:Disconnect() end)
     end
-    _pool[key] = {}
+    _pool_e1[key] = {}
 end
 
-local function _char()  return LP_.Character end
+local function _char()  return LP.Character end
 local function _root()
     local c = _char(); return c and c:FindFirstChild("HumanoidRootPart")
 end
@@ -4459,8 +4216,8 @@ end
 
 local function _enemies()
     local list = {}
-    for _, p in ipairs(PL_:GetPlayers()) do
-        if p ~= LP_ and p.Character then
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
             local h = p.Character:FindFirstChildOfClass("Humanoid")
             local r = p.Character:FindFirstChild("HumanoidRootPart")
             if h and h.Health > 0 and r then table.insert(list, p) end
@@ -4471,7 +4228,7 @@ end
 
 local function _closestEnemy(fov)
     fov = fov or 9999
-    local cam = WS_.CurrentCamera
+    local cam = workspace.CurrentCamera
     local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
     local best, bestD = nil, fov
     for _, p in ipairs(_enemies()) do
@@ -4570,7 +4327,7 @@ local _hnHooked = false
 local function _getRemote()
     if _useItemRemote then return _useItemRemote end
     pcall(function()
-        local rp = cloneref(RS_)
+        local rp = cloneref(RS)
         _useItemRemote = rp.Remotes.Replication.Fighter.UseItem
     end)
     return _useItemRemote
@@ -4614,7 +4371,7 @@ function SilentShot.enable()
     local remote = _getRemote()
     if not remote or not hookfunction or not newcclosure then return end
     local _ssVT = 0
-    _conn("SilentShot_vel", RN_.Heartbeat:Connect(function(dt)
+    _conn("SilentShot_vel", RunService.Heartbeat:Connect(function(dt)
         if not SilentShot.Enabled then return end
         _ssVT = _ssVT + dt; if _ssVT < 0.05 then return end; _ssVT = 0 -- 20 Hz (was every frame)
         local enemy = _closestEnemy(SilentShot.FOV)
@@ -4625,7 +4382,7 @@ function SilentShot.enable()
         old = hookfunction(remote.FireServer, newcclosure(function(self, obj, action, camdata, ...)
             pcall(function()
             if SilentShot.Enabled and action == _getStartShoot() then
-                local cam = WS_.CurrentCamera
+                local cam = workspace.CurrentCamera
                 local enemy = _closestEnemy(SilentShot.FOV)
                 if enemy and enemy.Character then
                     local bone    = _getBone(enemy.Character)
@@ -4662,7 +4419,7 @@ local _asCacheT     = 0
 function AimSmooth.enable()
     AimSmooth.Enabled = true
     _asEnemyCache = nil; _asCacheT = 0
-    _conn("AimSmooth", RN_.RenderStepped:Connect(function(dt)
+    _conn("AimSmooth", RunService.RenderStepped:Connect(function(dt)
         if not AimSmooth.Enabled then return end
         if not mousemoverel then return end
         -- ターゲット検索は10Hz (毎フレーム検索から削減)
@@ -4672,7 +4429,7 @@ function AimSmooth.enable()
         if not enemy or not enemy.Character then return end
         local bone = _getBone(enemy.Character)
         if not bone then return end
-        local cam = WS_.CurrentCamera
+        local cam = workspace.CurrentCamera
         local facing = cam.CFrame.LookVector
         local dir    = (bone.Position - cam.CFrame.Position).Unit
         if dir == Vector3.zero then return end
@@ -4705,7 +4462,7 @@ local _asLock   = false  -- テレポート中フラグ (再入防止)
 function AutoShoot.enable()
     AutoShoot.Enabled = true
     _asFrames = 0; _asLock = false
-    _conn("AutoShoot", RN_.Heartbeat:Connect(function(dt)
+    _conn("AutoShoot", RunService.Heartbeat:Connect(function(dt)
         if not AutoShoot.Enabled or _asLock then return end
         _asFrames = _asFrames + dt
         if _asFrames < AutoShoot.Delay then return end
@@ -4735,7 +4492,7 @@ function AutoShoot.enable()
             local remote = _getRemote(); if not remote then return end
             local ss = _getStartShoot(); if not ss then return end
             if not _fc then
-                pcall(function() _fc = require(LP_.PlayerScripts.Controllers.FighterController) end)
+                pcall(function() _fc = require(LP.PlayerScripts.Controllers.FighterController) end)
             end
             if not _fc or not _fc.LocalFighter then return end
             local item = _fc.LocalFighter.EquippedItem; if not item then return end
@@ -4784,7 +4541,7 @@ local function _mmBuildCH()
     end
 end
 local function _mmUpdateCH(locked)
-    local cam = WS_.CurrentCamera; if not cam then return end
+    local cam = workspace.CurrentCamera; if not cam then return end
     local vp = cam.ViewportSize
     local cx, cy = vp.X/2, vp.Y/2
     local g = 7 -- gap, s = arm length
@@ -4816,7 +4573,7 @@ function MaxMode.enable()
     -- AutoShootを外す: クリック連打になるため。SilentShotが自分で撃った弾をリダイレクト
     _mmBuildCH(); _rageTarget = nil; _rageCacheT = 0
     -- インスタントスナップ: AimSmoothを使わず毎フレームで直接スナップ
-    _conn("MaxMode_snap", RN_.RenderStepped:Connect(function(dt)
+    _conn("MaxMode_snap", RunService.RenderStepped:Connect(function(dt)
         if not MaxMode.Enabled then return end
         -- ターゲットを30Hzでリフレッシュ
         _rageCacheT = _rageCacheT + dt
@@ -4831,7 +4588,7 @@ function MaxMode.enable()
         if not mousemoverel then return end
         local bone = _getBone(enemy.Character)
         if not bone then return end
-        local cam = WS_.CurrentCamera
+        local cam = workspace.CurrentCamera
         local facing = cam.CFrame.LookVector
         local predPos = _predictPos(enemy, bone) or bone.Position
         local dir = (predPos - cam.CFrame.Position).Unit
@@ -4897,7 +4654,7 @@ local function _scInit()
     local ok = pcall(function()
         local RS2  = cloneref(game:GetService("ReplicatedStorage"))
         local mods = RS2:WaitForChild("Modules", 6)
-        local ps2  = LP_:WaitForChild("PlayerScripts", 6)
+        local ps2  = LP:WaitForChild("PlayerScripts", 6)
         local ctrl = ps2:WaitForChild("Controllers", 6)
         SKINC._cosLib   = require(mods:WaitForChild("CosmeticLibrary", 5))
         SKINC._dataCtrl = require(ctrl:WaitForChild("PlayerDataController", 5))
@@ -4934,7 +4691,7 @@ local function _scFireEquip(weaponName, skinName)
     end
     -- フォールバック: CosmeticController経由
     pcall(function()
-        local ps2  = LP_:WaitForChild("PlayerScripts", 3)
+        local ps2  = LP:WaitForChild("PlayerScripts", 3)
         local ctrl = ps2:WaitForChild("Controllers", 3)
         local cc   = require(ctrl:WaitForChild("CosmeticController", 3))
         for _, fn in ipairs({"EquipSkin","EquipCosmetic","SelectSkin","ApplySkin"}) do
@@ -4947,7 +4704,7 @@ end
 local function _scGetWeapons()
     local weapons = {}
     pcall(function()
-        local ps2  = LP_:WaitForChild("PlayerScripts", 3)
+        local ps2  = LP:WaitForChild("PlayerScripts", 3)
         local ctrl = ps2:WaitForChild("Controllers", 3)
         local lc   = require(ctrl:WaitForChild("LoadoutController", 3))
         if lc and lc.GetLoadout then
@@ -5000,7 +4757,7 @@ function SKINC.enable()
         if _scInit() then _scScanSkins() end
     end)
     -- キャラリスポーン時に再装備
-    _conn("SKINC", LP_.CharacterAdded:Connect(function()
+    _conn("SKINC", LP.CharacterAdded:Connect(function()
         task.wait(1.0)
         if SKINC.Enabled and SKINC.SkinName ~= "" then
             SKINC.equip()
@@ -5026,7 +4783,7 @@ local _kaAccum = 0
 function KA.enable()
     KA.Enabled = true
     _kaAccum = 0
-    _conn("KA", RN_.Heartbeat:Connect(function(dt)
+    _conn("KA", RunService.Heartbeat:Connect(function(dt)
         if not KA.Enabled then return end
         _kaAccum = _kaAccum + dt
         if _kaAccum < KA.Delay then return end
@@ -5059,7 +4816,7 @@ local function _apTrackPart(obj)
     if obj.Anchored then return end
     -- キャラクターパーツは除外
     local m = obj:FindFirstAncestorOfClass("Model")
-    if m and WS_.Players:FindFirstChild(m.Name) then return end
+    if m and workspace.Players:FindFirstChild(m.Name) then return end
     _apPartCount = _apPartCount + 1
     _apParts[obj] = true
     obj.AncestryChanged:Connect(function(_, p)
@@ -5070,15 +4827,15 @@ local _apInitialized = false
 local function _apInit()
     if _apInitialized then return end
     _apInitialized = true
-    for _, obj in ipairs(WS_:GetDescendants()) do _apTrackPart(obj) end
-    _conn("AP_track", WS_.DescendantAdded:Connect(_apTrackPart))
+    for _, obj in ipairs(workspace:GetDescendants()) do _apTrackPart(obj) end
+    _conn("AP_track", workspace.DescendantAdded:Connect(_apTrackPart))
 end
 
 function AP.enable()
     AP.Enabled = true
     _apCooldown = 0
     _apInit()
-    _conn("AP", RN_.Heartbeat:Connect(function(dt)
+    _conn("AP", RunService.Heartbeat:Connect(function(dt)
         if not AP.Enabled then return end
         _apCooldown = math.max(0, _apCooldown - dt)
         if _apCooldown > 0 then return end
@@ -5140,20 +4897,20 @@ local function _trigCharFromPart(part)
 end
 
 local function _trigGetTarget()
-    local cam = WS_.CurrentCamera
-    if not cam or not LP_.Character then return nil end
+    local cam = workspace.CurrentCamera
+    if not cam or not LP.Character then return nil end
     local vp  = cam.ViewportSize
     local ray = cam:ViewportPointToRay(vp.X/2, vp.Y/2)
-    local filter = {LP_.Character, cam}
+    local filter = {LP.Character, cam}
     local vm = workspace:FindFirstChild("ViewModels")
     if vm then table.insert(filter, vm) end
     _trigRP.FilterDescendantsInstances = filter
     local hit = workspace:Raycast(ray.Origin, ray.Direction * TRIG.MaxDistance, _trigRP)
     if not hit or not hit.Instance then return nil end
     local char = _trigCharFromPart(hit.Instance)
-    if not char or char == LP_.Character then return nil end
-    local player = PL_:GetPlayerFromCharacter(char)
-    if not player or player == LP_ then return nil end
+    if not char or char == LP.Character then return nil end
+    local player = Players:GetPlayerFromCharacter(char)
+    if not player or player == LP then return nil end
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return nil end
     return char
@@ -5183,7 +4940,7 @@ end
 function TRIG.enable()
     TRIG.Enabled = true
     _trigLocked = nil; _trigCandidate = nil
-    _conn("TRIG", RN_.Heartbeat:Connect(function()
+    _conn("TRIG", RunService.Heartbeat:Connect(function()
         if not TRIG.Enabled then return end
         if not _trigGetStable() then return end
         if _trigShooting then return end
@@ -5201,36 +4958,19 @@ function TRIG.disable()
     _trigLocked = nil; _trigCandidate = nil
 end
 
-return {
-    SilentShot=SilentShot, AimSmooth=AimSmooth, AutoShoot=AutoShoot,
-    MaxMode=MaxMode, TRIG=TRIG,
-    SkinSwap=SKINC, SKINC=SKINC, KA=KA, AP=AP,
-}
-        end)()
-    end)
-    if not _ok1 then print("[UNCODE v1] Part1 err:"..tostring(_err1)) end
+    -- E1 exports → _UM
+    _UM.SilentShot=SilentShot; _UM.AimSmooth=AimSmooth; _UM.AutoShoot=AutoShoot
+    _UM.MaxMode=MaxMode; _UM.TRIG=TRIG
+    _UM.SKINC=SKINC; _UM.SkinSwap=SKINC; _UM.KA=KA; _UM.AP=AP
+    end -- E1
     pcall(collectgarbage,"collect")
-    task.wait(0.8) -- ← 延長: iOS GCがクロージャを回収する時間を確保
+    task.wait(0.8)
     pcall(collectgarbage,"collect")
-    local _E2; local _ok2,_err2 = pcall(function()
-        _E2 = (function()
-local RS_  = game:GetService("ReplicatedStorage")
-local PL_  = game:GetService("Players")
-local RN_  = game:GetService("RunService")
-local UI_  = game:GetService("UserInputService")
-local LP_  = PL_.LocalPlayer
-local WS_  = workspace
-local CG_  = game:GetService("CoreGui")
-local _pool = {}
-local function _conn(key,c)
-    if not _pool[key] then _pool[key]={} end
-    table.insert(_pool[key],c); return c
-end
-local function _stop(key)
-    for _,c in ipairs(_pool[key] or {}) do pcall(function() c:Disconnect() end) end
-    _pool[key]={}
-end
-local function _char() return LP_.Character end
+    do -- E2: ESP, VMR, NS, HN, BL, STD, SHD, CMV, WINGS, AURA, TRAIL, GLOW, SPARKLE, HALO, FLAM
+local _pool_e2 = {}
+local function _conn(key,c) if not _pool_e2[key] then _pool_e2[key]={} end table.insert(_pool_e2[key],c); return c end
+local function _stop(key) for _,c in ipairs(_pool_e2[key] or {}) do pcall(function() c:Disconnect() end) end _pool_e2[key]={} end
+local function _char() return LP.Character end
 local function _root() local c=_char(); return c and c:FindFirstChild("HumanoidRootPart") end
 local function _hum()  local c=_char(); return c and c:FindFirstChildOfClass("Humanoid")   end
 
@@ -5278,11 +5018,11 @@ local _espLT = 0
 local function _espLoop()
     if not ESP.Enabled then return end
     do local _t=os.clock() if _t-_espLT<0.05 then return end; _espLT=_t end
-    local cam = WS_.CurrentCamera
+    local cam = workspace.CurrentCamera
     local vp  = cam.ViewportSize
     local screenBot = Vector2.new(vp.X/2, vp.Y)
-    for _, p in ipairs(PL_:GetPlayers()) do
-        if p == LP_ then _removeEspFor(p); continue end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LP then _removeEspFor(p); continue end
         local c    = p.Character
         local hrp  = c and c:FindFirstChild("HumanoidRootPart")
         local head = c and c:FindFirstChild("Head")
@@ -5359,7 +5099,7 @@ end
 
 function ESP.enable()
     ESP.Enabled = true
-    _conn("ESP", RN_.RenderStepped:Connect(_espLoop))
+    _conn("ESP", RunService.RenderStepped:Connect(_espLoop))
 end
 
 function ESP.disable()
@@ -5373,12 +5113,12 @@ VMR.Enabled = false
 
 function VMR.enable()
     VMR.Enabled = true
-    _conn("VMR", RN_.RenderStepped:Connect(function()
+    _conn("VMR", RunService.RenderStepped:Connect(function()
         if not VMR.Enabled then return end
         pcall(function()
             local vms = workspace:FindFirstChild("ViewModels"); if not vms then return end
             for _, vm in ipairs(vms:GetChildren()) do
-                local pv = vm:FindFirstChild(tostring(LP_.UserId)) or vm:FindFirstChild(LP_.Name)
+                local pv = vm:FindFirstChild(tostring(LP.UserId)) or vm:FindFirstChild(LP.Name)
                 if pv then
                     for _, p in ipairs(pv:GetDescendants()) do
                         if p:IsA("BasePart") then p.LocalTransparencyModifier = 1 end
@@ -5395,7 +5135,7 @@ function VMR.disable()
     pcall(function()
         local vms = workspace:FindFirstChild("ViewModels"); if not vms then return end
         for _, vm in ipairs(vms:GetChildren()) do
-            local pv = vm:FindFirstChild(tostring(LP_.UserId)) or vm:FindFirstChild(LP_.Name)
+            local pv = vm:FindFirstChild(tostring(LP.UserId)) or vm:FindFirstChild(LP.Name)
             if pv then
                 for _, p in ipairs(pv:GetDescendants()) do
                     if p:IsA("BasePart") then p.LocalTransparencyModifier = 0 end
@@ -5414,7 +5154,7 @@ local function _nsApply(c)
     if not c then return end
     for _, d in ipairs(c:GetDescendants()) do
         if d:IsA("TextLabel") and d.Parent:IsA("BillboardGui") then
-            if d.Text == LP_.DisplayName or d.Text == LP_.Name then
+            if d.Text == LP.DisplayName or d.Text == LP.Name then
                 d.Text = NS.Name
             end
         end
@@ -5423,9 +5163,9 @@ end
 
 function NS.enable()
     NS.Enabled = true
-    _nsOrigName = LP_.DisplayName
+    _nsOrigName = LP.DisplayName
     pcall(function() _nsApply(_char()) end)
-    _conn("NS", LP_.CharacterAdded:Connect(function(c)
+    _conn("NS", LP.CharacterAdded:Connect(function(c)
         task.wait(1); if NS.Enabled then _nsApply(c) end
     end))
 end
@@ -5437,7 +5177,7 @@ function NS.disable()
         local c = _char(); if not c then return end
         for _, d in ipairs(c:GetDescendants()) do
             if d:IsA("TextLabel") and d.Parent:IsA("BillboardGui") and d.Text == NS.Name then
-                d.Text = _nsOrigName or LP_.DisplayName
+                d.Text = _nsOrigName or LP.DisplayName
             end
         end
     end)
@@ -5455,7 +5195,7 @@ local function _hnFlash()
         if not _hnGui then
             _hnGui = Instance.new("ScreenGui")
             _hnGui.Name = "UC_HN"; _hnGui.IgnoreGuiInset = true
-            _hnGui.Parent = CG_
+            _hnGui.Parent = CoreGui
             local f = Instance.new("Frame")
             f.BackgroundColor3 = Color3.fromRGB(255,50,50)
             f.BackgroundTransparency = 0.7
@@ -5503,14 +5243,14 @@ local _blLast = 0
 
 function BL.enable()
     BL.Enabled = true
-    _conn("BL", UI_.InputBegan:Connect(function(i, p)
+    _conn("BL", UIS.InputBegan:Connect(function(i, p)
         if p or not BL.Enabled then return end
         if i.KeyCode ~= Enum.KeyCode.F then return end
         if tick() - _blLast < 0.5 then return end
         _blLast = tick()
         local root = _root(); if not root then return end
         pcall(function()
-            local fwd = WS_.CurrentCamera.CFrame.LookVector
+            local fwd = workspace.CurrentCamera.CFrame.LookVector
             root.CFrame = CFrame.new(root.Position + fwd * BL.Distance, root.Position + fwd * (BL.Distance+1))
         end)
     end))
@@ -5535,13 +5275,13 @@ end
 
 function STD.enable()
     STD.Enabled = true
-    _conn("STD", RN_.Heartbeat:Connect(function()
+    _conn("STD", RunService.Heartbeat:Connect(function()
         if not STD.Enabled then return end
-        for _, p in ipairs(PL_:GetPlayers()) do
-            if p ~= LP_ and not _stdKnown[p] and _isStaff(p) then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP and not _stdKnown[p] and _isStaff(p) then
                 _stdKnown[p] = true
                 pcall(function() if Notify then Notify("Staff detected: "..p.Name, 6) end end)
-                print("[UNCODE v1] Staff detected:", p.Name)
+                print("[UNCODE v2] Staff detected:", p.Name)
             end
         end
     end))
@@ -5586,7 +5326,7 @@ CMV.WalkSpeed = 32
 
 function CMV.enable()
     CMV.Enabled = true
-    _conn("CMV", RN_.Heartbeat:Connect(function()
+    _conn("CMV", RunService.Heartbeat:Connect(function()
         if not CMV.Enabled then return end
         local h = _hum()
         if h and h.WalkSpeed < CMV.WalkSpeed then
@@ -5666,12 +5406,12 @@ end
 function WINGS.enable()
     WINGS.Enabled = true
     _setupWings(_char())
-    _conn("WINGS", LP_.CharacterAdded:Connect(function(c)
+    _conn("WINGS", LP.CharacterAdded:Connect(function(c)
         task.wait(0.5); if WINGS.Enabled then _setupWings(c) end
     end))
     local hue = 0
     local _wingsT = 0
-    _conn("WINGS_col", RN_.Heartbeat:Connect(function(dt)
+    _conn("WINGS_col", RunService.Heartbeat:Connect(function(dt)
         if not WINGS.Enabled then return end
         do local _t=os.clock() if _t-_wingsT<0.05 then return end; _wingsT=_t end
         hue = (hue + dt * 0.18) % 1
@@ -5703,7 +5443,7 @@ local _auraT = 0
 
 function AURA.enable()
     AURA.Enabled = true
-    _conn("AURA", RN_.Heartbeat:Connect(function(dt)
+    _conn("AURA", RunService.Heartbeat:Connect(function(dt)
         if not AURA.Enabled then return end
         do local _t=os.clock() if _t-_auraT<0.05 then return end; _auraT=_t end
         local c = _char()
@@ -5716,7 +5456,7 @@ function AURA.enable()
             _auraBox.LineThickness = 0.07
             _auraBox.SurfaceTransparency = 0.82
             _auraBox.Adornee = c
-            _auraBox.Parent = CG_
+            _auraBox.Parent = CoreGui
         end
         _auraHue = (_auraHue + dt * 0.45) % 1
         local col = Color3.fromHSV(_auraHue, 1, 1)
@@ -5725,7 +5465,7 @@ function AURA.enable()
             _auraBox.SurfaceColor3 = col
         end)
     end))
-    _conn("AURA", LP_.CharacterAdded:Connect(function()
+    _conn("AURA", LP.CharacterAdded:Connect(function()
         if _auraBox then pcall(function() _auraBox:Destroy() end); _auraBox = nil end
     end))
 end
@@ -5770,7 +5510,7 @@ end
 function TRAIL.enable()
     TRAIL.Enabled = true
     _setupTrail(_char())
-    _conn("TRAIL", LP_.CharacterAdded:Connect(function(c)
+    _conn("TRAIL", LP.CharacterAdded:Connect(function(c)
         task.wait(0.5); if TRAIL.Enabled then _setupTrail(c) end
     end))
 end
@@ -5799,11 +5539,11 @@ end
 function GLOW.enable()
     GLOW.Enabled = true
     _setupGlow(_char())
-    _conn("GLOW", LP_.CharacterAdded:Connect(function(c)
+    _conn("GLOW", LP.CharacterAdded:Connect(function(c)
         task.wait(0.5); if GLOW.Enabled then _setupGlow(c) end
     end))
     local t = 0
-    _conn("GLOW", RN_.Heartbeat:Connect(function(dt)
+    _conn("GLOW", RunService.Heartbeat:Connect(function(dt)
         if not GLOW.Enabled then return end
         do local _t=os.clock() if _t-(_gT or 0)<0.05 then return end; _gT=_t end
         if not _glowLight or not _glowLight.Parent then return end
@@ -5862,7 +5602,7 @@ end
 function SPARKLE.enable()
     SPARKLE.Enabled = true
     _setupSparkle(_char())
-    _conn("SPARKLE", LP_.CharacterAdded:Connect(function(c)
+    _conn("SPARKLE", LP.CharacterAdded:Connect(function(c)
         task.wait(0.5); if SPARKLE.Enabled then _setupSparkle(c) end
     end))
 end
@@ -5900,11 +5640,11 @@ end
 function HALO.enable()
     HALO.Enabled = true
     _setupHalo(_char())
-    _conn("HALO", LP_.CharacterAdded:Connect(function(c)
+    _conn("HALO", LP.CharacterAdded:Connect(function(c)
         task.wait(0.5); if HALO.Enabled then _setupHalo(c) end
     end))
     local t = 0
-    _conn("HALO_anim", RN_.Heartbeat:Connect(function(dt)
+    _conn("HALO_anim", RunService.Heartbeat:Connect(function(dt)
         if not HALO.Enabled then return end
         do local _t=os.clock() if _t-(_hT or 0)<0.05 then return end; _hT=_t end
         if not _haloPart or not _haloPart.Parent then return end
@@ -5961,7 +5701,7 @@ end
 function FLAM.enable()
     FLAM.Enabled = true
     _setupFlam(_char())
-    _conn("FLAM", LP_.CharacterAdded:Connect(function(c)
+    _conn("FLAM", LP.CharacterAdded:Connect(function(c)
         task.wait(0.5); if FLAM.Enabled then _setupFlam(c) end
     end))
 end
@@ -5973,15 +5713,12 @@ function FLAM.disable()
     table.clear(_flamClean)
 end
 
-return {
-    ESP=ESP, VMR=VMR, NS=NS, HN=HN, BL=BL,
-    STD=STD, SHD=SHD, CMV=CMV,
-    WINGS=WINGS, AURA=AURA, TRAIL=TRAIL,
-    GLOW=GLOW, SPARKLE=SPARKLE, HALO=HALO, FLAM=FLAM,
-}
-        end)()
-    end)
-    if not _ok2 then print("[UNCODE v1] Part2 err:"..tostring(_err2)) end
+    -- E2 exports → _UM
+    _UM.ESP=ESP; _UM.VMR=VMR; _UM.NS=NS; _UM.HN=HN; _UM.BL=BL
+    _UM.STD=STD; _UM.SHD=SHD; _UM.CMV=CMV
+    _UM.WINGS=WINGS; _UM.AURA=AURA; _UM.TRAIL=TRAIL
+    _UM.GLOW=GLOW; _UM.SPARKLE=SPARKLE; _UM.HALO=HALO; _UM.FLAM=FLAM
+    end -- E2
     pcall(collectgarbage,"collect"); task.wait(0.5)
     pcall(collectgarbage,"collect")
     -- ============================================================
@@ -7157,27 +6894,21 @@ return {
 
     -- Part3: Movement features (FLY, PH, TP3, FC, SB, ANT, AJ, TGS, ORB)
     -- _E1のローカル変数200上限対策として分離
-    local _E3; local _ok3,_err3 = pcall(function()
-        _E3 = (function()
-local PL_3 = cloneref(game:GetService("Players"))
-local RN_3 = game:GetService("RunService")
-local UI_3 = game:GetService("UserInputService")
-local LP_3 = PL_3.LocalPlayer
-local WS_3 = workspace
-local _pool3 = {}
-local function _conn(key,c) if not _pool3[key] then _pool3[key]={} end table.insert(_pool3[key],c); return c end
-local function _stop(key) for _,c in ipairs(_pool3[key] or {}) do pcall(function() c:Disconnect() end) end _pool3[key]={} end
-local function _char() return LP_3.Character end
+    do -- E3: FLY, PH, TP3, FC, SB, ANT, AJ, TGS, ORB
+local _pool_e3 = {}
+local function _conn(key,c) if not _pool_e3[key] then _pool_e3[key]={} end table.insert(_pool_e3[key],c); return c end
+local function _stop(key) for _,c in ipairs(_pool_e3[key] or {}) do pcall(function() c:Disconnect() end) end _pool_e3[key]={} end
+local function _char() return LP.Character end
 local function _root() local c=_char(); return c and c:FindFirstChild("HumanoidRootPart") end
 local function _hum() local c=_char(); return c and c:FindFirstChildOfClass("Humanoid") end
 local function _alive() local c=_char(); local h=c and c:FindFirstChildOfClass("Humanoid"); return h and h.Health>0 and c:FindFirstChild("HumanoidRootPart")~=nil end
 local function _closestEnemy(fov)
     fov=fov or 9999
-    local cam=WS_3.CurrentCamera
+    local cam=workspace.CurrentCamera
     local center=Vector2.new(cam.ViewportSize.X/2,cam.ViewportSize.Y/2)
     local best,bestD=nil,fov
-    for _,p in ipairs(PL_3:GetPlayers()) do
-        if p~=LP_3 and p.Character then
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p~=LP and p.Character then
             local hrp=p.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
                 local sp,vis=cam:WorldToViewportPoint(hrp.Position)
@@ -7201,7 +6932,7 @@ local function _flyClean()
     _fw,_fb,_fl,_fr,_fu,_fd = 0,0,0,0,0,0
     pcall(function()
         local h = _hum(); if h then h.PlatformStand = false end
-        WS_3.CurrentCamera.CameraType = Enum.CameraType.Custom
+        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
     end)
 end
 
@@ -7219,7 +6950,7 @@ local function _flyStart()
 end
 
 local function _flyKey(inp, on)
-    if UI_3:GetFocusedTextBox() then return end
+    if UIS:GetFocusedTextBox() then return end
     local k = inp.KeyCode
     if     k==Enum.KeyCode.W then _fw = on and 1 or 0
     elseif k==Enum.KeyCode.S then _fb = on and 1 or 0
@@ -7233,15 +6964,15 @@ end
 function FLY.enable()
     FLY.Enabled = true
     _flyStart()
-    _conn("FLY", UI_3.InputBegan:Connect(function(i,p) if not p then _flyKey(i,true) end end))
-    _conn("FLY", UI_3.InputEnded:Connect( function(i)  _flyKey(i,false) end))
-    _conn("FLY", LP_3.CharacterAdded:Connect(function()
+    _conn("FLY", UIS.InputBegan:Connect(function(i,p) if not p then _flyKey(i,true) end end))
+    _conn("FLY", UIS.InputEnded:Connect( function(i)  _flyKey(i,false) end))
+    _conn("FLY", LP.CharacterAdded:Connect(function()
         task.wait(0.25); if FLY.Enabled then _flyStart() end
     end))
-    _conn("FLY", RN_3.RenderStepped:Connect(function()
+    _conn("FLY", RunService.RenderStepped:Connect(function()
         if not _alive() then return end
         if not _flyGyro or not _flyVel or not _flyGyro.Parent then _flyStart(); return end
-        local cam = WS_3.CurrentCamera
+        local cam = workspace.CurrentCamera
         local h = _hum(); if h then h.PlatformStand = true end
         pcall(function() cam.CameraType = Enum.CameraType.Track end)
         _flyGyro.CFrame = cam.CFrame
@@ -7264,7 +6995,7 @@ local _phModified = {}
 
 function PH.enable()
     PH.Enabled = true
-    _conn("PH", RN_3.Stepped:Connect(function()
+    _conn("PH", RunService.Stepped:Connect(function()
         if not PH.Enabled then return end
         local c = _char()
         if not c then table.clear(_phModified); return end
@@ -7291,9 +7022,9 @@ TP3.Distance = 8
 
 function TP3.enable()
     TP3.Enabled = true
-    _conn("TP3", RN_3.RenderStepped:Connect(function()
+    _conn("TP3", RunService.RenderStepped:Connect(function()
         if not TP3.Enabled then return end
-        local cam = WS_3.CurrentCamera
+        local cam = workspace.CurrentCamera
         if not _root() then return end
         pcall(function()
             cam.CameraType = Enum.CameraType.Custom
@@ -7307,7 +7038,7 @@ end
 function TP3.disable()
     TP3.Enabled = false
     _stop("TP3")
-    pcall(function() WS_3.CurrentCamera.CameraType = Enum.CameraType.Custom end)
+    pcall(function() workspace.CurrentCamera.CameraType = Enum.CameraType.Custom end)
 end
 
 local FC = {}
@@ -7318,13 +7049,13 @@ local _ffw,_ffb,_ffl,_ffr,_ffu,_ffd = 0,0,0,0,0,0
 
 function FC.enable()
     FC.Enabled = true
-    local cam = WS_3.CurrentCamera
+    local cam = workspace.CurrentCamera
     _fcPart = Instance.new("Part")
     _fcPart.Anchored = true; _fcPart.CanCollide = false
     _fcPart.Transparency = 1; _fcPart.Size = Vector3.new(0.1,0.1,0.1)
-    _fcPart.CFrame = cam.CFrame; _fcPart.Parent = WS_3
+    _fcPart.CFrame = cam.CFrame; _fcPart.Parent = workspace
     pcall(function() cam.CameraType = Enum.CameraType.Scriptable end)
-    _conn("FC", UI_3.InputBegan:Connect(function(i,p)
+    _conn("FC", UIS.InputBegan:Connect(function(i,p)
         if p then return end
         local k = i.KeyCode
         if k==Enum.KeyCode.W then _ffw=1
@@ -7335,7 +7066,7 @@ function FC.enable()
         elseif k==Enum.KeyCode.Q or k==Enum.KeyCode.LeftControl then _ffd=1
         end
     end))
-    _conn("FC", UI_3.InputEnded:Connect(function(i)
+    _conn("FC", UIS.InputEnded:Connect(function(i)
         local k = i.KeyCode
         if k==Enum.KeyCode.W then _ffw=0
         elseif k==Enum.KeyCode.S then _ffb=0
@@ -7345,7 +7076,7 @@ function FC.enable()
         elseif k==Enum.KeyCode.Q or k==Enum.KeyCode.LeftControl then _ffd=0
         end
     end))
-    _conn("FC", RN_3.RenderStepped:Connect(function()
+    _conn("FC", RunService.RenderStepped:Connect(function()
         if not FC.Enabled or not _fcPart then return end
         local cf = cam.CFrame
         local mv = (cf.LookVector*(_ffw-_ffb))+(cf.RightVector*(_ffr-_ffl))+(cf.UpVector*(_ffu-_ffd))
@@ -7365,7 +7096,7 @@ function FC.disable()
     pcall(function() if _fcPart then _fcPart:Destroy() end end)
     _fcPart = nil
     _ffw,_ffb,_ffl,_ffr,_ffu,_ffd = 0,0,0,0,0,0
-    pcall(function() WS_3.CurrentCamera.CameraType = Enum.CameraType.Custom end)
+    pcall(function() workspace.CurrentCamera.CameraType = Enum.CameraType.Custom end)
 end
 
 local SB = {}
@@ -7375,7 +7106,7 @@ SB.Speed   = 10
 function SB.enable()
     SB.Enabled = true
     local ang = 0
-    _conn("SB", RN_3.RenderStepped:Connect(function(dt)
+    _conn("SB", RunService.RenderStepped:Connect(function(dt)
         if not SB.Enabled then return end
         local root = _root(); if not root then return end
         ang = (ang + SB.Speed * dt * 360) % 360
@@ -7397,7 +7128,7 @@ ANT.Jitter  = 180
 
 function ANT.enable()
     ANT.Enabled = true
-    _conn("ANT", RN_3.RenderStepped:Connect(function()
+    _conn("ANT", RunService.RenderStepped:Connect(function()
         if not ANT.Enabled then return end
         local root = _root(); if not root then return end
         pcall(function()
@@ -7417,7 +7148,7 @@ local _ajUsed = false
 
 function AJ.enable()
     AJ.Enabled = true
-    _conn("AJ", UI_3.InputBegan:Connect(function(i, p)
+    _conn("AJ", UIS.InputBegan:Connect(function(i, p)
         if p or not AJ.Enabled then return end
         if i.KeyCode ~= Enum.KeyCode.Space then return end
         local h = _hum(); if not h then return end
@@ -7435,7 +7166,7 @@ function AJ.enable()
             _ajUsed = false
         end
     end))
-    _conn("AJ", LP_3.CharacterAdded:Connect(function() _ajUsed = false end))
+    _conn("AJ", LP.CharacterAdded:Connect(function() _ajUsed = false end))
 end
 
 function AJ.disable()
@@ -7452,7 +7183,7 @@ local _tgsAngle = 0
 
 function TGS.enable()
     TGS.Enabled = true
-    _conn("TGS", RN_3.Heartbeat:Connect(function(dt)
+    _conn("TGS", RunService.Heartbeat:Connect(function(dt)
         if not TGS.Enabled then return end
         local root = _root(); if not root then return end
         local enemy = _closestEnemy(800)
@@ -7478,7 +7209,7 @@ local _orbAngle = 0
 
 function ORB.enable()
     ORB.Enabled = true
-    _conn("ORB", RN_3.Heartbeat:Connect(function(dt)
+    _conn("ORB", RunService.Heartbeat:Connect(function(dt)
         if not ORB.Enabled then return end
         local root = _root(); if not root then return end
         local enemy = _closestEnemy(9999)
@@ -7496,18 +7227,15 @@ function ORB.disable()
     _stop("ORB")
 end
 
-return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
-        end)()
-    end)
-    if not _ok3 then print("[UNCODE v1] Part3 err:"..tostring(_err3)) end
+    -- E3 exports → _UM
+    _UM.FLY=FLY; _UM.PH=PH; _UM.TP3=TP3; _UM.FC=FC; _UM.SB=SB
+    _UM.ANT=ANT; _UM.AJ=AJ; _UM.TGS=TGS; _UM.ORB=ORB
+    end -- E3
     pcall(collectgarbage,"collect"); task.wait(0.5)
     pcall(collectgarbage,"collect")
-    -- 全パーツを統合して _UCEngine を完成
-    _UCEngine = {}
-    if _E1 then for k,v in pairs(_E1) do _UCEngine[k]=v end end
-    if _E2 then for k,v in pairs(_E2) do _UCEngine[k]=v end end
-    if _E3 then for k,v in pairs(_E3) do _UCEngine[k]=v end end
-    print("[UNCODE v1] Feature engine ready (" .. tostring(_UCEngine ~= nil) .. ")")
+    -- E1/E2/E3 already exported to _UM; expose as _UCEngine for UI wiring
+    _UCEngine = _UM
+    print("[UNCODE v2] Feature engine ready (" .. tostring(_UCEngine ~= nil) .. ")")
     pcall(collectgarbage,"collect"); task.wait(0.3)
 
     pcall(function()
@@ -7771,7 +7499,7 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
                     c:SetAttribute("_uc_tracked", true)
                     hum.Died:Connect(function()
                         _kills = _kills + 1
-                        print("[UNCODE v1] Kill #".._kills.." D:"..tostring(_deaths))
+                        print("[UNCODE v2] Kill #".._kills.." D:"..tostring(_deaths))
                     end)
                 end
             end
@@ -7782,7 +7510,7 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
         LP.CharacterAdded:Connect(function()
             task.wait(2)
             _deaths = _deaths + 1
-            print("[UNCODE v1] Death #".._deaths.." K:"..tostring(_kills))
+            print("[UNCODE v2] Death #".._deaths.." K:"..tostring(_kills))
         end)
         task.spawn(function() task.wait(2); _trackPlayers() end)
         -- ミッションタブ / miscRightにキルカウント表示
@@ -8537,12 +8265,12 @@ return {FLY=FLY,PH=PH,TP3=TP3,FC=FC,SB=SB,ANT=ANT,AJ=AJ,TGS=TGS,ORB=ORB}
             Callback=function(v) _UM.HPAR.AuraType=v; if _UM.HPAR.Enabled then _UM.HPAR.refresh() end end})
     end)
 
-    print("[UNCODE v1] Features wired OK")
+    print("[UNCODE v2] Features wired OK")
     end)
 
     pcall(collectgarbage,"collect"); task.delay(1,function() pcall(collectgarbage,"collect") end)
     GE.UC4_Loaded=true; pcall(function() _G.UC4_Loaded=true end)
     GE.UC4_Running=nil;  pcall(function() _G.UC4_Running=nil end)
     pcall(function() if Notify then Notify("uncode v8 ready", 5) end end)
-    print("[UNCODE v1] Ready")
+    print("[UNCODE v2] Ready")
 end) -- task.spawn: エンジン遅延ロード完了
