@@ -2712,17 +2712,19 @@ LocalPlayer.CharacterRemoving:Connect(function()
     translocRealCF = nil; desyncRealVel = nil; slingRealCF = nil
 end)
 
-local Tabs = {
-    VoidSpam = Window:AddTab("VoidSpam", "activity"),
-    Orbit = Window:AddTab("Orbit", "refresh-cw"),
-    Prediction = Window:AddTab("Prediction", "crosshair"),
-    Defense = Window:AddTab("Defense", "shield"),
-    Translocation = Window:AddTab("Translocation", "move"),
-    SlingBypass = Window:AddTab("Sling Bypass", "target"),
-    Riot = Window:AddTab("Riot", "flame"),
-    Settings = Window:AddTab("Settings", "settings"),
-    SkinChanger = Window:AddTab("SkinChanger", "shirt"),
-}
+-- Tab order: VoidSpam → Combat → HvH → others → Settings(last)
+local Tabs = {}
+Tabs.VoidSpam     = Window:AddTab("VoidSpam",    "activity")
+Tabs.Combat       = Window:AddTab({ Title = "Combat",   Icon = "6034684950" })
+Tabs.HvH          = Window:AddTab("HvH",          "crosshair")
+Tabs.Orbit        = Window:AddTab("Orbit",         "refresh-cw")
+Tabs.Prediction   = Window:AddTab("Prediction",    "crosshair")
+Tabs.Defense      = Window:AddTab("Defense",       "shield")
+Tabs.Translocation= Window:AddTab("Translocation", "move")
+Tabs.SlingBypass  = Window:AddTab("Sling Bypass",  "target")
+Tabs.Riot         = Window:AddTab("Riot",          "flame")
+Tabs.SkinChanger  = Window:AddTab("SkinChanger",   "shirt")
+Tabs.Settings     = Window:AddTab("Settings",      "settings")
 
 do
 local VG = Tabs.VoidSpam:AddLeftGroupbox("Void Control")
@@ -3830,22 +3832,24 @@ SKR:AddLabel("Rivals-Skinchanger/skins.txt")
 
 
 -- ============================================================
---  UNCODE v1 · HvH Tab (powered by Kicia Rebuild engine)
+--  UNCODE v1 · Combat + HvH Tabs (powered by Kicia Rebuild engine)
 --  All combat is Kicia's actual code running natively.
 --  Window suppressed; config controlled via ReactiveStore.
 -- ============================================================
 
-do -- HvH UI scope (register isolation)
+do -- Combat/HvH UI scope (register isolation)
 
-local HvHTab   = Window:AddTab({ Title = "Combat", Icon = "6034684950" })
+-- Combat tab: Silent Aim, Aimbot, Visuals
+local HvHTab   = Tabs.Combat
 local HvHL1    = HvHTab:AddLeftGroupbox("Silent Aim")
 local HvHR1    = HvHTab:AddRightGroupbox("Aimbot")
 local HvHL4    = HvHTab:AddLeftGroupbox("Visuals")
 local HvHR4    = HvHTab:AddRightGroupbox("Visual Config")
-local HvHL2    = HvHTab:AddLeftGroupbox("Ragebot")
-local HvHR2    = HvHTab:AddRightGroupbox("Rage Config")
-local HvHL3    = HvHTab:AddLeftGroupbox("Triggerbot / Flickbot")
-local HvHR3    = HvHTab:AddRightGroupbox("Flickbot Config")
+-- HvH tab: Ragebot, Triggerbot, Flickbot
+local HvHL2    = Tabs.HvH:AddLeftGroupbox("Ragebot")
+local HvHR2    = Tabs.HvH:AddRightGroupbox("Rage Config")
+local HvHL3    = Tabs.HvH:AddLeftGroupbox("Triggerbot / Flickbot")
+local HvHR3    = Tabs.HvH:AddRightGroupbox("Flickbot Config")
 
 -- Helper: write a value to the Kicia ReactiveStore.
 -- getgenv()._UNC_KiciaStore is set just before Kicia's boot call below.
