@@ -4092,32 +4092,50 @@ HvHR3:AddSlider("FbHumanness", {
 HvHL4:AddToggle("EspEnabled", {
     Text = "Player ESP",
     Default = false,
-    Callback = function(v) _kSet({"Esp","Enemy","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Esp","Enemy","Enabled"}, v)
+        _kSet({"Esp","Team","Enabled"}, v)
+    end
 })
 HvHL4:AddToggle("EspName", {
     Text = "ESP: Name",
     Default = true,
-    Callback = function(v) _kSet({"Esp","Enemy","Name","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Esp","Enemy","Name","Enabled"}, v)
+        _kSet({"Esp","Team","Name","Enabled"}, v)
+    end
 })
 HvHL4:AddToggle("EspHealth", {
     Text = "ESP: Health Bar",
     Default = true,
-    Callback = function(v) _kSet({"Esp","Enemy","HealthBar","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Esp","Enemy","HealthBar","Enabled"}, v)
+        _kSet({"Esp","Team","HealthBar","Enabled"}, v)
+    end
 })
 HvHL4:AddToggle("EspBox", {
     Text = "ESP: Bounding Box",
     Default = true,
-    Callback = function(v) _kSet({"Esp","Enemy","Box","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Esp","Enemy","Box","Enabled"}, v)
+        _kSet({"Esp","Team","Box","Enabled"}, v)
+    end
 })
 HvHL4:AddToggle("EspTracer", {
     Text = "ESP: Tracer",
     Default = false,
-    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Esp","Enemy","Tracer","Enabled"}, v)
+        _kSet({"Esp","Team","Tracer","Enabled"}, v)
+    end
 })
 HvHL4:AddToggle("EspSkeleton", {
     Text = "ESP: Skeleton",
     Default = false,
-    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Esp","Enemy","Skeleton","Enabled"}, v)
+        _kSet({"Esp","Team","Skeleton","Enabled"}, v)
+    end
 })
 
 -- ── VISUAL CONFIG (right side) ────────────────────────────────
