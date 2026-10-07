@@ -4093,6 +4093,7 @@ HvHL4:AddToggle("EspEnabled", {
     Text = "Player ESP",
     Default = false,
     Callback = function(v)
+        _kSet({"Esp","Main","Enabled"}, v)
         _kSet({"Esp","Enemy","Enabled"}, v)
         _kSet({"Esp","Team","Enabled"}, v)
     end
