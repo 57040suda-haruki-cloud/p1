@@ -3833,6 +3833,18 @@ SKR:AddLabel("Rivals-Skinchanger/skins.txt")
 
 
 -- ============================================================
+--  UNCODE v1 · Kicia ReactiveStore helper  (shared across all tabs)
+-- ============================================================
+-- Defined here so Player Tab callbacks can call it immediately on AddToggle init.
+local function _kSet(path, value)
+    local s = getgenv()._UNC_KiciaStore
+    if s then
+        local ok, err = pcall(function() s:Set(path, value) end)
+        if not ok then warn("[UNCODE] kSet failed: " .. tostring(err)) end
+    end
+end
+
+-- ============================================================
 --  UNCODE v1 · Player Tab  (Movement & PlayerSpoofer)
 --  Wired to Kicia ReactiveStore via _kSet / getgenv()._UNC_KiciaStore
 -- ============================================================
@@ -4033,17 +4045,7 @@ local HvHR2    = Tabs.HvH:AddRightGroupbox("Rage Config")
 local HvHL3    = Tabs.HvH:AddLeftGroupbox("Triggerbot / Flickbot")
 local HvHR3    = Tabs.HvH:AddRightGroupbox("Flickbot Config")
 
--- Helper: write a value to the Kicia ReactiveStore.
--- getgenv()._UNC_KiciaStore is set just before Kicia's boot call below.
-local function _kSet(path, value)
-    local s = getgenv()._UNC_KiciaStore
-    if s then
-        local ok, err = pcall(function() s:Set(path, value) end)
-        if not ok then
-            warn("[UNCODE] kSet failed: " .. tostring(err))
-        end
-    end
-end
+-- _kSet is defined above (before Player Tab scope) — shared helper.
 
 -- ── SILENT AIM ────────────────────────────────────────────────
 HvHL1:AddToggle("SaEnabled", {
