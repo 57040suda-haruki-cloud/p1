@@ -2724,6 +2724,7 @@ local Tabs = {
     HvH = Window:AddTab("HvH", "crosshair"),
 }
 
+do
 local VG = Tabs.VoidSpam:AddLeftGroupbox("Void Control")
 AddBindableToggle(VG, "VoidToggle", "Enable Void", false, function(v) CFG.VOID_ENABLED = v; if v then startVoid() else stopVoid() end end)
 VG:AddDropdown("VoidMethod", { Text = "Method", Default = "Quantum", Values = {"Drift","Chaos","Loop","Spiral","Quantum","TP Everywhere","OrbitTarget"}, Callback = function(v) CFG.VOID_METHOD = v end })
@@ -2815,6 +2816,8 @@ VK:AddSlider("VoidKillerHitboxSize", { Text = "Hitbox Size", Default = 500, Min 
 VK:AddSlider("VoidKillerRange", { Text = "Detection Range", Default = 1e15, Min = 100, Max = 1e15, Rounding = 0, Callback = function(v) CFG.VOID_KILLER_RANGE = v end })
 VK:AddSlider("VoidKillerAimStrength", { Text = "Aim Strength", Default = 1, Min = 0.1, Max = 3, Rounding = 1, Callback = function(v) CFG.VOID_KILLER_AIM_STRENGTH = v end })
 
+end
+do
 local OG = Tabs.Orbit:AddLeftGroupbox("Orbit")
 AddBindableToggle(OG, "OrbitToggle", "Enable Orbit", false, function(v) cfg.orbitEnabled = v; if v then startOrbit() else stopOrbit() end end)
 OG:AddDropdown("OrbitMode", { Text = "Mode", Default = "Circle", Values = {"Circle","Figure 8","Ellipse","Spiral In","Spiral Out","Bounce","Lemniscate","Infinity","RandomOrbit"}, Callback = function(v) cfg.orbitMode = v; orbitCurrentRadius = cfg.orbitDist end })
@@ -2876,6 +2879,8 @@ AddBindableToggle(OG2, "OrbitInfiniteRange", "Infinite Range", true, function(v)
 AddBindableToggle(OG2, "OrbitExpandedHitbox", "Expanded Hitbox", true, function(v) cfg.orbitExpandedHitbox = v end)
 OG2:AddSlider("OrbitHitboxSize", { Text = "Hitbox Size", Default = 500, Min = 10, Max = 5000, Rounding = 0, Callback = function(v) cfg.orbitHitboxSize = v end })
 
+end
+do
 local PG = Tabs.Prediction:AddLeftGroupbox("Prediction V2")
 AddBindableToggle(PG, "PredToggle", "Enable Prediction V2", false, function(v) cfgDodge.predEnabled = v; if v then startPredictionV2() else stopPredictionV2() end end)
 PG:AddSlider("PredRadius", { Text = "Danger Radius", Default = 120, Min = 5, Max = 5000, Rounding = 0, Callback = function(v) cfgDodge.predRadius = v end })
@@ -2969,6 +2974,8 @@ PG2:AddSlider("AntiBaitWindow", { Text = "Flicker Window (x0.1s)", Default = 3, 
 PG2:AddSlider("AntiBaitTpDist", { Text = "TP Delta (studs)", Default = 10, Min = 5, Max = 100, Rounding = 0, Callback = function(v) antiBaitCFG.flickerTpDist = v end })
 PG2:AddSlider("AntiBaitRescan", { Text = "Rescan Interval (s)", Default = 2, Min = 1, Max = 60, Rounding = 0, Callback = function(v) antiBaitCFG.reScanInterval = v end })
 
+end
+do
 local AG = Tabs.Defense:AddLeftGroupbox("Anti-Aim")
 AddBindableToggle(AG, "AaToggle", "Enable Anti-Aim", false, function(v) aaSettings.enabled = v; if v then startAntiAim() else stopAntiAim() end end)
 AG:AddDropdown("AaMode", { Text = "Mode", Default = "RandomSpin", Values = {"Spin","Jitter","Static","Up","Down","Side","RandomSpin","Custom"}, Callback = function(v) aaSettings.mode = v end })
@@ -3175,6 +3182,8 @@ AddBindableToggle(AG8, "VDAutoShoot", "Auto Shoot", true, function(v) velDesyncC
 AG8:AddSlider("VDAutoShootRange", { Text = "Auto Shoot Range", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) velDesyncCFG.vdAutoShootRange = v end })
 AddBindableToggle(AG8, "VDInfiniteRange", "Infinite Range", true, function(v) velDesyncCFG.vdInfiniteRange = v end)
 
+end
+do
 local TL = Tabs.Translocation:AddLeftGroupbox("Translocation")
 AddBindableToggle(TL, "TranslocToggle", "Enable Translocation", false, function(v) translocCFG.enabled = v; if v then startTransloc() else stopTransloc() end end)
 TL:AddDropdown("TranslocMode", { Text = "Offset Mode", Default = "Ahead", Values = {"Ahead","Behind","Perpendicular","Above","Below","AboveBelow","MirrorX","MirrorZ","Diagonal","ScreenEdge","Orbit","ZoneEscape"}, Callback = function(v) translocCFG.offsetMode = v end })
@@ -3248,6 +3257,8 @@ AddBindableToggle(TL2, "TranslocAutoShoot", "Auto Shoot", true, function(v) tran
 TL2:AddSlider("TranslocAutoShootRange", { Text = "Auto Shoot Range", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.translocAutoShootRange = v end })
 AddBindableToggle(TL2, "TranslocInfiniteRange", "Infinite Range", true, function(v) translocCFG.translocInfiniteRange = v end)
 
+end
+do
 local SBL = Tabs.SlingBypass:AddLeftGroupbox("Sling Bypass V2")
 AddBindableToggle(SBL, "SlingToggle", "Enable Sling Bypass V2", false, function(v) slingCFG.enabled = v; if v then startSlingBypassV2() else stopSlingBypassV2() end end)
 SBL:AddDropdown("SlingMode", { Text = "Mode", Default = "Follow", Values = {"Follow","Stalk","Hover","FastTp","TargetStick","OrbitTarget","RandomAroundTarget"}, Callback = function(v) slingCFG.mode = v end })
@@ -3340,6 +3351,8 @@ AddBindableToggle(SBR, "SlingStickToTarget", "Stick to Target", true, function(v
 SBR:AddSlider("SlingStickOffset", { Text = "Stick Offset", Default = 2, Min = 0, Max = 20, Rounding = 1, Callback = function(v) slingCFG.slingStickOffset = v end })
 AddBindableToggle(SBR, "SlingInfiniteRange", "Infinite Range", true, function(v) slingCFG.slingInfiniteRange = v end)
 
+end
+do
 local RG = Tabs.Riot:AddLeftGroupbox("Riot Godmode")
 AddBindableToggle(RG, "RiotGodmodeToggle", "Enable Riot Godmode", false, function(v) riotGodmodeCFG.enabled = v; if v then startRiotGodmode() else stopRiotGodmode() end end)
 RG:AddSlider("RGSpeed", { Text = "Teleport Delay (s)", Default = 0.03, Min = 0.01, Max = 0.5, Rounding = 2, Callback = function(v) riotGodmodeCFG.speed = v end })
@@ -3422,6 +3435,7 @@ AddBindableToggle(RA, "RAAutoAim", "Auto Aim at Target", true, function(v) riotA
 RA:AddSlider("RAAimStrength", { Text = "Aim Strength", Default = 1, Min = 0.1, Max = 3, Rounding = 1, Callback = function(v) riotAbuserCFG.raAimStrength = v end })
 AddBindableToggle(RA, "RAInfiniteRange", "Infinite Range", true, function(v) riotAbuserCFG.raInfiniteRange = v end)
 
+end
 -- ============================================================
 --  UNCODE v1 · SkinChanger (Rivals-Skinchanger integration)
 -- ============================================================
