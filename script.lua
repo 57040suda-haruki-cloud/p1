@@ -3442,7 +3442,7 @@ end
 -- ============================================================
 local _skSaveConfig, _skLoadConfig
 
-do
+;(function()
     -- Skinchanger uses its own service references to avoid conflicts
     local _sc_Players         = cloneref(game:GetService("Players"))
     local _sc_ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
@@ -3804,7 +3804,7 @@ do
         _skLoadConfig = loadConfig
         loadConfig()
     end  -- end CosmeticLibrary check
-end  -- end do-block
+end)()  -- end skinchanger function scope
 
 -- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
 local SK  = Tabs.SkinChanger:AddLeftGroupbox("SkinChanger")
