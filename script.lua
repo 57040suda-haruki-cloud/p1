@@ -514,7 +514,7 @@ end
 
 LuaXLoadingScreen()
 
-(function()
+;(function()
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/visnoukkk/ObsidianLib/refs/heads/main/Library.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
