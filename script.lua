@@ -1,6 +1,6 @@
 -- ╔══════════════════════════════════════════════════════════════════════════╗
 -- ║                        UNCODE v1                                        ║
--- ║  Base: LUA X PAID (chicken roaxi / visnokkk / milad / dani)             ║
+-- ║  HvH Engine: Kicia Rebuild (full native integration)            ║
 -- ║  Additions: Harion startup hooks · Rivals SkinChanger                   ║
 -- ║  Executor: Delta (iOS, Lua 5.1)    Game: Roblox Rivals                  ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
@@ -187,10 +187,10 @@ do
     local RunService = game:GetService("RunService")
     local UIS = game:GetService("UserInputService")
     local LP = Players.LocalPlayer
-    if _G.LuaXLiveStud then pcall(function() _G.LuaXLiveStud.Destroy() end) end
-    _G.LuaXLiveStud = { Enabled = true }
+    if _G.UNCODEHud then pcall(function() _G.UNCODEHud.Destroy() end) end
+    _G.UNCODEHud = { Enabled = true }
     local gui = Instance.new("ScreenGui")
-    gui.Name = "LuaXLiveStud"; gui.ResetOnSpawn = false; gui.IgnoreGuiInset = true; gui.DisplayOrder = 99998
+    gui.Name = "UNCODEHud"; gui.ResetOnSpawn = false; gui.IgnoreGuiInset = true; gui.DisplayOrder = 99998
     pcall(function() gui.Parent = game:GetService("CoreGui") end)
     if not gui.Parent then gui.Parent = LP:WaitForChild("PlayerGui") end
     local card = Instance.new("Frame")
@@ -212,12 +212,12 @@ do
     Instance.new("UICorner", accent).CornerRadius = UDim.new(1, 0)
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, -80, 0, 14); title.Position = UDim2.new(0, 14, 0, 3)
-    title.BackgroundTransparency = 1; title.Text = "LUA X"
+    title.BackgroundTransparency = 1; title.Text = "UNCODE"
     title.TextColor3 = Color3.fromRGB(220, 230, 245); title.Font = Enum.Font.GothamBold
     title.TextSize = 11; title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = header
     local sub = Instance.new("TextLabel")
     sub.Size = UDim2.new(1, -80, 0, 11); sub.Position = UDim2.new(0, 14, 0, 17)
-    sub.BackgroundTransparency = 1; sub.Text = "UNCODE"
+    sub.BackgroundTransparency = 1; sub.Text = "Rivals HvH"
     sub.TextColor3 = Color3.fromRGB(90, 110, 145); sub.Font = Enum.Font.Gotham
     sub.TextSize = 9; sub.TextXAlignment = Enum.TextXAlignment.Left; sub.Parent = header
     local badge = Instance.new("Frame")
@@ -273,11 +273,11 @@ do
             card.Position = UDim2.new(cardStart.X.Scale, cardStart.X.Offset + delta.X, cardStart.Y.Scale, cardStart.Y.Offset + delta.Y)
         end
     end)
-    _G.LuaXLiveStud.SetEnabled = function(state) _G.LuaXLiveStud.Enabled = state; gui.Enabled = state end
-    _G.LuaXLiveStud.Toggle = function() _G.LuaXLiveStud.SetEnabled(not _G.LuaXLiveStud.Enabled) end
-    _G.LuaXLiveStud.Destroy = function() pcall(function() gui:Destroy() end); _G.LuaXLiveStud = nil end
+    _G.UNCODEHud.SetEnabled = function(state) _G.UNCODEHud.Enabled = state; gui.Enabled = state end
+    _G.UNCODEHud.Toggle = function() _G.UNCODEHud.SetEnabled(not _G.UNCODEHud.Enabled) end
+    _G.UNCODEHud.Destroy = function() pcall(function() gui:Destroy() end); _G.UNCODEHud = nil end
     RunService.Heartbeat:Connect(function()
-        if not _G.LuaXLiveStud or not _G.LuaXLiveStud.Enabled then return end
+        if not _G.UNCODEHud or not _G.UNCODEHud.Enabled then return end
         local char = LP.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
@@ -291,13 +291,13 @@ do
     end)
 end
 
-local function LuaXLoadingScreen()
+local function UNCODELoadingScreen()
     local TweenService = game:GetService("TweenService")
     local RunService = game:GetService("RunService")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
     local sg = Instance.new("ScreenGui")
-    sg.Name = "LuaXLoadingScreen"; sg.ResetOnSpawn = false; sg.DisplayOrder = 999999
+    sg.Name = "UNCODELoadingScreen"; sg.ResetOnSpawn = false; sg.DisplayOrder = 999999
     sg.IgnoreGuiInset = true; sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     pcall(function() sg.Parent = game:GetService("CoreGui") end)
     if not sg.Parent then sg.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -386,7 +386,7 @@ local function LuaXLoadingScreen()
     bg1.Parent = bar
     local logo = Instance.new("TextLabel")
     logo.Size = UDim2.new(1, -40, 0, 60); logo.Position = UDim2.new(0, 20, 0, 32)
-    logo.BackgroundTransparency = 1; logo.Text = "LUA X PAID"
+    logo.BackgroundTransparency = 1; logo.Text = "UNCODE v1"
     logo.TextColor3 = Color3.fromRGB(240, 245, 255); logo.Font = Enum.Font.GothamBlack
     logo.TextSize = 38; logo.TextXAlignment = Enum.TextXAlignment.Left
     logo.ZIndex = 11; logo.Parent = card
@@ -399,7 +399,7 @@ local function LuaXLoadingScreen()
     lg.Parent = logo
     local sub = Instance.new("TextLabel")
     sub.Size = UDim2.new(1, -40, 0, 18); sub.Position = UDim2.new(0, 20, 0, 96)
-    sub.BackgroundTransparency = 1; sub.Text = "by chicken roaxi visnokkk milad"
+    sub.BackgroundTransparency = 1; sub.Text = "Rivals HvH — Kicia engine"
     sub.TextColor3 = Color3.fromRGB(140, 160, 200); sub.Font = Enum.Font.Gotham
     sub.TextSize = 12; sub.TextXAlignment = Enum.TextXAlignment.Left
     sub.ZIndex = 11; sub.Parent = card
@@ -448,7 +448,7 @@ local function LuaXLoadingScreen()
         { t = 1.5, txt = "building tabs" },
         { t = 2.0, txt = "starting void engine" },
         { t = 2.5, txt = "starting prediction engine" },
-        { t = 3.0, txt = "lua x ready" },
+        { t = 3.0, txt = "uncode ready" },
     }
     local startT = tick()
     local totalTime = 3.6
@@ -481,7 +481,7 @@ local function LuaXLoadingScreen()
     task.spawn(function()
         task.wait(totalTime)
         if conn then conn:Disconnect() end
-        status.Text = "lua x ready"
+        status.Text = "uncode ready"
         fill.BackgroundColor3 = Color3.fromRGB(80, 220, 255)
         pulse.BackgroundColor3 = Color3.fromRGB(80, 220, 255)
         local fi = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
@@ -512,7 +512,7 @@ local function LuaXLoadingScreen()
     end)
 end
 
-LuaXLoadingScreen()
+UNCODELoadingScreen()
 
 ;(function()
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
@@ -539,7 +539,7 @@ local Window = Library:CreateWindow({
 })
 
 local function Notify(text, duration)
-    Library:Notify({ Title = "lua x paid", Description = text, Time = duration or 3 })
+    Library:Notify({ Title = "UNCODE v1", Description = text, Time = duration or 3 })
 end
 
 local Players = game:GetService("Players")
@@ -561,7 +561,7 @@ local function getLocalRoot() return root end
 local function safeCall(fn, ...)
     local ok, err = pcall(fn, ...)
     if not ok then
-        warn("[luax] error:", err)
+        warn("[UNCODE] error:", err)
     end
     return ok
 end
@@ -3838,7 +3838,7 @@ SKR:AddLabel("Rivals-Skinchanger/skins.txt")
 
 do -- HvH UI scope (register isolation)
 
-local HvHTab   = Window:AddTab({ Title = "HvH", Icon = "6034684950" })
+local HvHTab   = Window:AddTab({ Title = "Combat", Icon = "6034684950" })
 local HvHL1    = HvHTab:AddLeftGroupbox("Silent Aim")
 local HvHR1    = HvHTab:AddRightGroupbox("Aimbot")
 local HvHL2    = HvHTab:AddLeftGroupbox("Ragebot")
@@ -70611,6 +70611,7 @@ end
 --    This instantiates all 555 modules, starts the render loop, and calls patched jf.
 tbl17.j1()(boot)
 end)()
+local MenuG = Tabs.Settings:AddRightGroupbox("Server Tools")
 MenuG:AddButton("Rejoin Server", function()
     pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer) end)
 end)
@@ -70630,8 +70631,8 @@ end)
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 UIGroup:AddLabel("Menu Keybind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", Text = "Menu Keybind", Mode = "Toggle", NoUI = true })
 Library.ToggleKeybind = Options.MenuKeybind
-UIGroup:AddToggle("ShowCoords", { Text = "Show Small Live Stud UI", Default = true, Callback = function(v)
-    if _G.LuaXLiveStud and _G.LuaXLiveStud.SetEnabled then _G.LuaXLiveStud.SetEnabled(v) end
+UIGroup:AddToggle("ShowCoords", { Text = "Show Live HUD", Default = true, Callback = function(v)
+    if _G.UNCODEHud and _G.UNCODEHud.SetEnabled then _G.UNCODEHud.SetEnabled(v) end
 end })
 UIGroup:AddButton("Unload Script", function() Library:Unload() end)
 
@@ -70645,5 +70646,5 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
 pcall(function() SaveManager:LoadAutoloadConfig() end)
 
-Library:Notify({ Title = "lua x paid", Description = "Made by Roaxi, Visnoukkk, Yolegittrader, and dani", Time = 4 })
+Library:Notify({ Title = "UNCODE v1", Description = "Rivals HvH — powered by Kicia Rebuild engine", Time = 4 })
 end)()
