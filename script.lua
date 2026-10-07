@@ -70870,6 +70870,16 @@ local _fpsPostFxOn       = false
 local _fpsDecorOn        = false
 local _fpsLowGfxOn       = false
 local _fpsConns          = {}
+-- lag reduction state
+local _fpsUnlockerOn     = false
+local _fpsNoSoundOn      = false
+local _fpsNoAtmoOn       = false
+local _fpsNoAccOn        = false
+local _fpsLowMeshOn      = false
+local _fpsSoundVols      = {}
+local _fpsSoundConn      = nil
+local _fpsAtmoProps      = {}
+local _fpsAccConns       = {}
 
 local Lighting    = game:GetService("Lighting")
 local RunService  = game:GetService("RunService")
@@ -70940,6 +70950,101 @@ local function setLowGfx(enabled)
     end)
 end
 
+local function setFpsCap(fps)
+    pcall(function()
+        if setfpscap then setfpscap(fps) end
+    end)
+end
+
+local function setNoSound(enabled)
+    if enabled then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("Sound") then
+                _fpsSoundVols[v] = v.Volume
+                pcall(function() v.Volume = 0 end)
+            end
+        end
+        _fpsSoundConn = workspace.DescendantAdded:Connect(function(v)
+            if v:IsA("Sound") then pcall(function() v.Volume = 0 end) end
+        end)
+    else
+        if _fpsSoundConn then _fpsSoundConn:Disconnect() _fpsSoundConn = nil end
+        for obj, vol in pairs(_fpsSoundVols) do
+            pcall(function() obj.Volume = vol end)
+        end
+        _fpsSoundVols = {}
+    end
+end
+
+local function setNoAtmosphere(enabled)
+    for _, v in ipairs(Lighting:GetChildren()) do
+        if v:IsA("Atmosphere") then
+            if enabled then
+                _fpsAtmoProps[v] = { Density = v.Density, Haze = v.Haze, Glare = v.Glare }
+                pcall(function() v.Density = 0; v.Haze = 0; v.Glare = 0 end)
+            else
+                if _fpsAtmoProps[v] then
+                    pcall(function()
+                        v.Density = _fpsAtmoProps[v].Density
+                        v.Haze    = _fpsAtmoProps[v].Haze
+                        v.Glare   = _fpsAtmoProps[v].Glare
+                    end)
+                    _fpsAtmoProps[v] = nil
+                end
+            end
+        end
+    end
+end
+
+local function setNoAccessories(enabled)
+    local Players = game:GetService("Players")
+    local LP = Players.LocalPlayer
+    for _, conn in ipairs(_fpsAccConns) do pcall(function() conn:Disconnect() end) end
+    _fpsAccConns = {}
+    local function hideCharAcc(char)
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("Accessory") then
+                local h = v:FindFirstChild("Handle")
+                if h and h:IsA("BasePart") then
+                    pcall(function() h.LocalTransparencyModifier = enabled and 1 or 0 end)
+                end
+            end
+        end
+    end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LP then
+            if player.Character then hideCharAcc(player.Character) end
+            local c = player.CharacterAdded:Connect(function(char)
+                task.defer(function() hideCharAcc(char) end)
+            end)
+            _fpsAccConns[#_fpsAccConns+1] = c
+        end
+    end
+    if enabled then
+        local c = Players.PlayerAdded:Connect(function(player)
+            if player == LP then return end
+            if player.Character then hideCharAcc(player.Character) end
+            local c2 = player.CharacterAdded:Connect(function(char)
+                task.defer(function() hideCharAcc(char) end)
+            end)
+            _fpsAccConns[#_fpsAccConns+1] = c2
+        end)
+        _fpsAccConns[#_fpsAccConns+1] = c
+    end
+end
+
+local function setLowMesh(enabled)
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("MeshPart") then
+            pcall(function()
+                v.RenderFidelity = enabled
+                    and Enum.RenderFidelity.Automatic
+                    or  Enum.RenderFidelity.Precise
+            end)
+        end
+    end
+end
+
 -- ── toggles ───────────────────────────────────────────────────
 FpsG:AddToggle("FpsParticles", {
     Text = "Remove Particles & Effects",
@@ -70991,18 +71096,88 @@ FpsG:AddToggle("FpsLowGfx", {
     end
 })
 
+-- ── lag reduction ──────────────────────────────────────────────
+FpsG:AddToggle("FpsUnlocker", {
+    Text = "FPS Unlocker",
+    Default = false,
+    Tooltip = "setfpscap() でフレームレート上限を解除／変更します。",
+    Callback = function(v)
+        _fpsUnlockerOn = v
+        local cap = (Options["FpsCapValue"] and Options["FpsCapValue"].Value) or 240
+        setFpsCap(v and cap or 60)
+    end
+})
+FpsG:AddSlider("FpsCapValue", {
+    Text = "FPS Cap",
+    Default = 240, Min = 30, Max = 360, Rounding = 0,
+    Tooltip = "FPS Unlocker ON 時に適用する上限フレームレート。",
+    Callback = function(v)
+        if _fpsUnlockerOn then setFpsCap(v) end
+    end
+})
+
+FpsG:AddToggle("FpsNoSound", {
+    Text = "Mute All Sounds",
+    Default = false,
+    Tooltip = "すべての Sound の音量を 0 にします（ラグ軽減）。",
+    Callback = function(v)
+        _fpsNoSoundOn = v
+        setNoSound(v)
+    end
+})
+
+FpsG:AddToggle("FpsNoAtmo", {
+    Text = "Disable Atmosphere",
+    Default = false,
+    Tooltip = "Atmosphere エフェクトの Density/Haze/Glare を 0 にします。",
+    Callback = function(v)
+        _fpsNoAtmoOn = v
+        setNoAtmosphere(v)
+    end
+})
+
+FpsG:AddToggle("FpsNoAcc", {
+    Text = "Hide Player Accessories",
+    Default = false,
+    Tooltip = "他プレイヤーのアクセサリを非表示にします。",
+    Callback = function(v)
+        _fpsNoAccOn = v
+        setNoAccessories(v)
+    end
+})
+
+FpsG:AddToggle("FpsLowMesh", {
+    Text = "Low Mesh Detail",
+    Default = false,
+    Tooltip = "MeshPart の RenderFidelity を Automatic に下げます。",
+    Callback = function(v)
+        _fpsLowMeshOn = v
+        setLowMesh(v)
+    end
+})
+
 FpsG:AddButton("Apply All FPS Boost", function()
     setParticles(false)
     setShadows(false)
     setPostFx(false)
     setDecor(false)
     setLowGfx(true)
+    setNoSound(true)
+    setNoAtmosphere(true)
+    setNoAccessories(true)
+    setLowMesh(true)
+    setFpsCap(240)
     -- sync toggles
-    if Options.FpsParticles then Options.FpsParticles:SetValue(true) end
-    if Options.FpsShadows   then Options.FpsShadows:SetValue(true)   end
-    if Options.FpsPostFx    then Options.FpsPostFx:SetValue(true)    end
-    if Options.FpsDecor     then Options.FpsDecor:SetValue(true)     end
-    if Options.FpsLowGfx    then Options.FpsLowGfx:SetValue(true)    end
+    if Toggles.FpsParticles then Toggles.FpsParticles:SetValue(true) end
+    if Toggles.FpsShadows   then Toggles.FpsShadows:SetValue(true)   end
+    if Toggles.FpsPostFx    then Toggles.FpsPostFx:SetValue(true)    end
+    if Toggles.FpsDecor     then Toggles.FpsDecor:SetValue(true)     end
+    if Toggles.FpsLowGfx    then Toggles.FpsLowGfx:SetValue(true)    end
+    if Toggles.FpsUnlocker  then Toggles.FpsUnlocker:SetValue(true)  end
+    if Toggles.FpsNoSound   then Toggles.FpsNoSound:SetValue(true)   end
+    if Toggles.FpsNoAtmo    then Toggles.FpsNoAtmo:SetValue(true)    end
+    if Toggles.FpsNoAcc     then Toggles.FpsNoAcc:SetValue(true)     end
+    if Toggles.FpsLowMesh   then Toggles.FpsLowMesh:SetValue(true)   end
 end)
 
 FpsG:AddButton("Reset FPS Boost", function()
@@ -71011,11 +71186,21 @@ FpsG:AddButton("Reset FPS Boost", function()
     setPostFx(true)
     setDecor(true)
     setLowGfx(false)
-    if Options.FpsParticles then Options.FpsParticles:SetValue(false) end
-    if Options.FpsShadows   then Options.FpsShadows:SetValue(false)   end
-    if Options.FpsPostFx    then Options.FpsPostFx:SetValue(false)    end
-    if Options.FpsDecor     then Options.FpsDecor:SetValue(false)     end
-    if Options.FpsLowGfx    then Options.FpsLowGfx:SetValue(false)    end
+    setNoSound(false)
+    setNoAtmosphere(false)
+    setNoAccessories(false)
+    setLowMesh(false)
+    setFpsCap(60)
+    if Toggles.FpsParticles then Toggles.FpsParticles:SetValue(false) end
+    if Toggles.FpsShadows   then Toggles.FpsShadows:SetValue(false)   end
+    if Toggles.FpsPostFx    then Toggles.FpsPostFx:SetValue(false)    end
+    if Toggles.FpsDecor     then Toggles.FpsDecor:SetValue(false)     end
+    if Toggles.FpsLowGfx    then Toggles.FpsLowGfx:SetValue(false)    end
+    if Toggles.FpsUnlocker  then Toggles.FpsUnlocker:SetValue(false)  end
+    if Toggles.FpsNoSound   then Toggles.FpsNoSound:SetValue(false)   end
+    if Toggles.FpsNoAtmo    then Toggles.FpsNoAtmo:SetValue(false)    end
+    if Toggles.FpsNoAcc     then Toggles.FpsNoAcc:SetValue(false)     end
+    if Toggles.FpsLowMesh   then Toggles.FpsLowMesh:SetValue(false)   end
 end)
 
 end -- FPS Boost scope
