@@ -4092,45 +4092,45 @@ HvHR3:AddSlider("FbHumanness", {
 HvHL4:AddToggle("EspEnabled", {
     Text = "Player ESP",
     Default = false,
-    Callback = function(v) _kSet({"PlayerEsp","Enabled"}, v) end
+    Callback = function(v) _kSet({"Esp","Enemy","Enabled"}, v) end
 })
 HvHL4:AddToggle("EspName", {
     Text = "ESP: Name",
     Default = true,
-    Callback = function(v) _kSet({"PlayerEsp","Name","Enabled"}, v) end
+    Callback = function(v) _kSet({"Esp","Enemy","Name","Enabled"}, v) end
 })
 HvHL4:AddToggle("EspHealth", {
     Text = "ESP: Health Bar",
     Default = true,
-    Callback = function(v) _kSet({"PlayerEsp","Health","Enabled"}, v) end
+    Callback = function(v) _kSet({"Esp","Enemy","HealthBar","Enabled"}, v) end
 })
 HvHL4:AddToggle("EspBox", {
     Text = "ESP: Bounding Box",
     Default = true,
-    Callback = function(v) _kSet({"PlayerEsp","Box","Enabled"}, v) end
+    Callback = function(v) _kSet({"Esp","Enemy","Box","Enabled"}, v) end
 })
 HvHL4:AddToggle("EspTracer", {
     Text = "ESP: Tracer",
     Default = false,
-    Callback = function(v) _kSet({"PlayerEsp","Tracer","Enabled"}, v) end
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Enabled"}, v) end
 })
 HvHL4:AddToggle("EspSkeleton", {
     Text = "ESP: Skeleton",
     Default = false,
-    Callback = function(v) _kSet({"PlayerEsp","Skeleton","Enabled"}, v) end
+    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Enabled"}, v) end
 })
 
 -- ── VISUAL CONFIG (right side) ────────────────────────────────
 HvHR4:AddToggle("CxEnabled", {
     Text = "Custom Crosshair",
     Default = false,
-    Callback = function(v) _kSet({"Crosshair","Enabled"}, v) end
+    Callback = function(v) _kSet({"CustomCrosshair","Enabled"}, v) end
 })
 HvHR4:AddDropdown("CxStyle", {
     Text = "Crosshair Style",
-    Values = {"Cross", "Dot", "Circle", "Gap"},
+    Values = {"Lines", "Image"},
     Default = 1,
-    Callback = function(v) _kSet({"Crosshair","Style"}, v) end
+    Callback = function(v) _kSet({"CustomCrosshair","Style"}, v) end
 })
 HvHR4:AddToggle("CxHitFeedback", {
     Text = "Hit Feedback",
@@ -4145,7 +4145,7 @@ HvHR4:AddToggle("WvEnabled", {
 HvHR4:AddToggle("CamEnabled", {
     Text = "Custom Camera FOV",
     Default = false,
-    Callback = function(v) _kSet({"Camera","CustomFov","Enabled"}, v) end
+    Callback = function(v) _kSet({"CameraFov","Enabled"}, v) end
 })
 HvHR4:AddSlider("CamFov", {
     Text = "Camera FOV",
