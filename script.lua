@@ -2724,6 +2724,7 @@ Tabs.Translocation= Window:AddTab("Translocation", "move")
 Tabs.SlingBypass  = Window:AddTab("Sling Bypass",  "target")
 Tabs.Riot         = Window:AddTab("Riot",          "flame")
 Tabs.SkinChanger  = Window:AddTab("SkinChanger",   "shirt")
+Tabs.Player       = Window:AddTab("Player",         "user")
 Tabs.Settings     = Window:AddTab("Settings",      "settings")
 
 do
@@ -3830,6 +3831,159 @@ SKR:AddLabel("Config saved to:")
 SKR:AddLabel("Rivals-Skinchanger/skins.txt")
 
 
+
+-- ============================================================
+--  UNCODE v1 · Player Tab  (Movement & PlayerSpoofer)
+--  Wired to Kicia ReactiveStore via _kSet / getgenv()._UNC_KiciaStore
+-- ============================================================
+do -- Player Tab scope
+local PLM  = Tabs.Player:AddLeftGroupbox("Movement")
+local PLM2 = Tabs.Player:AddRightGroupbox("Movement Config")
+local PLS  = Tabs.Player:AddLeftGroupbox("Player Spoofer")
+local PLS2 = Tabs.Player:AddRightGroupbox("Spoofer Config")
+
+-- ── Movement ─────────────────────────────────────────────────
+AddBindableToggle(PLM, "PlNoclip", "NoClip", false, function(v)
+    _kSet({"Movement","Noclip","Enabled"}, v)
+end)
+
+AddBindableToggle(PLM, "PlWalkSpeed", "Speed Hack", false, function(v)
+    _kSet({"Movement","WalkSpeed","Enabled"}, v)
+end)
+PLM2:AddSlider("PlWalkSpeedVal", {
+    Text = "Speed Multiplier",
+    Default = 2, Min = 1, Max = 10, Rounding = 1,
+    Callback = function(v) _kSet({"Movement","WalkSpeed","Speed"}, v) end
+})
+
+AddBindableToggle(PLM, "PlFlight", "Flight", false, function(v)
+    _kSet({"Movement","Flight","Enabled"}, v)
+end)
+PLM2:AddSlider("PlFlightSpeed", {
+    Text = "Flight Speed",
+    Default = 100, Min = 25, Max = 500, Rounding = 0,
+    Callback = function(v) _kSet({"Movement","Flight","Speed"}, v) end
+})
+
+AddBindableToggle(PLM, "PlJumpPower", "Jump Power", false, function(v)
+    _kSet({"Movement","JumpPower","Enabled"}, v)
+end)
+PLM2:AddSlider("PlJumpPowerVal", {
+    Text = "Jump Multiplier",
+    Default = 2, Min = 1, Max = 10, Rounding = 1,
+    Callback = function(v) _kSet({"Movement","JumpPower","Speed"}, v) end
+})
+
+AddBindableToggle(PLM, "PlInfJump", "Infinite Double Jumps", false, function(v)
+    _kSet({"ItemModifiers","InfiniteDoubleJumps"}, v)
+end)
+
+AddBindableToggle(PLM, "PlSliding", "Sliding", false, function(v)
+    _kSet({"Movement","Sliding","Enabled"}, v)
+end)
+PLM2:AddSlider("PlSlidingSpeed", {
+    Text = "Slide Multiplier",
+    Default = 10, Min = 1, Max = 20, Rounding = 1,
+    Callback = function(v) _kSet({"Movement","Sliding","Speed"}, v) end
+})
+
+AddBindableToggle(PLM, "PlAutoStrafe", "Auto Strafe", false, function(v)
+    _kSet({"Movement","AutoStrafe","Enabled"}, v)
+end)
+PLM2:AddSlider("PlAutoStrafeSpeed", {
+    Text = "Strafe Speed",
+    Default = 50, Min = 1, Max = 200, Rounding = 0,
+    Callback = function(v) _kSet({"Movement","AutoStrafe","Speed"}, v) end
+})
+
+AddBindableToggle(PLM, "PlLongJump", "Long Jump", false, function(v)
+    _kSet({"Movement","LongJump","Enabled"}, v)
+end)
+PLM2:AddSlider("PlLongJumpForce", {
+    Text = "Long Jump Force",
+    Default = 60, Min = 0, Max = 300, Rounding = 0,
+    Callback = function(v) _kSet({"Movement","LongJump","Force"}, v) end
+})
+PLM2:AddSlider("PlLongJumpUp", {
+    Text = "Upward Velocity",
+    Default = 20, Min = 0, Max = 200, Rounding = 0,
+    Callback = function(v) _kSet({"Movement","LongJump","UpwardVelocity"}, v) end
+})
+
+-- ── Player Spoofer (スポファー) ──────────────────────────────
+AddBindableToggle(PLS, "SpfName", "Spoof Name", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Name","Enabled"}, v)
+end)
+PLS2:AddLabel("Spoofed Name:")
+PLS2:AddTextbox("SpfNameVal", {
+    Text = "Name", Default = "Player", Numeric = false, Finished = false,
+    Callback = function(v)
+        _kSet({"PlayerSpoofer","LocalPlayer","Name","Value"}, v)
+    end
+})
+
+AddBindableToggle(PLS, "SpfDisplayName", "Spoof Display Name", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","DisplayName","Enabled"}, v)
+end)
+PLS2:AddTextbox("SpfDisplayNameVal", {
+    Text = "Display Name", Default = "Player", Numeric = false, Finished = false,
+    Callback = function(v)
+        _kSet({"PlayerSpoofer","LocalPlayer","DisplayName","Value"}, v)
+    end
+})
+
+AddBindableToggle(PLS, "SpfElo", "Spoof Ranked Elo", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","RankedElo","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfEloVal", {
+    Text = "Ranked Elo",
+    Default = 3600, Min = 0, Max = 9999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","RankedElo","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfLevel", "Spoof Level", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Level","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfLevelVal", {
+    Text = "Level",
+    Default = 999, Min = 1, Max = 999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Level","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfWinstreak", "Spoof Winstreak", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Winstreak","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfWinstreakVal", {
+    Text = "Winstreak",
+    Default = 999, Min = 0, Max = 999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Winstreak","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfRankedWins", "Spoof Ranked Wins", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","RankedWins","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfRankedWinsVal", {
+    Text = "Ranked Wins",
+    Default = 9999, Min = 0, Max = 99999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","RankedWins","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfInfluencer", "Influencer Badge", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Influencer","Enabled"}, v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Influencer","Value"}, v)
+end)
+
+AddBindableToggle(PLS, "SpfEmployee", "Roblox Employee Badge", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","RobloxEmployee","Enabled"}, v)
+    _kSet({"PlayerSpoofer","LocalPlayer","RobloxEmployee","Value"}, v)
+end)
+
+AddBindableToggle(PLS, "SpfPing", "Spoof Ping (Low)", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Ping","Enabled"}, v)
+    if v then _kSet({"PlayerSpoofer","LocalPlayer","Ping","Value"}, "Low") end
+end)
+
+end -- Player Tab scope
 
 -- ============================================================
 --  UNCODE v1 · Combat + HvH Tabs (powered by Kicia Rebuild engine)
