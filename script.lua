@@ -70636,6 +70636,168 @@ UIGroup:AddToggle("ShowCoords", { Text = "Show Live HUD", Default = true, Callba
 end })
 UIGroup:AddButton("Unload Script", function() Library:Unload() end)
 
+
+do -- FPS Boost scope
+local FpsG = Tabs.Settings:AddLeftGroupbox("FPS Boost")
+
+-- ── state ─────────────────────────────────────────────────────
+local _fpsOrigShadows    = nil
+local _fpsShadowsOn      = false
+local _fpsParticlesOn    = false
+local _fpsPostFxOn       = false
+local _fpsDecorOn        = false
+local _fpsLowGfxOn       = false
+local _fpsConns          = {}
+
+local Lighting    = game:GetService("Lighting")
+local RunService  = game:GetService("RunService")
+
+-- ── helpers ───────────────────────────────────────────────────
+local function setParticles(enabled)
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("ParticleEmitter") or v:IsA("Trail")
+        or v:IsA("Beam") or v:IsA("Fire")
+        or v:IsA("Smoke") or v:IsA("Sparkles") then
+            pcall(function() v.Enabled = enabled end)
+        end
+    end
+    -- also workspace future descendants
+    if not enabled then
+        local c = workspace.DescendantAdded:Connect(function(v)
+            if v:IsA("ParticleEmitter") or v:IsA("Trail")
+            or v:IsA("Beam") or v:IsA("Fire")
+            or v:IsA("Smoke") or v:IsA("Sparkles") then
+                pcall(function() v.Enabled = false end)
+            end
+        end)
+        _fpsConns[#_fpsConns+1] = c
+    else
+        for _, c in ipairs(_fpsConns) do pcall(function() c:Disconnect() end) end
+        _fpsConns = {}
+    end
+end
+
+local function setPostFx(enabled)
+    for _, v in ipairs(Lighting:GetChildren()) do
+        if v:IsA("PostEffect") then
+            pcall(function() v.Enabled = enabled end)
+        end
+    end
+end
+
+local function setShadows(enabled)
+    pcall(function() Lighting.GlobalShadows = enabled end)
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") then
+            pcall(function() v.CastShadow = enabled end)
+        end
+    end
+end
+
+local function setDecor(enabled)
+    pcall(function() workspace.Terrain.Decoration = enabled end)
+    pcall(function()
+        local env = workspace:FindFirstChild("Environment")
+        if env then
+            for _, v in ipairs(env:GetDescendants()) do
+                if v:IsA("BasePart") or v:IsA("Model") then
+                    pcall(function() v.Visible = enabled end)
+                end
+            end
+        end
+    end)
+end
+
+local function setLowGfx(enabled)
+    pcall(function()
+        if enabled then
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        else
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        end
+    end)
+end
+
+-- ── toggles ───────────────────────────────────────────────────
+FpsG:AddToggle("FpsParticles", {
+    Text = "Remove Particles & Effects",
+    Default = false,
+    Tooltip = "Disables ParticleEmitter, Fire, Smoke, Trail, Beam etc.",
+    Callback = function(v)
+        _fpsParticlesOn = v
+        setParticles(not v)
+    end
+})
+
+FpsG:AddToggle("FpsShadows", {
+    Text = "Disable Shadows",
+    Default = false,
+    Tooltip = "Turns off GlobalShadows and CastShadow on all parts.",
+    Callback = function(v)
+        _fpsShadowsOn = v
+        setShadows(not v)
+    end
+})
+
+FpsG:AddToggle("FpsPostFx", {
+    Text = "Remove Post-Effects",
+    Default = false,
+    Tooltip = "Disables Bloom, ColorCorrection, DepthOfField etc.",
+    Callback = function(v)
+        _fpsPostFxOn = v
+        setPostFx(not v)
+    end
+})
+
+FpsG:AddToggle("FpsDecor", {
+    Text = "Remove Decorations",
+    Default = false,
+    Tooltip = "Hides terrain decorations and environment props.",
+    Callback = function(v)
+        _fpsDecorOn = v
+        setDecor(not v)
+    end
+})
+
+FpsG:AddToggle("FpsLowGfx", {
+    Text = "Low Graphics Mode",
+    Default = false,
+    Tooltip = "Forces Roblox graphics to Level 1.",
+    Callback = function(v)
+        _fpsLowGfxOn = v
+        setLowGfx(v)
+    end
+})
+
+FpsG:AddButton("Apply All FPS Boost", function()
+    setParticles(false)
+    setShadows(false)
+    setPostFx(false)
+    setDecor(false)
+    setLowGfx(true)
+    -- sync toggles
+    if Options.FpsParticles then Options.FpsParticles:SetValue(true) end
+    if Options.FpsShadows   then Options.FpsShadows:SetValue(true)   end
+    if Options.FpsPostFx    then Options.FpsPostFx:SetValue(true)    end
+    if Options.FpsDecor     then Options.FpsDecor:SetValue(true)     end
+    if Options.FpsLowGfx    then Options.FpsLowGfx:SetValue(true)    end
+end)
+
+FpsG:AddButton("Reset FPS Boost", function()
+    setParticles(true)
+    setShadows(true)
+    setPostFx(true)
+    setDecor(true)
+    setLowGfx(false)
+    if Options.FpsParticles then Options.FpsParticles:SetValue(false) end
+    if Options.FpsShadows   then Options.FpsShadows:SetValue(false)   end
+    if Options.FpsPostFx    then Options.FpsPostFx:SetValue(false)    end
+    if Options.FpsDecor     then Options.FpsDecor:SetValue(false)     end
+    if Options.FpsLowGfx    then Options.FpsLowGfx:SetValue(false)    end
+end)
+
+end -- FPS Boost scope
+
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
