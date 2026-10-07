@@ -3995,6 +3995,72 @@ AddBindableToggle(PLS, "SpfPing", "Spoof Ping (Low)", false, function(v)
     if v then _kSet({"PlayerSpoofer","LocalPlayer","Ping","Value"}, "Low") end
 end)
 
+AddBindableToggle(PLS, "SpfAvatar", "Spoof Avatar (User ID)", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Avatar","Enabled"}, v)
+end)
+PLS2:AddTextbox("SpfAvatarVal", {
+    Text = "Avatar User ID", Default = "20349956", Numeric = false, Finished = false,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Avatar","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfCasualWins", "Spoof Casual Wins", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","CasualWins","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfCasualWinsVal", {
+    Text = "Casual Wins",
+    Default = 99999, Min = 0, Max = 99999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","CasualWins","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfLeaderboardRank", "Spoof Leaderboard Rank", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","LeaderboardRank","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfLeaderboardRankVal", {
+    Text = "Leaderboard Rank",
+    Default = 1, Min = 1, Max = 9999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","LeaderboardRank","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfKeys", "Spoof Keys", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Keys","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfKeysVal", {
+    Text = "Keys",
+    Default = 999, Min = 0, Max = 9999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Keys","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfEventCurrency", "Spoof Event Currency", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","EventCurrency","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfEventCurrencyVal", {
+    Text = "Event Currency",
+    Default = 9999, Min = 0, Max = 99999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","EventCurrency","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfNametagStatus", "Spoof Nametag Status", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","NametagStatus","Enabled"}, v)
+end)
+PLS2:AddDropdown("SpfNametagStatusVal", {
+    Text = "Nametag Status",
+    Default = "Prime",
+    Values = {"Prime", "Contraband"},
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","NametagStatus","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfFavoriteMap", "Spoof Favorite Map", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","FavoriteMap","Enabled"}, v)
+end)
+PLS2:AddTextbox("SpfFavoriteMapVal", {
+    Text = "Favorite Map", Default = "Arena", Numeric = false, Finished = false,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","FavoriteMap","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfNosniyTeam", "Nosniy Games Team Badge", false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","NosniyTeam","Enabled"}, v)
+end)
+
 -- ── World / Removables (Kicia) ─────────────────────────────────
 local PLW = Tabs.Player:AddLeftGroupbox("World")
 
@@ -4022,6 +4088,173 @@ end)
 AddBindableToggle(PLW, "WrNoHitmarker", "No Hitmarker", false, function(v)
     _kSet({"Removables","NoHitmarker"}, v)
 end)
+
+-- ── Camera & Visual (Kicia) ────────────────────────────────────
+local PLV  = Tabs.Player:AddLeftGroupbox("Camera & Visual")
+local PLV2 = Tabs.Player:AddRightGroupbox("Camera Config")
+
+AddBindableToggle(PLV, "PlThirdPerson", "Third Person", false, function(v)
+    _kSet({"ThirdPerson","Enabled"}, v)
+end)
+PLV2:AddToggle("PlThirdPersonReplica", {
+    Text = "Show Own Replica",
+    Default = false,
+    Callback = function(v) _kSet({"ThirdPerson","ShowReplica"}, v) end
+})
+PLV2:AddToggle("PlThirdPersonRayCheck", {
+    Text = "Wall Detect (Ray Check)",
+    Default = false,
+    Callback = function(v) _kSet({"ThirdPerson","RayCheck"}, v) end
+})
+PLV2:AddSlider("PlThirdPersonX", {
+    Text = "Camera X Offset",
+    Default = 3, Min = -10, Max = 10, Rounding = 1,
+    Callback = function(v) _kSet({"ThirdPerson","X"}, v) end
+})
+PLV2:AddSlider("PlThirdPersonY", {
+    Text = "Camera Y Offset",
+    Default = 2, Min = -10, Max = 10, Rounding = 1,
+    Callback = function(v) _kSet({"ThirdPerson","Y"}, v) end
+})
+PLV2:AddSlider("PlThirdPersonZ", {
+    Text = "Camera Z Distance",
+    Default = 6, Min = 1, Max = 20, Rounding = 1,
+    Callback = function(v) _kSet({"ThirdPerson","Z"}, v) end
+})
+
+AddBindableToggle(PLV, "PlAnimPlayer", "Animation Player", false, function(v)
+    _kSet({"AnimationPlayer","Enabled"}, v)
+end)
+PLV2:AddDropdown("PlAnimPlayerAnim", {
+    Text = "Animation",
+    Default = "Cat Girl Bounce",
+    Values = {
+        "Bodybuilder Posing", "Floss Dance", "Hyper Circle Scootin'", "Dolphin Dance",
+        "Halloween Dance 2", "Standing Twerk", "Breakdancing", "Fish Air Swimming",
+        "Character Shooting Gun", "Gangnam Style", "Cat Girl Bounce", "Hype Dance",
+        "Laying Down Legs", "Line Dance", "Floor Driving", "Pole / Jenga Tower",
+        "Some Dance", "Cha Cha Dance", "Still Standing", "Character Spiral",
+        "Character Vortex", "Ballet Spin", "Take Me Under (Zara Larsson)",
+        "Worm Dance", "Take the L"
+    },
+    Callback = function(v) _kSet({"AnimationPlayer","Animation"}, v) end
+})
+PLV2:AddSlider("PlAnimPlayerSpeed", {
+    Text = "Animation Speed",
+    Default = 1, Min = 0, Max = 5, Rounding = 2,
+    Callback = function(v) _kSet({"AnimationPlayer","Speed"}, v) end
+})
+
+AddBindableToggle(PLV, "PlDeviceSpoof", "Device Spoof (VR)", false, function(v)
+    _kSet({"DeviceSpoof","Enabled"}, v)
+    if v then _kSet({"DeviceSpoof","SpoofType"}, "VR") end
+end)
+
+-- ── Item Modifiers (Kicia) ─────────────────────────────────────
+local PLI  = Tabs.Player:AddLeftGroupbox("Item Modifiers")
+local PLI2 = Tabs.Player:AddRightGroupbox("Modifier Config")
+
+AddBindableToggle(PLI, "ImNoMotion", "No Motion Blur", false, function(v)
+    _kSet({"ItemModifiers","NoMotion"}, v)
+end)
+AddBindableToggle(PLI, "ImNoCamShake", "No Camera Shake", false, function(v)
+    _kSet({"ItemModifiers","NoCameraShake"}, v)
+end)
+AddBindableToggle(PLI, "ImNoCamSway", "No Camera Sway", false, function(v)
+    _kSet({"ItemModifiers","NoCameraSway"}, v)
+end)
+AddBindableToggle(PLI, "ImNoShootAnim", "No Shoot Animation", false, function(v)
+    _kSet({"ItemModifiers","NoShootAnimation"}, v)
+end)
+AddBindableToggle(PLI, "ImNoSprintAnim", "No Sprint Animation", false, function(v)
+    _kSet({"ItemModifiers","NoSprintAnimation"}, v)
+end)
+AddBindableToggle(PLI, "ImNoEquipAnim", "No Equip Animation", false, function(v)
+    _kSet({"ItemModifiers","NoEquipAnimation"}, v)
+end)
+AddBindableToggle(PLI, "ImNoReloadAnim", "No Reload Animation", false, function(v)
+    _kSet({"ItemModifiers","NoReloadAnimation"}, v)
+end)
+AddBindableToggle(PLI, "ImNoSpread", "No Spread", false, function(v)
+    _kSet({"ItemModifiers","NoSpread"}, v)
+end)
+AddBindableToggle(PLI, "ImAutoWeapon", "Automatic Weapon (Full Auto)", false, function(v)
+    _kSet({"ItemModifiers","AutomaticWeapon"}, v)
+end)
+AddBindableToggle(PLI, "ImAlwaysBackstab", "Always Backstab", false, function(v)
+    _kSet({"ItemModifiers","AlwaysBackstab"}, v)
+end)
+
+PLI2:AddToggle("ImAimCooldownEnabled", {
+    Text = "Aim Cooldown Reduction",
+    Default = false,
+    Callback = function(v) _kSet({"ItemModifiers","AimCooldown","Enabled"}, v) end
+})
+PLI2:AddSlider("ImAimCooldown", {
+    Text = "Aim Cooldown %",
+    Default = 50, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"ItemModifiers","AimCooldown","Percentage"}, v) end
+})
+PLI2:AddToggle("ImRecoilEnabled", {
+    Text = "Recoil Reduction",
+    Default = false,
+    Callback = function(v) _kSet({"ItemModifiers","Recoil","Enabled"}, v) end
+})
+PLI2:AddSlider("ImRecoil", {
+    Text = "Recoil %",
+    Default = 75, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"ItemModifiers","Recoil","Percentage"}, v) end
+})
+PLI2:AddToggle("ImFireCooldownEnabled", {
+    Text = "Fire Cooldown Reduction",
+    Default = false,
+    Callback = function(v) _kSet({"ItemModifiers","FireCooldown","Enabled"}, v) end
+})
+PLI2:AddSlider("ImFireCooldown", {
+    Text = "Fire Cooldown %",
+    Default = 25, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"ItemModifiers","FireCooldown","Percentage"}, v) end
+})
+PLI2:AddToggle("ImAimSpeedEnabled", {
+    Text = "Aim Speed Boost",
+    Default = false,
+    Callback = function(v) _kSet({"ItemModifiers","AimSpeed","Enabled"}, v) end
+})
+PLI2:AddSlider("ImAimSpeed", {
+    Text = "Aim Speed %",
+    Default = 300, Min = 50, Max = 1000, Rounding = 0,
+    Callback = function(v) _kSet({"ItemModifiers","AimSpeed","Percentage"}, v) end
+})
+PLI2:AddToggle("ImMeleeCooldownEnabled", {
+    Text = "Melee Cooldown Reduction",
+    Default = false,
+    Callback = function(v) _kSet({"ItemModifiers","MeleeCooldown","Enabled"}, v) end
+})
+PLI2:AddSlider("ImMeleeCooldown", {
+    Text = "Melee Cooldown %",
+    Default = 25, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"ItemModifiers","MeleeCooldown","Percentage"}, v) end
+})
+PLI2:AddToggle("ImDashCooldownEnabled", {
+    Text = "Dash Cooldown Reduction",
+    Default = false,
+    Callback = function(v) _kSet({"ItemModifiers","DashCooldown","Enabled"}, v) end
+})
+PLI2:AddSlider("ImDashCooldown", {
+    Text = "Dash Cooldown %",
+    Default = 25, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"ItemModifiers","DashCooldown","Percentage"}, v) end
+})
+PLI2:AddToggle("ImExtendMeleeRangeEnabled", {
+    Text = "Extend Melee Range",
+    Default = false,
+    Callback = function(v) _kSet({"ItemModifiers","ExtendMeleeRange","Enabled"}, v) end
+})
+PLI2:AddSlider("ImExtendMeleeRange", {
+    Text = "Melee Range",
+    Default = 10, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"ItemModifiers","ExtendMeleeRange","Range"}, v) end
+})
 
 end -- Player Tab scope
 
@@ -4372,7 +4605,7 @@ HvHR4:AddSlider("CamFov", {
     Text = "Camera FOV",
     Default = 70,
     Min = 40, Max = 120, Rounding = 0,
-    Callback = function(v) _kSet({"Camera","CustomFov","Value"}, v) end
+    Callback = function(v) _kSet({"CameraFov","Value"}, v) end
 })
 HvHR4:AddToggle("SoundEsp", {
     Text = "Sound ESP",
