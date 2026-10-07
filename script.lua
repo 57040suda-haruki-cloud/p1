@@ -514,6 +514,7 @@ end
 
 LuaXLoadingScreen()
 
+(function()
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/visnoukkk/ObsidianLib/refs/heads/main/Library.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
@@ -3940,6 +3941,7 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 pcall(function() SaveManager:LoadAutoloadConfig() end)
 
 Library:Notify({ Title = "lua x paid", Description = "Made by Roaxi, Visnoukkk, Yolegittrader, and dani", Time = 4 })
+end)()
 
 -- ╔══════════════════════════════════════════════════════════════════════════╗
 -- ║  UNCODE v1 · Kicia HvH Engine (full source embed)                      ║
