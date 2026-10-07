@@ -71046,11 +71046,7 @@ end
 --  tbl17.j1()(boot) still runs: all combat systems launch normally.
 -- ============================================================
 
--- 1. Expose the main ReactiveStore globally so UNCODE callbacks can use it.
---    tbl17.bG() returns the singleton store with :Set({path}, value) API.
-getgenv()._UNC_KiciaStore = tbl17.bG()
-
--- 2. Patch tbl17.jf (the function that creates "KiciaHook | Rivals | Premium Build" window).
+-- 1. Patch tbl17.jf (the function that creates "KiciaHook | Rivals | Premium Build" window).
 --    tbl17.j1()(boot) will call tbl17.jf()(bootData) internally.
 --    We replace tbl17.jf to return a no-op inner function → no window, all combat runs.
 local _origJf = tbl17.jf
@@ -71064,9 +71060,13 @@ tbl17.jf = function()
     end
 end
 
--- 3. Now run Kicia's full boot sequence.
+-- 2. Run Kicia's full boot sequence.
 --    This instantiates all 555 modules, starts the render loop, and calls patched jf.
 tbl17.j1()(boot)
+
+-- 3. Expose the fully-initialised ReactiveStore globally.
+--    Must be AFTER j1()(boot) so all module observers are connected before we use it.
+getgenv()._UNC_KiciaStore = tbl17.bG()
 end)()
 local MenuG = Tabs.Settings:AddRightGroupbox("Server Tools")
 MenuG:AddButton("Rejoin Server", function()
