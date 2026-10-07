@@ -4089,6 +4089,14 @@ HvHR3:AddSlider("FbHumanness", {
 })
 
 -- ── VISUALS ───────────────────────────────────────────────────
+-- ESP state table (mirrors what we've set in KiciaStore)
+local _espState = {
+    Name     = false,
+    HealthBar= false,
+    Box      = false,
+    Tracer   = false,
+    Skeleton = false,
+}
 HvHL4:AddToggle("EspEnabled", {
     Text = "Player ESP",
     Default = false,
@@ -4096,28 +4104,36 @@ HvHL4:AddToggle("EspEnabled", {
         _kSet({"Esp","Main","Enabled"}, v)
         _kSet({"Esp","Enemy","Enabled"}, v)
         _kSet({"Esp","Team","Enabled"}, v)
+        -- Push sub-item states now that the master is confirmed on/off
+        for key, state in pairs(_espState) do
+            _kSet({"Esp","Enemy",key,"Enabled"}, v and state)
+            _kSet({"Esp","Team", key,"Enabled"}, v and state)
+        end
     end
 })
 HvHL4:AddToggle("EspName", {
     Text = "ESP: Name",
-    Default = true,
+    Default = false,
     Callback = function(v)
+        _espState.Name = v
         _kSet({"Esp","Enemy","Name","Enabled"}, v)
         _kSet({"Esp","Team","Name","Enabled"}, v)
     end
 })
 HvHL4:AddToggle("EspHealth", {
     Text = "ESP: Health Bar",
-    Default = true,
+    Default = false,
     Callback = function(v)
+        _espState.HealthBar = v
         _kSet({"Esp","Enemy","HealthBar","Enabled"}, v)
         _kSet({"Esp","Team","HealthBar","Enabled"}, v)
     end
 })
 HvHL4:AddToggle("EspBox", {
     Text = "ESP: Bounding Box",
-    Default = true,
+    Default = false,
     Callback = function(v)
+        _espState.Box = v
         _kSet({"Esp","Enemy","Box","Enabled"}, v)
         _kSet({"Esp","Team","Box","Enabled"}, v)
     end
@@ -4126,6 +4142,7 @@ HvHL4:AddToggle("EspTracer", {
     Text = "ESP: Tracer",
     Default = false,
     Callback = function(v)
+        _espState.Tracer = v
         _kSet({"Esp","Enemy","Tracer","Enabled"}, v)
         _kSet({"Esp","Team","Tracer","Enabled"}, v)
     end
@@ -4134,6 +4151,7 @@ HvHL4:AddToggle("EspSkeleton", {
     Text = "ESP: Skeleton",
     Default = false,
     Callback = function(v)
+        _espState.Skeleton = v
         _kSet({"Esp","Enemy","Skeleton","Enabled"}, v)
         _kSet({"Esp","Team","Skeleton","Enabled"}, v)
     end
