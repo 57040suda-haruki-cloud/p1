@@ -516,44 +516,38 @@ UNCODELoadingScreen()
 
 ;(function()
 -- ╔═══════════════════════════════════════════════════════════════════════╗
--- ║  UNCODE v1 — NeverLose UI  (build 20261009-h)                       ║
+-- ║  UNCODE v1 — Millenium UI  (build 20261009-h)                       ║
 -- ╚═══════════════════════════════════════════════════════════════════════╝
-local NeverLose = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/4lpaca-pin/NeverLose/refs/heads/main/source.luau"
+local _mlLib = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/i77lhm/Libraries/refs/heads/main/Millenium/Library.lua"
 ))()
-warn("[UNCODE] NeverLose loaded OK")
+warn("[UNCODE] Millenium loaded OK")
 
-local Notification = NeverLose:CreateNotification()
-local Logging      = NeverLose:CreateLogger()
-local Indicator    = NeverLose:CreateIndicator()
-
--- safe access for properties that may not exist in all versions
-local _nlLogo   = rawget(NeverLose, "GlobalLogo") or nil
-local _nlScales = rawget(NeverLose, "Scales") or {}
-local _nlSize   = _nlScales.Default or nil
-
-local window = NeverLose:CreateWindow({
-    Logo             = _nlLogo,
-    Name             = "UNCODE v1",
-    Content          = "Rivals",
-    Size             = _nlSize,
-    ConfigFolder     = "UNCODEv1",
-    Enable3DRenderer = false,
-    Keybind          = "RightShift",
+local window = _mlLib:window({
+    name     = "UNCODE",
+    suffix   = "v1",
+    gameInfo = "Rivals · Kicia HvH Engine",
 })
 warn("[UNCODE] window created OK")
 
--- Watermark (wrapped; optional API)
+-- ── Notification stub (Millenium has no built-in notify; use Roblox StarterGui) ──
+local _SGui = game:GetService("StarterGui")
+local Notification = {}
+Notification.new = function(opts)
+    pcall(function()
+        _SGui:SetCore("SendNotification", {
+            Title    = opts.Title   or "UNCODE v1",
+            Text     = opts.Content or "",
+            Duration = opts.Duration or 3,
+        })
+    end)
+end
+local Logging = { log = function() end }
+local Indicator = { Update = function() end }
+
+-- Watermark stubs (Millenium has no watermark API)
 local _WmPing  = { SetText = function() end }
 local _WmBuild = { Input  = function() end }
-pcall(function()
-    local wm = window:Watermark()
-    local b1 = wm:AddBlock("chart-four-vertical-bars", "0ms")
-    local b2 = wm:AddBlock("cube-vertexes", "UNCODE v1")
-    pcall(function() b2:Input(function() window:ToggleInterface() end) end)
-    _WmPing  = b1
-    _WmBuild = b2
-end)
 
 -- ── Flag registry (replaces Obsidian Library.Toggles / Library.Options) ──
 local _FlagCb = {}
@@ -576,97 +570,201 @@ Library.ToggleKeybind = nil
 local Options = setmetatable({}, { __index = function() return nil end })
 local Toggles = setmetatable({}, { __index = function() return nil end })
 
+-- ╔═══════════════════════════════════════════════════════════════════════╗
+-- ║  MILLENIUM COMPAT LAYER                                              ║
+-- ║  wrapSection  →  Obsidian groupbox API on top of Millenium section  ║
+-- ║  wrapTab      →  Obsidian tab API on top of a Millenium sub-tab     ║
+-- ║  Window       →  AddTab() lookup into pre-created sub-tab objects   ║
+-- ╚═══════════════════════════════════════════════════════════════════════╝
+
 -- ── wrapSection ─────────────────────────────────────────────────────────
--- Gives Obsidian groupbox API on top of a NeverLose section object.
-local function wrapSection(nlSec)
+local function wrapSection(mlSec)
     local ws = {}
+    local _lt = nil  -- last toggle object, used for :colorpicker() chaining
+
+    -- Helper: convert Obsidian Rounding → Millenium interval
+    -- Rounding=0 → interval=1, Rounding=1 → interval=0.1, Rounding=2 → 0.01
+    local function _toInterval(rounding)
+        if not rounding or rounding <= 0 then return 1 end
+        return 10 ^ (-rounding)
+    end
+
     function ws:AddToggle(id, opts)
-        local text = opts.Text or id
-        local lbl  = nlSec:AddLabel(text)
         _regFlag(id, opts.Callback)
-        lbl:AddToggle({ Flag = id, Default = opts.Default, Callback = opts.Callback })
-        if opts.Tooltip then pcall(function() lbl:ToolTip(opts.Tooltip) end) end
-        -- return a proxy so AddKeyPicker() is silently ignored
-        return setmetatable({ _lbl = lbl }, {
-            __index = function(t, k)
-                local v = rawget(t, k); if v ~= nil then return v end
-                local nv = lbl[k]; if nv ~= nil then return nv end
-                return function() end   -- unknown call → no-op
-            end
+        local t = mlSec:toggle({
+            name     = opts.Text or id,
+            callback = function(v)
+                if opts.Callback then pcall(opts.Callback, v) end
+            end,
+            info = opts.Tooltip,
+        })
+        _lt = t
+        -- Return proxy so callers (AddKeyPicker, sub-settings) don't error
+        return setmetatable({ _t = t }, {
+            __index = function(tbl, k)
+                local v = rawget(tbl, k); if v ~= nil then return v end
+                return function() end  -- unknown method → no-op
+            end,
         })
     end
+
     function ws:AddSlider(id, opts)
-        local text = opts.Text or id
-        local lbl  = nlSec:AddLabel(text)
         _regFlag(id, opts.Callback)
-        lbl:AddSlider({
-            Flag     = id,
-            Default  = opts.Default,
-            Min      = opts.Min,
-            Max      = opts.Max,
-            Rounding = opts.Rounding,
-            Type     = opts.Suffix or opts.Type,
-            Callback = opts.Callback,
+        mlSec:slider({
+            name     = opts.Text or id,
+            min      = opts.Min      or 0,
+            max      = opts.Max      or 100,
+            interval = _toInterval(opts.Rounding),
+            callback = function(v)
+                if opts.Callback then pcall(opts.Callback, v) end
+            end,
+            info = opts.Tooltip,
         })
-        if opts.Tooltip then pcall(function() lbl:ToolTip(opts.Tooltip) end) end
-        return lbl
+        _lt = nil
     end
+
     function ws:AddDropdown(id, opts)
-        local text = opts.Text or id
-        local lbl  = nlSec:AddLabel(text)
         _regFlag(id, opts.Callback)
-        lbl:AddDropdown({
-            Flag     = id,
-            Default  = opts.Default,
-            Values   = opts.Values,
-            Multi    = opts.Multi,
-            Callback = opts.Callback,
+        mlSec:dropdown({
+            name     = opts.Text or id,
+            items    = opts.Values or opts.Items or {},
+            default  = opts.Default,
+            multi    = opts.Multi or false,
+            callback = function(v)
+                if opts.Callback then pcall(opts.Callback, v) end
+            end,
+            info = opts.Tooltip,
         })
-        if opts.Tooltip then pcall(function() lbl:ToolTip(opts.Tooltip) end) end
-        return lbl
+        _lt = nil
     end
+
     function ws:AddLabel(text)
-        return nlSec:AddLabel(text)
+        mlSec:label({ name = text or "" })
     end
+
     function ws:AddButton(text, cb)
-        pcall(function()
-            window.UserSettings:AddButton({ Icon = "bolt", Name = text, Callback = cb })
-        end)
+        -- Millenium has no section button; use a momentary toggle as stand-in
+        mlSec:toggle({
+            name     = text or "Button",
+            callback = function(v) if v and cb then pcall(cb) end end,
+        })
+        _lt = nil
     end
+
+    -- Colorpicker must chain from the last toggle; silently drop if no prior toggle
     function ws:AddColorPicker(id, opts)
-        local dflt = opts.Default or Color3.fromRGB(255, 255, 255)
-        pcall(function()
-            nlSec:AddColor({
-                Label    = opts.Text or id,
-                Default  = { Rgb = dflt, Alpha = 1 },
-                OnChanged = function(c)
-                    if opts.Callback then pcall(opts.Callback, c.Rgb) end
-                end,
-            })
-        end)
+        if _lt then
+            pcall(function()
+                _lt:colorpicker({ name = opts.Text or id })
+            end)
+        end
+        -- _lt intentionally not cleared — multiple pickers can chain from one toggle
     end
+
+    -- KeyPicker: no Millenium equivalent; record the flag so community configs work
+    function ws:AddKeyPicker(id, opts)
+        _regFlag(id, opts and opts.Callback)
+    end
+
     return ws
 end
 
 -- ── wrapTab ──────────────────────────────────────────────────────────────
-local function wrapTab(nlTab)
-    local wt = { _nl = nlTab }
+-- Each Millenium sub-tab object gets two columns: left (index 0) and right (index 1).
+-- Obsidian's AddLeft/AddRightGroupbox map to those columns' sections.
+local function wrapTab(mlSubTab)
+    local wt = {}
+    -- Pre-create the two columns once
+    local _colL = mlSubTab:column({})
+    local _colR = mlSubTab:column({})
+
     function wt:AddLeftGroupbox(name)
-        return wrapSection(self._nl:AddSection({ Name = name, Position = "left" }))
+        return wrapSection(_colL:section({ name = name or "" }))
     end
     function wt:AddRightGroupbox(name)
-        return wrapSection(self._nl:AddSection({ Name = name, Position = "right" }))
+        return wrapSection(_colR:section({ name = name or "" }))
     end
     function wt:AddSection(opts)
-        return wrapSection(self._nl:AddSection(opts))
+        -- opts may be a string or table; always use left column
+        local nm = type(opts) == "string" and opts or (opts.Name or opts.name or "")
+        return wrapSection(_colL:section({ name = nm }))
     end
     return wt
 end
 
+-- ── Millenium tab groups ─────────────────────────────────────────────────
+-- 14 logical tabs → 6 Millenium parent tabs (with sub-tabs).
+-- Layout visible at a glance:
+--
+--   ┌─ HvH ──────────┐  Combat | Aimbot | Prediction
+--   ├─ Utility ───────┤  VoidSpam | Orbit | Defense
+--   ├─ Misc ──────────┤  Transloc. | Sling | Riot
+--   ├─ Player ────────┤  Camera | World | Auto
+--   ├─ Skins ─────────┤  SkinChanger
+--   └─ Config ────────┘  Settings
+--
+local _hvhCombat, _hvhAimbot, _hvhPred
+local _utilVS, _utilOrbit, _utilDef
+local _miscTrans, _miscSling, _miscRiot
+local _playPlayer, _playWorld, _playAuto
+local _skinsChanger
+local _cfgSettings
+
+_hvhCombat, _hvhAimbot, _hvhPred = window:tab({
+    name = "HvH",
+    tabs = { "Combat", "Aimbot", "Prediction" },
+})
+_utilVS, _utilOrbit, _utilDef = window:tab({
+    name = "Utility",
+    tabs = { "VoidSpam", "Orbit", "Defense" },
+})
+_miscTrans, _miscSling, _miscRiot = window:tab({
+    name = "Misc",
+    tabs = { "Transloc.", "Sling", "Riot" },
+})
+_playPlayer, _playWorld, _playAuto = window:tab({
+    name = "Player",
+    tabs = { "Camera", "World", "Auto" },
+})
+_skinsChanger = window:tab({ name = "Skins",  tabs = { "SkinChanger" } })
+_cfgSettings  = window:tab({ name = "Config", tabs = { "Settings"    } })
+
 -- ── Window compat ────────────────────────────────────────────────────────
+-- Window:AddTab(name) looks up the pre-created sub-tab and returns a wrapTab.
+local _mlTabMap = {
+    ["Combat"]        = _hvhCombat,
+    ["HvH"]           = _hvhAimbot,
+    ["Prediction"]    = _hvhPred,
+    ["VoidSpam"]      = _utilVS,
+    ["Orbit"]         = _utilOrbit,
+    ["Defense"]       = _utilDef,
+    ["Translocation"] = _miscTrans,
+    ["Sling Bypass"]  = _miscSling,
+    ["Riot"]          = _miscRiot,
+    ["Player"]        = _playPlayer,
+    ["World"]         = _playWorld,
+    ["Automation"]    = _playAuto,
+    ["SkinChanger"]   = _skinsChanger,
+    ["Settings"]      = _cfgSettings,
+}
+
+-- Fallback no-op sub-tab for safety
+local function _noopTab()
+    local _noop = { column = function(_) return { section = function(_)
+        return { toggle=function()end, slider=function()end,
+                 dropdown=function()end, label=function()end }
+    end } end }
+    return _noop
+end
+
 local Window = {}
-function Window:AddTab(name, icon)
-    return wrapTab(window:AddTab({ Name = name, Icon = icon or "" }))
+function Window:AddTab(name, _icon)
+    local t = _mlTabMap[name]
+    if not t then
+        warn("[UNCODE] Window:AddTab — unknown tab name: " .. tostring(name))
+        t = _noopTab()
+    end
+    return wrapTab(t)
 end
 
 local function Notify(text, duration)
@@ -72479,13 +72577,10 @@ end)
 end
 -- ── End Community Configs ──────────────────────────────────────────────────
 
--- Startup ping watermark loop
-task.spawn(function()
-    while task.wait(2) do
-        pcall(function() _WmPing:SetText(tostring(math.round(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())) .. "ms") end)
-    end
-end)
+-- (No watermark loop — Millenium has no watermark API)
 
-Notification.new({ Title = "UNCODE v1  [build 20261009-h]", Content = "Rivals HvH | NeverLose UI ✓ loaded", Duration = 6 })
-warn("[UNCODE] build 20261009-h — NeverLose UI active")
+_mlLib:init_config(window)
+
+Notification.new({ Title = "UNCODE v1  [build 20261009-h]", Content = "Rivals HvH | Millenium UI ✓ loaded", Duration = 6 })
+warn("[UNCODE] build 20261009-h — Millenium UI active")
 end)()
