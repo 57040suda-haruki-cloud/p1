@@ -4364,6 +4364,30 @@ PLI2:AddSlider("ImExtendMeleeRange", {
     Callback = function(v) _kSet({"ItemModifiers","ExtendMeleeRange","Range"}, v) end
 })
 
+-- ── AUTO PICKUP (FFA 回復・弾拾い) ───────────────────────────────────
+local PLPick  = Tabs.Player:AddLeftGroupbox("Auto Pickup")
+local PLPick2 = Tabs.Player:AddRightGroupbox("Pickup Config")
+
+PLPick:AddToggle("PickupEnabled", {
+    Text    = "Auto Pickup",
+    Default = false,
+    Tooltip = "Automatically collect dropped items (health orbs, ammo).",
+    Callback = function(v) _kSet({"AutoPickupDrops","Enabled"}, v) end
+})
+
+PLPick2:AddToggle("PickupHealth", {
+    Text    = "Collect Health Orbs",
+    Default = true,
+    Tooltip = "Automatically collect health orbs when HP is not full.",
+    Callback = function(v) _kSet({"AutoPickupDrops","Types","Health"}, v) end
+})
+PLPick2:AddToggle("PickupAmmo", {
+    Text    = "Collect Ammo Drops",
+    Default = true,
+    Tooltip = "Automatically collect ammo drops when magazine is not full.",
+    Callback = function(v) _kSet({"AutoPickupDrops","Types","Ammo"}, v) end
+})
+
 end -- Player Tab scope
 
 -- ============================================================
@@ -72097,6 +72121,8 @@ CfgG:AddButton("Load Rage Config", function()
     _T("VelDesyncToggle", true)   _O("VDIntensity", 100)
     _T("VDSpikeMode", true)   _T("VDBurstDesync", true)   _T("VDOscillate", true)
     _T("VDNoClip", true)   _T("VDMassless", true)   _T("VDBypassAnticheat", true)
+    -- Auto Pickup (health + ammo)
+    _T("PickupEnabled", true)   _T("PickupHealth", true)   _T("PickupAmmo", true)
     Library:Notify({ Title = "UNCODE", Description = "Rage Config Loaded", Time = 3 })
 end)
 end
