@@ -2855,6 +2855,7 @@ Tabs.SlingBypass  = Window:AddTab("Sling Bypass",  "target")
 Tabs.Riot         = Window:AddTab("Riot",          "flame")
 Tabs.SkinChanger  = Window:AddTab("SkinChanger",   "shirt")
 Tabs.Player       = Window:AddTab("Player",         "user")
+Tabs.World        = Window:AddTab("World",          "sun")
 Tabs.Automation   = Window:AddTab("Automation",    "zap")
 Tabs.Settings     = Window:AddTab("Settings",      "settings")
 
@@ -4453,6 +4454,117 @@ PLAuto:AddToggle("AntiKatana", {
 })
 
 end -- Player Tab scope
+
+-- ============================================================
+--  UNCODE v1 · World Tab (Kicia World Changer)
+-- ============================================================
+
+do -- World Tab scope
+
+local WL1 = Tabs.World:AddLeftGroupbox("World Changer")
+local WR1 = Tabs.World:AddRightGroupbox("Lighting")
+local WL2 = Tabs.World:AddLeftGroupbox("Atmosphere")
+local WR2 = Tabs.World:AddRightGroupbox("Sky & Fog")
+local WL3 = Tabs.World:AddLeftGroupbox("Weather")
+local WR3 = Tabs.World:AddRightGroupbox("Post Processing")
+
+-- ── World Changer master ──────────────────────────────────────
+WL1:AddToggle("WCEnabled", { Text="Enable World Changer", Default=false,
+    Callback = function(v) _kSet({"Lighting","Enabled"}, v) end })
+WL1:AddToggle("WCDisableGlobalShadows", { Text="Disable Global Shadows", Default=false,
+    Callback = function(v) _kSet({"Lighting","DisableGlobalShadows"}, v) end })
+WL1:AddToggle("WCPrioritizeLQ", { Text="Prioritize Lighting Quality", Default=false,
+    Callback = function(v) _kSet({"Lighting","PrioritizeLightingQuality"}, v) end })
+WL1:AddToggle("WCLightingStyleEnabled", { Text="Custom Lighting Style", Default=false,
+    Callback = function(v) _kSet({"Lighting","LightingStyle","Enabled"}, v) end })
+WL1:AddDropdown("WCLightingStyle", { Text="Lighting Style", Default="Realistic",
+    Values={"Realistic","Compatibility","ShadowMap","Future","Voxel"},
+    Callback = function(v) _kSet({"Lighting","LightingStyle","Value"}, v) end })
+
+-- ── Lighting ─────────────────────────────────────────────────
+WR1:AddToggle("WCClockTime", { Text="Custom Clock Time", Default=false,
+    Callback = function(v) _kSet({"Lighting","ClockTime","Enabled"}, v) end })
+WR1:AddSlider("WCClockTimeVal", { Text="Clock Time (0–24)", Default=12, Min=0, Max=24, Rounding=1,
+    Callback = function(v) _kSet({"Lighting","ClockTime","Value"}, v) end })
+WR1:AddToggle("WCBrightness", { Text="Custom Brightness", Default=false,
+    Callback = function(v) _kSet({"Lighting","Brightness","Enabled"}, v) end })
+WR1:AddSlider("WCBrightnessVal", { Text="Brightness", Default=2, Min=0, Max=10, Rounding=1,
+    Callback = function(v) _kSet({"Lighting","Brightness","Value"}, v) end })
+WR1:AddToggle("WCExposure", { Text="Custom Exposure", Default=false,
+    Callback = function(v) _kSet({"Lighting","ExposureCompensation","Enabled"}, v) end })
+WR1:AddSlider("WCExposureVal", { Text="Exposure Compensation", Default=0, Min=-5, Max=5, Rounding=1,
+    Callback = function(v) _kSet({"Lighting","ExposureCompensation","Value"}, v) end })
+
+-- ── Atmosphere & Sun Rays ─────────────────────────────────────
+WL2:AddToggle("WCAtmosphere", { Text="Custom Atmosphere", Default=false,
+    Callback = function(v) _kSet({"Atmosphere","Enabled"}, v) end })
+WL2:AddSlider("WCAtmDensity", { Text="Density", Default=40, Min=0, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"Atmosphere","Density"}, v/100) end })
+WL2:AddSlider("WCAtmHaze", { Text="Haze", Default=0, Min=0, Max=240, Rounding=0,
+    Callback = function(v) _kSet({"Atmosphere","Haze"}, v/100) end })
+WL2:AddSlider("WCAtmGlare", { Text="Glare", Default=0, Min=0, Max=200, Rounding=0,
+    Callback = function(v) _kSet({"Atmosphere","Glare"}, v/100) end })
+WL2:AddToggle("WCSunRays", { Text="Sun Rays", Default=false,
+    Callback = function(v) _kSet({"SunRays","Enabled"}, v) end })
+WL2:AddSlider("WCSunRaysInt", { Text="Sun Ray Intensity", Default=25, Min=0, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"SunRays","Intensity"}, v/100) end })
+WL2:AddSlider("WCSunRaysSpread", { Text="Sun Ray Spread", Default=100, Min=0, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"SunRays","Spread"}, v/100) end })
+
+-- ── Skybox & Fog ──────────────────────────────────────────────
+WR2:AddToggle("WCSkybox", { Text="Custom Skybox", Default=false,
+    Callback = function(v) _kSet({"Skybox","Enabled"}, v) end })
+WR2:AddToggle("WCFog", { Text="Enable Fog", Default=false,
+    Callback = function(v) _kSet({"Lighting","Fog","Enabled"}, v) end })
+WR2:AddSlider("WCFogStart", { Text="Fog Start", Default=0, Min=0, Max=5000, Rounding=0,
+    Callback = function(v) _kSet({"Lighting","Fog","Start"}, v) end })
+WR2:AddSlider("WCFogEnd", { Text="Fog End", Default=10000, Min=100, Max=100000, Rounding=0,
+    Callback = function(v) _kSet({"Lighting","Fog","End"}, v) end })
+
+-- ── Weather ───────────────────────────────────────────────────
+WL3:AddToggle("WCWeather", { Text="Enable Weather", Default=false,
+    Callback = function(v) _kSet({"Weather","Enabled"}, v) end })
+WL3:AddDropdown("WCWeatherPreset", { Text="Preset", Default="Snow",
+    Values={"Snow","Rain","Blizzard"},
+    Callback = function(v) _kSet({"Weather","Preset"}, v) end })
+WL3:AddSlider("WCWeatherIntensity", { Text="Intensity", Default=100, Min=0, Max=200, Rounding=0,
+    Callback = function(v) _kSet({"Weather","Intensity"}, v/100) end })
+WL3:AddSlider("WCWeatherRate", { Text="Rate", Default=100, Min=0, Max=300, Rounding=0,
+    Callback = function(v) _kSet({"Weather","Rate"}, v/100) end })
+WL3:AddSlider("WCWeatherHeight", { Text="Height", Default=45, Min=10, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"Weather","Height"}, v) end })
+WL3:AddSlider("WCWeatherSpeed", { Text="Speed", Default=100, Min=50, Max=300, Rounding=0,
+    Callback = function(v) _kSet({"Weather","Speed"}, v/100) end })
+WL3:AddSlider("WCWeatherSpread", { Text="Spread", Default=25, Min=0, Max=300, Rounding=0,
+    Callback = function(v) _kSet({"Weather","Spread"}, v) end })
+
+-- ── Post Processing ───────────────────────────────────────────
+WR3:AddToggle("WCBloom", { Text="Bloom", Default=false,
+    Callback = function(v) _kSet({"Bloom","Enabled"}, v) end })
+WR3:AddSlider("WCBloomIntensity", { Text="Bloom Intensity", Default=40, Min=0, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"Bloom","Intensity"}, v/100) end })
+WR3:AddSlider("WCBloomSize", { Text="Bloom Size", Default=24, Min=1, Max=56, Rounding=0,
+    Callback = function(v) _kSet({"Bloom","Size"}, v) end })
+WR3:AddToggle("WCColorCorrection", { Text="Color Correction", Default=false,
+    Callback = function(v) _kSet({"ColorCorrection","Enabled"}, v) end })
+WR3:AddSlider("WCColorSaturation", { Text="Saturation", Default=0, Min=-100, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"ColorCorrection","Saturation"}, v/100) end })
+WR3:AddSlider("WCColorBrightness", { Text="CC Brightness", Default=0, Min=-100, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"ColorCorrection","Brightness"}, v/100) end })
+WR3:AddSlider("WCColorContrast", { Text="Contrast", Default=0, Min=-100, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"ColorCorrection","Contrast"}, v/100) end })
+WR3:AddToggle("WCMotionBlur", { Text="Motion Blur", Default=false,
+    Callback = function(v) _kSet({"MotionBlur","Enabled"}, v) end })
+WR3:AddSlider("WCMotionBlurInt", { Text="Blur Intensity", Default=10, Min=0, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"MotionBlur","Intensity"}, v) end })
+WR3:AddToggle("WCDepthOfField", { Text="Depth of Field", Default=false,
+    Callback = function(v) _kSet({"DepthOfField","Enabled"}, v) end })
+WR3:AddSlider("WCDofFar", { Text="Far Intensity", Default=75, Min=0, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"DepthOfField","FarIntensity"}, v/100) end })
+WR3:AddSlider("WCDofNear", { Text="Near Intensity", Default=75, Min=0, Max=100, Rounding=0,
+    Callback = function(v) _kSet({"DepthOfField","NearIntensity"}, v/100) end })
+
+end -- World Tab scope
 
 -- ============================================================
 --  UNCODE v1 · Automation Tab (Kicia automation features)
