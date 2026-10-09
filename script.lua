@@ -516,30 +516,44 @@ UNCODELoadingScreen()
 
 ;(function()
 -- ╔═══════════════════════════════════════════════════════════════════════╗
--- ║  UNCODE v1 — NeverLose UI  (build 20261009-f)                       ║
+-- ║  UNCODE v1 — NeverLose UI  (build 20261009-h)                       ║
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 local NeverLose = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/4lpaca-pin/NeverLose/refs/heads/main/source.luau"
 ))()
+warn("[UNCODE] NeverLose loaded OK")
 
 local Notification = NeverLose:CreateNotification()
 local Logging      = NeverLose:CreateLogger()
 local Indicator    = NeverLose:CreateIndicator()
 
+-- safe access for properties that may not exist in all versions
+local _nlLogo   = rawget(NeverLose, "GlobalLogo") or nil
+local _nlScales = rawget(NeverLose, "Scales") or {}
+local _nlSize   = _nlScales.Default or nil
+
 local window = NeverLose:CreateWindow({
-    Logo             = NeverLose.GlobalLogo,
+    Logo             = _nlLogo,
     Name             = "UNCODE v1",
     Content          = "Rivals",
-    Size             = NeverLose.Scales.Default,
+    Size             = _nlSize,
     ConfigFolder     = "UNCODEv1",
     Enable3DRenderer = false,
     Keybind          = "RightShift",
 })
+warn("[UNCODE] window created OK")
 
-local Watermark = window:Watermark()
-local _WmPing   = Watermark:AddBlock("chart-four-vertical-bars", "0ms")
-local _WmBuild  = Watermark:AddBlock("cube-vertexes", "UNCODE v1")
-_WmBuild:Input(function() window:ToggleInterface() end)
+-- Watermark (wrapped; optional API)
+local _WmPing  = { SetText = function() end }
+local _WmBuild = { Input  = function() end }
+pcall(function()
+    local wm = window:Watermark()
+    local b1 = wm:AddBlock("chart-four-vertical-bars", "0ms")
+    local b2 = wm:AddBlock("cube-vertexes", "UNCODE v1")
+    pcall(function() b2:Input(function() window:ToggleInterface() end) end)
+    _WmPing  = b1
+    _WmBuild = b2
+end)
 
 -- ── Flag registry (replaces Obsidian Library.Toggles / Library.Options) ──
 local _FlagCb = {}
@@ -4397,7 +4411,7 @@ end -- Player Tab scope
 -- ============================================================
 
 do -- Combat/HvH UI scope (register isolation)
-warn("[UNCODE] Combat/HvH tab init — build 20261009-f")
+warn("[UNCODE] Combat/HvH tab init — build 20261009-h")
 
 -- Combat tab: Silent Aim, Aimbot, Visuals
 local HvHTab   = Tabs.Combat
@@ -72135,6 +72149,6 @@ task.spawn(function()
     end
 end)
 
-Notification.new({ Title = "UNCODE v1  [build 20261009-f]", Content = "Rivals HvH | NeverLose UI ✓ loaded", Duration = 6 })
-warn("[UNCODE] build 20261009-f — NeverLose UI active")
+Notification.new({ Title = "UNCODE v1  [build 20261009-h]", Content = "Rivals HvH | NeverLose UI ✓ loaded", Duration = 6 })
+warn("[UNCODE] build 20261009-h — NeverLose UI active")
 end)()
