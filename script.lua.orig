@@ -53,7 +53,7 @@ local function waitForLoadingScreen()
 
 		clearSince = loading and nil or (clearSince or os.clock())
 		task.wait(0.1)
-	until clearSince and os.clock() - clearSince >= 0.5
+	until clearSince and os.clock() - clearSince >= 0.2
 end
 
 waitForLoadingScreen()
@@ -442,16 +442,16 @@ local function UNCODELoadingScreen()
     version.TextSize = 10; version.TextXAlignment = Enum.TextXAlignment.Left
     version.ZIndex = 11; version.Parent = card
     local statuses = {
-        { t = 0.0, txt = "loading obsidian ui" },
-        { t = 0.5, txt = "bypassing rivals anticheat" },
-        { t = 1.0, txt = "hooking remotes" },
-        { t = 1.5, txt = "building tabs" },
-        { t = 2.0, txt = "starting void engine" },
-        { t = 2.5, txt = "starting prediction engine" },
-        { t = 3.0, txt = "uncode ready" },
+        { t = 0.0,  txt = "loading obsidian ui" },
+        { t = 0.25, txt = "bypassing rivals anticheat" },
+        { t = 0.5,  txt = "hooking remotes" },
+        { t = 0.75, txt = "building tabs" },
+        { t = 1.0,  txt = "starting void engine" },
+        { t = 1.25, txt = "starting prediction engine" },
+        { t = 1.5,  txt = "uncode ready" },
     }
     local startT = tick()
-    local totalTime = 3.6
+    local totalTime = 1.8
     local pT, oT, gT = 0, 0, 0
     local conn = RunService.RenderStepped:Connect(function(dt)
         pT = pT + dt; oT = oT + dt * 1.5; gT = gT + dt * 0.35
@@ -484,7 +484,7 @@ local function UNCODELoadingScreen()
         status.Text = "uncode ready"
         fill.BackgroundColor3 = Color3.fromRGB(80, 220, 255)
         pulse.BackgroundColor3 = Color3.fromRGB(80, 220, 255)
-        local fi = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+        local fi = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
         TweenService:Create(bg, fi, { BackgroundTransparency = 1 }):Play()
         TweenService:Create(card, fi, { BackgroundTransparency = 1 }):Play()
         TweenService:Create(cs, fi, { Transparency = 1 }):Play()
@@ -507,7 +507,7 @@ local function UNCODELoadingScreen()
         for _, l in ipairs(grid:GetChildren()) do
             if l:IsA("Frame") then TweenService:Create(l, fi, { BackgroundTransparency = 1 }):Play() end
         end
-        task.wait(0.7)
+        task.wait(0.4)
         pcall(function() sg:Destroy() end)
     end)
 end
