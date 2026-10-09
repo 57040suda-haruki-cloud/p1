@@ -633,6 +633,18 @@ local function wrapSection(nlSec)
             window.UserSettings:AddButton({ Icon = "bolt", Name = text, Callback = cb })
         end)
     end
+    function ws:AddColorPicker(id, opts)
+        local dflt = opts.Default or Color3.fromRGB(255, 255, 255)
+        pcall(function()
+            nlSec:AddColor({
+                Label    = opts.Text or id,
+                Default  = { Rgb = dflt, Alpha = 1 },
+                OnChanged = function(c)
+                    if opts.Callback then pcall(opts.Callback, c.Rgb) end
+                end,
+            })
+        end)
+    end
     return ws
 end
 
@@ -4424,6 +4436,34 @@ end -- Player Tab scope
 -- ============================================================
 
 do -- Automation Tab scope
+
+-- Fetch Rivals map/weapon lists at runtime from game modules
+local _rivalsMaps    = {}
+local _rivalsWeapons = {}
+pcall(function()
+    local RS      = game:GetService("ReplicatedStorage")
+    local mods    = RS:WaitForChild("Modules", 5)
+    if mods then
+        local ok1, IL = pcall(require, mods:WaitForChild("ItemLibrary", 5))
+        if ok1 and IL and IL.Items then
+            for k in next, IL.Items do
+                if k ~= "MISSING_WEAPON" then
+                    table.insert(_rivalsWeapons, k)
+                end
+            end
+            table.sort(_rivalsWeapons)
+        end
+        local ok2, DL = pcall(require, mods:WaitForChild("DuelLibrary", 5))
+        if ok2 and DL and DL.MapOrder then
+            for _, m in DL.MapOrder do
+                table.insert(_rivalsMaps, m)
+            end
+        end
+    end
+end)
+if #_rivalsMaps    == 0 then _rivalsMaps    = {"Arena","Citadel","Ruins","Factory","Bridge"} end
+if #_rivalsWeapons == 0 then _rivalsWeapons = {"Rifle","Shotgun","Sniper","SMG","Pistol","Revolver","Katana"} end
+
 local AutoL1 = Tabs.Automation:AddLeftGroupbox("Queue Automation")
 local AutoR1 = Tabs.Automation:AddRightGroupbox("Queue Config")
 local AutoL2 = Tabs.Automation:AddLeftGroupbox("Match Automation")
@@ -4431,6 +4471,7 @@ local AutoR2 = Tabs.Automation:AddRightGroupbox("Loadout & Ban")
 local AutoL3 = Tabs.Automation:AddLeftGroupbox("Detection")
 local AutoR3 = Tabs.Automation:AddRightGroupbox("Subspace Tripmines")
 
+-- ── Queue Automation ─────────────────────────────────────────
 AutoL1:AddToggle("AutoQueueEnabled", {
     Text    = "Auto Queue",
     Default = false,
@@ -4445,18 +4486,44 @@ AutoR1:AddDropdown("AutoQueueMode", {
     Callback = function(v) _kSet({"AutoQueue","Queue"}, v) end
 })
 
+-- ── Match Automation ─────────────────────────────────────────
 AutoL2:AddToggle("AutoVoteEnabled", {
     Text    = "Auto Vote",
     Default = false,
     Tooltip = "Automatically vote for maps during map selection.",
     Callback = function(v) _kSet({"AutoVote","Enabled"}, v) end
 })
+AutoL2:AddDropdown("AutoVoteMaps", {
+    Text    = "Maps to Vote For",
+    Default = {},
+    Values  = _rivalsMaps,
+    Multi   = true,
+    Tooltip = "Select which maps to vote for during map selection.",
+    Callback = function(v) _kSet({"AutoVote","Maps"}, v) end
+})
 
+-- ── Loadout & Ban ─────────────────────────────────────────────
 AutoR2:AddToggle("AutoBanEnabled", {
     Text    = "Auto Ban",
     Default = false,
     Tooltip = "Automatically ban weapons during the pre-match ban phase.",
     Callback = function(v) _kSet({"AutoBan","Enabled"}, v) end
+})
+AutoR2:AddDropdown("AutoBanFirst", {
+    Text    = "First Ban Choices",
+    Default = {},
+    Values  = _rivalsWeapons,
+    Multi   = true,
+    Tooltip = "Weapons to choose from for the first ban slot.",
+    Callback = function(v) _kSet({"AutoBan","FirstWeapons"}, v) end
+})
+AutoR2:AddDropdown("AutoBanSecond", {
+    Text    = "Second Ban Choices",
+    Default = {},
+    Values  = _rivalsWeapons,
+    Multi   = true,
+    Tooltip = "Weapons to choose from for the second ban slot.",
+    Callback = function(v) _kSet({"AutoBan","SecondWeapons"}, v) end
 })
 AutoR2:AddToggle("AutoLoadoutEnabled", {
     Text    = "Auto Loadout",
@@ -4477,6 +4544,7 @@ AutoR2:AddToggle("AutoLoadoutMulti", {
     Callback = function(v) _kSet({"AutoLoadout","MultipleLoadouts"}, v) end
 })
 
+-- ── Detection ─────────────────────────────────────────────────
 AutoL3:AddToggle("HackerDetectorEnabled", {
     Text    = "Hacker Detector",
     Default = false,
@@ -4489,13 +4557,40 @@ AutoL3:AddToggle("HackerDetectorNotify", {
     Tooltip = "Show a notification when a hacker is detected.",
     Callback = function(v) _kSet({"HackerDetector","Notify"}, v) end
 })
+AutoL3:AddColorPicker("HackerColor", {
+    Text    = "Hacker Highlight Color",
+    Default = Color3.fromRGB(250, 170, 70),
+    Callback = function(c) _kSet({"HackerDetector","Color"}, c) end
+})
 AutoL3:AddToggle("ModDetectorEnabled", {
     Text    = "Mod Detector",
     Default = false,
     Tooltip = "Alert when a moderator joins the server.",
     Callback = function(v) _kSet({"ModDetector","Enabled"}, v) end
 })
+AutoL3:AddDropdown("ModDetectorResponse", {
+    Text    = "Moderator Response",
+    Default = {},
+    Values  = {"Notify","Kick","ToLobby"},
+    Multi   = true,
+    Tooltip = "What to do when a moderator is detected.",
+    Callback = function(v) _kSet({"ModDetector","Moderators"}, v) end
+})
+AutoL3:AddDropdown("ModDetectorFriends", {
+    Text    = "Mod Friends Response",
+    Default = {},
+    Values  = {"Notify","Kick","ToLobby"},
+    Multi   = true,
+    Tooltip = "What to do when a mod's friend joins.",
+    Callback = function(v) _kSet({"ModDetector","ModFriends"}, v) end
+})
+AutoL3:AddColorPicker("ModColor", {
+    Text    = "Mod Alert Color",
+    Default = Color3.fromRGB(250, 170, 70),
+    Callback = function(c) _kSet({"ModDetector","Color"}, c) end
+})
 
+-- ── Subspace Tripmines ────────────────────────────────────────
 AutoR3:AddToggle("SubspaceAutoTrigger", {
     Text    = "Auto Trigger",
     Default = false,
