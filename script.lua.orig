@@ -4574,6 +4574,231 @@ AddBindableToggle(PLS, "SpfNosniyTeam", "Nosniy Games Team Badge", false, functi
     _kSet({"PlayerSpoofer","LocalPlayer","NosniyTeam","Enabled"}, v)
 end)
 
+-- ── Additional Spoofers (既製品移植) ──────────────────────────
+
+-- Kills / Deaths / Assists
+AddBindableToggle(PLS, "SpfKills", _t("キル数スプーフ","Spoof Kills"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Kills","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfKillsVal", {
+    Text = _t("キル数","Kills"),
+    Default = 99999, Min = 0, Max = 999999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Kills","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfDeaths", _t("デス数スプーフ","Spoof Deaths"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Deaths","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfDeathsVal", {
+    Text = _t("デス数","Deaths"),
+    Default = 0, Min = 0, Max = 999999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Deaths","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfAssists", _t("アシスト数スプーフ","Spoof Assists"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Assists","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfAssistsVal", {
+    Text = _t("アシスト数","Assists"),
+    Default = 9999, Min = 0, Max = 999999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Assists","Value"}, v) end
+})
+
+-- Ranked Tier / Division
+AddBindableToggle(PLS, "SpfRankedTier", _t("ランクティアスプーフ","Spoof Ranked Tier"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","RankedTier","Enabled"}, v)
+end)
+PLS2:AddDropdown("SpfRankedTierVal", {
+    Text = _t("ランクティア","Ranked Tier"),
+    Default = "Grandmaster",
+    Values = {"Iron","Bronze","Silver","Gold","Platinum","Diamond","Crystal","Master","Grandmaster","Rival"},
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","RankedTier","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfRankedDivision", _t("ランクDiv スプーフ","Spoof Rank Division"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","RankedDivision","Enabled"}, v)
+end)
+PLS2:AddDropdown("SpfRankedDivisionVal", {
+    Text = _t("ランク部門","Rank Division"),
+    Default = "I",
+    Values = {"I","II","III","IV"},
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","RankedDivision","Value"}, v) end
+})
+
+-- Prestige
+AddBindableToggle(PLS, "SpfPrestige", _t("プレステージスプーフ","Spoof Prestige"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Prestige","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfPrestigeVal", {
+    Text = _t("プレステージ","Prestige"),
+    Default = 99, Min = 0, Max = 999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Prestige","Value"}, v) end
+})
+
+-- Win Rate / Headshot %
+AddBindableToggle(PLS, "SpfWinRate", _t("勝率スプーフ","Spoof Win Rate"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","WinRate","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfWinRateVal", {
+    Text = _t("勝率 (%)","Win Rate (%)"),
+    Default = 99, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","WinRate","Value"}, v) end
+})
+
+AddBindableToggle(PLS, "SpfHeadshotRate", _t("HS率スプーフ","Spoof Headshot %"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","HeadshotRate","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfHeadshotRateVal", {
+    Text = _t("ヘッドショット率 (%)","Headshot Rate (%)"),
+    Default = 90, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","HeadshotRate","Value"}, v) end
+})
+
+-- Playtime (Hours)
+AddBindableToggle(PLS, "SpfPlaytime", _t("プレイ時間スプーフ","Spoof Playtime"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Playtime","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfPlaytimeVal", {
+    Text = _t("プレイ時間 (時間)","Playtime (Hours)"),
+    Default = 9999, Min = 0, Max = 99999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Playtime","Value"}, v) end
+})
+
+-- Clan / Team Tag
+AddBindableToggle(PLS, "SpfClanTag", _t("クランタグスプーフ","Spoof Clan Tag"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","ClanTag","Enabled"}, v)
+end)
+pcall(function()
+    PLS2:AddTextBox("SpfClanTagVal", {
+        Text = _t("クランタグ","Clan Tag"), Default = "UNCT", Numeric = false, Finished = false,
+        Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","ClanTag","Value"}, v) end
+    })
+end)
+
+-- Status Message
+AddBindableToggle(PLS, "SpfStatus", _t("ステータスメッセージスプーフ","Spoof Status Message"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","StatusMessage","Enabled"}, v)
+end)
+pcall(function()
+    PLS2:AddTextBox("SpfStatusVal", {
+        Text = _t("ステータス文","Status Message"), Default = "Top Fragger", Numeric = false, Finished = false,
+        Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","StatusMessage","Value"}, v) end
+    })
+end)
+
+-- Country / Region Flag
+AddBindableToggle(PLS, "SpfCountry", _t("国旗スプーフ","Spoof Country Flag"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Country","Enabled"}, v)
+end)
+PLS2:AddDropdown("SpfCountryVal", {
+    Text = _t("国/地域","Country/Region"),
+    Default = "JP",
+    Values = {"JP","US","KR","CN","GB","FR","DE","BR","CA","AU","RU","MX","IN","SG","TH","PH"},
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Country","Value"}, v) end
+})
+
+-- Account Age (Days)
+AddBindableToggle(PLS, "SpfAccAge", _t("アカウント年齢スプーフ","Spoof Account Age"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","AccountAge","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfAccAgeVal", {
+    Text = _t("アカウント年齢 (日)","Account Age (Days)"),
+    Default = 5000, Min = 0, Max = 9999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","AccountAge","Value"}, v) end
+})
+
+-- Friends Count
+AddBindableToggle(PLS, "SpfFriends", _t("フレンド数スプーフ","Spoof Friends Count"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","FriendsCount","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfFriendsVal", {
+    Text = _t("フレンド数","Friends Count"),
+    Default = 200, Min = 0, Max = 200, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","FriendsCount","Value"}, v) end
+})
+
+-- Season Pass / Battle Pass Tier
+AddBindableToggle(PLS, "SpfBPTier", _t("バトルパスTierスプーフ","Spoof Battle Pass Tier"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","SeasonPassTier","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfBPTierVal", {
+    Text = _t("バトルパスTier","Battle Pass Tier"),
+    Default = 100, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","SeasonPassTier","Value"}, v) end
+})
+
+-- Device Spoof (PC/Console/Mobile)
+AddBindableToggle(PLS, "SpfDevice", _t("デバイス種別スプーフ","Spoof Device Type"), false, function(v)
+    _kSet({"DeviceSpoof","Enabled"}, v)
+end)
+PLS2:AddDropdown("SpfDeviceVal", {
+    Text = _t("デバイス","Device Type"),
+    Default = "PC",
+    Values = {"PC","Console","Mobile","VR"},
+    Callback = function(v) _kSet({"DeviceSpoof","SpoofType"}, v) end
+})
+
+-- Spoof Team (チーム)
+AddBindableToggle(PLS, "SpfTeam", _t("チームスプーフ","Spoof Team"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Team","Enabled"}, v)
+end)
+PLS2:AddDropdown("SpfTeamVal", {
+    Text = _t("チーム","Team"),
+    Default = "Red",
+    Values = {"Red","Blue","Green","Yellow","None"},
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Team","Value"}, v) end
+})
+
+-- Verified Badge (Roblox Verified)
+AddBindableToggle(PLS, "SpfVerified", _t("認証済みバッジスプーフ","Spoof Verified Badge"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Verified","Enabled"}, v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Verified","Value"}, v)
+end)
+
+-- Premium Membership
+AddBindableToggle(PLS, "SpfPremium", _t("Premiumスプーフ","Spoof Premium"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Premium","Enabled"}, v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Premium","Value"}, v)
+end)
+
+-- Robux Balance (表示のみ)
+AddBindableToggle(PLS, "SpfRobux", _t("Robux残高スプーフ","Spoof Robux Balance"), false, function(v)
+    _kSet({"PlayerSpoofer","LocalPlayer","Robux","Enabled"}, v)
+end)
+PLS2:AddSlider("SpfRobuxVal", {
+    Text = _t("Robux","Robux"),
+    Default = 999999, Min = 0, Max = 9999999, Rounding = 0,
+    Callback = function(v) _kSet({"PlayerSpoofer","LocalPlayer","Robux","Value"}, v) end
+})
+
+-- ── Bulk Toggle Helper ─────────────────────────────────────────
+do -- Spoofer bulk toggle scope
+local _spfAllIds = {
+    "SpfName","SpfDisplayName","SpfElo","SpfLevel","SpfWinstreak","SpfRankedWins",
+    "SpfInfluencer","SpfEmployee","SpfPing","SpfAvatar","SpfCasualWins",
+    "SpfLeaderboardRank","SpfKeys","SpfEventCurrency","SpfNametagStatus",
+    "SpfFavoriteMap","SpfNosniyTeam","SpfKills","SpfDeaths","SpfAssists",
+    "SpfRankedTier","SpfRankedDivision","SpfPrestige","SpfWinRate",
+    "SpfHeadshotRate","SpfPlaytime","SpfClanTag","SpfStatus","SpfCountry",
+    "SpfAccAge","SpfFriends","SpfBPTier","SpfDevice","SpfTeam",
+    "SpfVerified","SpfPremium","SpfRobux"
+}
+PLS:AddButton(_t("全スプーフ ON","All Spoof ON"), function()
+    for _, id in ipairs(_spfAllIds) do
+        if Toggles[id] then pcall(function() Toggles[id]:SetValue(true) end) end
+    end
+    Notification.new({ Title=_t("🎭 全スプーフ有効","🎭 All Spoof ON"),
+        Content=_t("全"..#_spfAllIds.."項目を有効化", #_spfAllIds.." items enabled"), Duration=3 })
+end)
+PLS:AddButton(_t("全スプーフ OFF","All Spoof OFF"), function()
+    for _, id in ipairs(_spfAllIds) do
+        if Toggles[id] then pcall(function() Toggles[id]:SetValue(false) end) end
+    end
+    Notification.new({ Title=_t("🎭 全スプーフ無効","🎭 All Spoof OFF"),
+        Content=_t("全項目を解除","All items disabled"), Duration=2 })
+end)
+end -- Spoofer bulk toggle scope
+
 -- ── World / Removables (Kicia) ─────────────────────────────────
 local PLW = Tabs.Player:AddLeftGroupbox("World")
 
