@@ -515,31 +515,136 @@ end
 UNCODELoadingScreen()
 
 ;(function()
-local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/visnoukkk/ObsidianLib/refs/heads/main/Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+-- ╔═══════════════════════════════════════════════════════════════════════╗
+-- ║  UNCODE v1 — NeverLose UI  (build 20261009-f)                       ║
+-- ╚═══════════════════════════════════════════════════════════════════════╝
+local NeverLose = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/4lpaca-pin/NeverLose/refs/heads/main/source.luau"
+))()
 
-local Options = Library.Options
-local Toggles = Library.Toggles
+local Notification = NeverLose:CreateNotification()
+local Logging      = NeverLose:CreateLogger()
+local Indicator    = NeverLose:CreateIndicator()
 
-Library.ForceCheckbox = false
-Library.ShowToggleFrameInKeybinds = true
-
-local Window = Library:CreateWindow({
-    Title = "UNCODE v1",
-    Footer = "UNCODE v1",
-    Icon = 0,
-    NotifySide = "Left",
-    Center = true,
-    AutoShow = true,
-    Resizable = true,
-    MobileButtonsSide = "Left",
-    ShowCustomCursor = true,
+local window = NeverLose:CreateWindow({
+    Logo             = NeverLose.GlobalLogo,
+    Name             = "UNCODE v1",
+    Content          = "Rivals",
+    Size             = NeverLose.Scales.Default,
+    ConfigFolder     = "UNCODEv1",
+    Enable3DRenderer = false,
+    Keybind          = "RightShift",
 })
 
+local Watermark = window:Watermark()
+local _WmPing   = Watermark:AddBlock("chart-four-vertical-bars", "0ms")
+local _WmBuild  = Watermark:AddBlock("cube-vertexes", "UNCODE v1")
+_WmBuild:Input(function() window:ToggleInterface() end)
+
+-- ── Flag registry (replaces Obsidian Library.Toggles / Library.Options) ──
+local _FlagCb = {}
+local function _regFlag(id, cb) if cb then _FlagCb[id] = cb end end
+-- _T / _O are also declared at file scope here so community configs can reach them
+local function _T(id, v) if _FlagCb[id] then pcall(_FlagCb[id], v) end end
+local function _O(id, v) _T(id, v) end
+
+-- Backward-compat stubs so existing code that refs Library / Options / Toggles doesn't error
+local Library = {}
+function Library:Notify(opts)
+    Notification.new({
+        Title    = opts.Title   or "UNCODE v1",
+        Content  = opts.Description or opts.Content or "",
+        Duration = opts.Time    or opts.Duration   or 3,
+    })
+end
+function Library:Unload() end   -- no-op in NeverLose build
+Library.ToggleKeybind = nil
+local Options = setmetatable({}, { __index = function() return nil end })
+local Toggles = setmetatable({}, { __index = function() return nil end })
+
+-- ── wrapSection ─────────────────────────────────────────────────────────
+-- Gives Obsidian groupbox API on top of a NeverLose section object.
+local function wrapSection(nlSec)
+    local ws = {}
+    function ws:AddToggle(id, opts)
+        local text = opts.Text or id
+        local lbl  = nlSec:AddLabel(text)
+        _regFlag(id, opts.Callback)
+        lbl:AddToggle({ Flag = id, Default = opts.Default, Callback = opts.Callback })
+        if opts.Tooltip then pcall(function() lbl:ToolTip(opts.Tooltip) end) end
+        -- return a proxy so AddKeyPicker() is silently ignored
+        return setmetatable({ _lbl = lbl }, {
+            __index = function(t, k)
+                local v = rawget(t, k); if v ~= nil then return v end
+                local nv = lbl[k]; if nv ~= nil then return nv end
+                return function() end   -- unknown call → no-op
+            end
+        })
+    end
+    function ws:AddSlider(id, opts)
+        local text = opts.Text or id
+        local lbl  = nlSec:AddLabel(text)
+        _regFlag(id, opts.Callback)
+        lbl:AddSlider({
+            Flag     = id,
+            Default  = opts.Default,
+            Min      = opts.Min,
+            Max      = opts.Max,
+            Rounding = opts.Rounding,
+            Type     = opts.Suffix or opts.Type,
+            Callback = opts.Callback,
+        })
+        if opts.Tooltip then pcall(function() lbl:ToolTip(opts.Tooltip) end) end
+        return lbl
+    end
+    function ws:AddDropdown(id, opts)
+        local text = opts.Text or id
+        local lbl  = nlSec:AddLabel(text)
+        _regFlag(id, opts.Callback)
+        lbl:AddDropdown({
+            Flag     = id,
+            Default  = opts.Default,
+            Values   = opts.Values,
+            Multi    = opts.Multi,
+            Callback = opts.Callback,
+        })
+        if opts.Tooltip then pcall(function() lbl:ToolTip(opts.Tooltip) end) end
+        return lbl
+    end
+    function ws:AddLabel(text)
+        return nlSec:AddLabel(text)
+    end
+    function ws:AddButton(text, cb)
+        pcall(function()
+            window.UserSettings:AddButton({ Icon = "bolt", Name = text, Callback = cb })
+        end)
+    end
+    return ws
+end
+
+-- ── wrapTab ──────────────────────────────────────────────────────────────
+local function wrapTab(nlTab)
+    local wt = { _nl = nlTab }
+    function wt:AddLeftGroupbox(name)
+        return wrapSection(self._nl:AddSection({ Name = name, Position = "left" }))
+    end
+    function wt:AddRightGroupbox(name)
+        return wrapSection(self._nl:AddSection({ Name = name, Position = "right" }))
+    end
+    function wt:AddSection(opts)
+        return wrapSection(self._nl:AddSection(opts))
+    end
+    return wt
+end
+
+-- ── Window compat ────────────────────────────────────────────────────────
+local Window = {}
+function Window:AddTab(name, icon)
+    return wrapTab(window:AddTab({ Name = name, Icon = icon or "" }))
+end
+
 local function Notify(text, duration)
-    Library:Notify({ Title = "UNCODE v1", Description = text, Time = duration or 3 })
+    Notification.new({ Title = "UNCODE v1", Content = text, Duration = duration or 3 })
 end
 
 local Players = game:GetService("Players")
@@ -948,9 +1053,8 @@ local function getTarget(mode)
 end
 
 local function AddBindableToggle(group, flag, text, default, callback)
-    local toggle = group:AddToggle(flag, { Text = text, Default = default or false, Callback = callback })
-    toggle:AddKeyPicker(flag .. "Key", { Default = "None", Mode = "Toggle", Text = text, SyncToggleState = true, NoUI = false })
-    return toggle
+    -- NeverLose build: AddKeyPicker not available; just register toggle
+    return group:AddToggle(flag, { Text = text, Default = default or false, Callback = callback })
 end
 
 local function predictPos(hrp, lead)
@@ -4269,7 +4373,7 @@ end -- Player Tab scope
 -- ============================================================
 
 do -- Combat/HvH UI scope (register isolation)
-warn("[UNCODE] Combat/HvH tab init — build 20261009-e")
+warn("[UNCODE] Combat/HvH tab init — build 20261009-f")
 
 -- Combat tab: Silent Aim, Aimbot, Visuals
 local HvHTab   = Tabs.Combat
@@ -4891,7 +4995,35 @@ HvHR5:AddToggle("PhEnabled", {
 HvHR5:AddToggle("PhSound", {
     Text = "Hit Sound",
     Default = false,
+    Tooltip = "Play a sound on player hit.",
     Callback = function(v) _kSet({"PlayerHit","Sound","Enabled"}, v) end
+})
+HvHR5:AddSlider("PhSoundVol", {
+    Text = "Hit Sound Volume",
+    Default = 80,
+    Min = 0, Max = 100, Rounding = 0, Suffix = "%",
+    Tooltip = "Volume of the hit sound.",
+    Callback = function(v) _kSet({"PlayerHit","Sound","Volume"}, v / 100) end
+})
+HvHR5:AddSlider("PhSoundPitch", {
+    Text = "Hit Sound Pitch",
+    Default = 10,
+    Min = 5, Max = 20, Rounding = 0,
+    Tooltip = "Pitch of the hit sound (×0.1). 10 = normal.",
+    Callback = function(v) _kSet({"PlayerHit","Sound","Pitch"}, v / 10) end
+})
+HvHR5:AddDropdown("PhSoundType", {
+    Text = "Hit Sound Type",
+    Values = {"Default", "Headshot", "Blip", "Ding", "Thud", "Crack", "Pop"},
+    Default = 1,
+    Tooltip = "Which sound plays on hit.",
+    Callback = function(v) _kSet({"PlayerHit","Sound","Name"}, v) end
+})
+HvHR5:AddToggle("PhHeadshotSound", {
+    Text = "Headshot Distinct Sound",
+    Default = false,
+    Tooltip = "Play a different sound for headshots.",
+    Callback = function(v) _kSet({"PlayerHit","Sound","HeadshotDistinct"}, v) end
 })
 HvHR5:AddToggle("PhChams", {
     Text = "Hit Chams Flash",
@@ -4912,7 +5044,29 @@ HvHR5:AddToggle("PeEnabled", {
 HvHR5:AddToggle("PeSound", {
     Text = "Kill Sound",
     Default = false,
+    Tooltip = "Play a sound on kill.",
     Callback = function(v) _kSet({"PlayerElimination","Sound","Enabled"}, v) end
+})
+HvHR5:AddSlider("PeSoundVol", {
+    Text = "Kill Sound Volume",
+    Default = 100,
+    Min = 0, Max = 100, Rounding = 0, Suffix = "%",
+    Tooltip = "Volume of the kill sound.",
+    Callback = function(v) _kSet({"PlayerElimination","Sound","Volume"}, v / 100) end
+})
+HvHR5:AddSlider("PeSoundPitch", {
+    Text = "Kill Sound Pitch",
+    Default = 10,
+    Min = 5, Max = 20, Rounding = 0,
+    Tooltip = "Pitch of the kill sound (×0.1). 10 = normal.",
+    Callback = function(v) _kSet({"PlayerElimination","Sound","Pitch"}, v / 10) end
+})
+HvHR5:AddDropdown("PeSoundType", {
+    Text = "Kill Sound Type",
+    Values = {"Default", "Headshot", "Blip", "Ding", "Thud", "Crack", "Pop"},
+    Default = 1,
+    Tooltip = "Which sound plays on kill.",
+    Callback = function(v) _kSet({"PlayerElimination","Sound","Name"}, v) end
 })
 HvHR5:AddToggle("PeChams", {
     Text = "Kill Chams Flash",
@@ -71411,12 +71565,28 @@ MenuG:AddButton("Server Hop", function()
 end)
 
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
-UIGroup:AddLabel("Menu Keybind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", Text = "Menu Keybind", Mode = "Toggle", NoUI = true })
-Library.ToggleKeybind = Options.MenuKeybind
+-- Menu keybind via NeverLose UserSettings
+window.UserSettings:AddLabel("Menu Keybind"):AddKeybind({
+    Default = "RightShift",
+    Callback = function(v)
+        window.Keybind = v
+        Logging.new("ps4-touchpad", "UI keybind → " .. tostring(v), 4)
+    end,
+})
+window.UserSettings:AddLabel("Menu Scale"):AddDropdown({
+    Default = "Default",
+    Values  = { "Default", "Large", "Mobile", "Small" },
+    Callback = function(v)
+        pcall(function() window:SetSize(NeverLose.Scales[v]) end)
+        Logging.new("crop", "UI scale → " .. tostring(v), 4)
+    end,
+})
 UIGroup:AddToggle("ShowCoords", { Text = "Show Live HUD", Default = true, Callback = function(v)
     if _G.UNCODEHud and _G.UNCODEHud.SetEnabled then _G.UNCODEHud.SetEnabled(v) end
 end })
-UIGroup:AddButton("Unload Script", function() Library:Unload() end)
+UIGroup:AddButton("Unload Script", function()
+    pcall(function() window:Destroy() end)
+end)
 
 
 do -- FPS Boost scope
@@ -71769,12 +71939,9 @@ end -- FPS Boost scope
 do
 local CfgG = Tabs.Settings:AddLeftGroupbox("Community Configs")
 
-local function _T(id, v)
-    if Toggles[id] then pcall(function() Toggles[id]:SetValue(v) end) end
-end
-local function _O(id, v)
-    if Options[id] then pcall(function() Options[id]:SetValue(v) end) end
-end
+-- NeverLose build: _T / _O use _FlagCb registry (defined at top scope)
+local function _T(id, v) if _FlagCb[id] then pcall(_FlagCb[id], v) end end
+local function _O(id, v) _T(id, v) end
 
 CfgG:AddButton("Load Legit Config", function()
     -- Silent Aim
@@ -71935,15 +72102,13 @@ end)
 end
 -- ── End Community Configs ──────────────────────────────────────────────────
 
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({"MenuKeybind"})
-ThemeManager:SetFolder("UNCODE")
-SaveManager:SetFolder("UNCODE/configs")
-SaveManager:BuildConfigSection(Tabs.Settings)
-ThemeManager:ApplyToTab(Tabs.Settings)
-pcall(function() SaveManager:LoadAutoloadConfig() end)
+-- Startup ping watermark loop
+task.spawn(function()
+    while task.wait(2) do
+        pcall(function() _WmPing:SetText(tostring(math.round(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())) .. "ms") end)
+    end
+end)
 
-Library:Notify({ Title = "UNCODE v1  [build 20261009-e]", Description = "Rivals HvH | Combat・HvH・Player・Settings ✓ loaded", Time = 6 })
+Notification.new({ Title = "UNCODE v1  [build 20261009-f]", Content = "Rivals HvH | NeverLose UI ✓ loaded", Duration = 6 })
+warn("[UNCODE] build 20261009-f — NeverLose UI active")
 end)()
