@@ -571,6 +571,53 @@ local Options = setmetatable({}, { __index = function() return nil end })
 local Toggles = setmetatable({}, { __index = function() return nil end })
 
 -- ╔═══════════════════════════════════════════════════════════════════════╗
+-- ║  QUICK KEYBIND ENGINE                                                ║
+-- ║  Instant in-game toggle for main features — no menu needed          ║
+-- ║  Default keys (rebind from Config → Settings → Quick Binds):        ║
+-- ║    Z=ESP  X=Void  C=Orbit  V=Prediction  B=Anti-Bait                ║
+-- ║    N=Sling Bypass  M=Anti-Aim                                        ║
+-- ╚═══════════════════════════════════════════════════════════════════════╝
+local _qbState  = {}  -- flagId → current bool state
+local _qbLabels = {}  -- flagId → display name
+
+local function _quickToggle(flagId)
+    local nv = not (_qbState[flagId] or false)
+    _qbState[flagId] = nv
+    pcall(_T, flagId, nv)
+    Notification.new({
+        Title   = "Quick Toggle",
+        Content = (_qbLabels[flagId] or flagId) .. "  →  " .. (nv and "ON ✓" or "OFF"),
+        Duration = 1.5,
+    })
+end
+
+-- Default key mapping (overridden per-feature by Millenium keybind UI)
+local _qbDefaults = {
+    { key = Enum.KeyCode.Z, flagId = "EspEnabled",    label = "ESP"           },
+    { key = Enum.KeyCode.X, flagId = "VoidToggle",    label = "Void"          },
+    { key = Enum.KeyCode.C, flagId = "OrbitToggle",   label = "Orbit"         },
+    { key = Enum.KeyCode.V, flagId = "PredToggle",    label = "Prediction"    },
+    { key = Enum.KeyCode.B, flagId = "AntiBaitToggle",label = "Anti-Bait"     },
+    { key = Enum.KeyCode.N, flagId = "SlingToggle",   label = "Sling Bypass"  },
+    { key = Enum.KeyCode.M, flagId = "AaToggle",      label = "Anti-Aim"      },
+}
+
+local _qbKeyMap = {}
+for _, d in ipairs(_qbDefaults) do
+    _qbLabels[d.flagId] = d.label
+    _qbState[d.flagId]  = false
+    _qbKeyMap[d.key.Value] = d.flagId
+end
+
+-- UserInputService fallback listener (works even if Millenium keybind UI is closed)
+local _UIS_qb = game:GetService("UserInputService")
+_UIS_qb.InputBegan:Connect(function(inp, processed)
+    if processed then return end
+    local fid = _qbKeyMap[inp.KeyCode.Value]
+    if fid then pcall(_quickToggle, fid) end
+end)
+
+-- ╔═══════════════════════════════════════════════════════════════════════╗
 -- ║  MILLENIUM COMPAT LAYER                                              ║
 -- ║  wrapSection  →  Obsidian groupbox API on top of Millenium section  ║
 -- ║  wrapTab      →  Obsidian tab API on top of a Millenium sub-tab     ║
@@ -664,6 +711,26 @@ local function wrapSection(mlSec)
     -- KeyPicker: no Millenium equivalent; record the flag so community configs work
     function ws:AddKeyPicker(id, opts)
         _regFlag(id, opts and opts.Callback)
+    end
+
+    -- AddKeybind: Millenium keybind element — user can see/rebind the key in the UI.
+    -- The callback fires when the bound key is pressed; also updates _qbKeyMap so the
+    -- UserInputService fallback stays in sync.
+    function ws:AddKeybind(flagId, opts)
+        local defaultKey = opts.DefaultKey  -- Enum.KeyCode
+        pcall(function()
+            mlSec:keybind({
+                name     = opts.Text or opts.Label or flagId,
+                callback = function()
+                    pcall(_quickToggle, flagId)
+                end,
+                info = opts.Tooltip,
+            })
+        end)
+        -- Register default key into the fallback map if provided
+        if defaultKey then
+            _qbKeyMap[defaultKey.Value] = flagId
+        end
     end
 
     return ws
@@ -72020,6 +72087,54 @@ tbl17.j1()(boot)
 --    Must be AFTER j1()(boot) so all module observers are connected before we use it.
 getgenv()._UNC_KiciaStore = tbl17.bG()
 end)()
+-- ── Quick Binds UI ────────────────────────────────────────────────────────
+-- Each keybind element lets users change the key from inside the menu.
+-- Default keys shown in the label; pressing the key in-game toggles the feature.
+local QBL = Tabs.Settings:AddLeftGroupbox("Quick Binds")
+QBL:AddLabel("Press key in-game → instant toggle (no menu needed)")
+-- ESP
+QBL:AddKeybind("EspEnabled", {
+    Text       = "Player ESP",
+    DefaultKey = Enum.KeyCode.Z,
+    Tooltip    = "Default: Z",
+})
+-- Void
+QBL:AddKeybind("VoidToggle", {
+    Text       = "Void",
+    DefaultKey = Enum.KeyCode.X,
+    Tooltip    = "Default: X",
+})
+-- Orbit
+QBL:AddKeybind("OrbitToggle", {
+    Text       = "Orbit",
+    DefaultKey = Enum.KeyCode.C,
+    Tooltip    = "Default: C",
+})
+-- Prediction
+QBL:AddKeybind("PredToggle", {
+    Text       = "Prediction V2",
+    DefaultKey = Enum.KeyCode.V,
+    Tooltip    = "Default: V",
+})
+-- Anti-Bait
+QBL:AddKeybind("AntiBaitToggle", {
+    Text       = "Anti-Bait V2",
+    DefaultKey = Enum.KeyCode.B,
+    Tooltip    = "Default: B",
+})
+-- Sling Bypass
+QBL:AddKeybind("SlingToggle", {
+    Text       = "Sling Bypass",
+    DefaultKey = Enum.KeyCode.N,
+    Tooltip    = "Default: N",
+})
+-- Anti-Aim
+QBL:AddKeybind("AaToggle", {
+    Text       = "Anti-Aim",
+    DefaultKey = Enum.KeyCode.M,
+    Tooltip    = "Default: M",
+})
+
 local MenuG = Tabs.Settings:AddRightGroupbox("Server Tools")
 MenuG:AddButton("Rejoin Server", function()
     pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer) end)
