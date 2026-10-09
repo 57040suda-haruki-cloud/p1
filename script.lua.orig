@@ -572,17 +572,53 @@ local Toggles = setmetatable({}, { __index = function() return nil end })
 
 -- ╔═══════════════════════════════════════════════════════════════════════╗
 -- ║  QUICK KEYBIND ENGINE                                                ║
--- ║  Instant in-game toggle — keys fully customisable from UI           ║
--- ║  Default keys (rebind from Config → Settings → Quick Binds):        ║
--- ║    Z=ESP  X=Void  C=Orbit  V=Prediction  B=Anti-Bait                ║
--- ║    N=Sling Bypass  M=Anti-Aim                                        ║
--- ║  Master on/off: Config → Settings → Quick Binds → "Keybinds Active" ║
+-- ║  ドロップダウンでキーを選ぶだけで即設定 — Delta iOS でも確実動作     ║
+-- ║  Config → Settings → Quick Binds で全キーを自由に変更可能           ║
+-- ║  マスター ON/OFF トグルで一括無効化可能                              ║
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 local _qbState   = {}    -- flagId → current bool state
 local _qbLabels  = {}    -- flagId → display name
-local _qbEnabled = true  -- master switch (toggled from Settings UI)
+local _qbEnabled = true  -- master switch (UI toggle)
+local _qbKeyMap  = {}    -- Enum.KeyCode.Value → flagId  (runtime binding table)
 
--- Core toggle: checks master switch, flips state, fires callback, notifies
+-- 選択可能なキーの一覧（ドロップダウン表示用）
+local _QB_KEY_LIST = {
+    "なし",
+    -- よく使うキー
+    "Z","X","C","V","B","N","M",
+    "Q","E","R","F","G","H","J","K","L",
+    -- ファンクションキー
+    "F1","F2","F3","F4","F5","F6","F7","F8",
+    -- 特殊キー
+    "LeftAlt","RightAlt","Tab","CapsLock",
+    "Semicolon","Comma","Period","Backquote",
+    -- 数字キー
+    "One","Two","Three","Four","Five",
+    "Six","Seven","Eight","Nine","Zero",
+}
+
+-- 文字列 → Enum.KeyCode 変換テーブル
+local _qbCodeOf = {}
+for _, name in ipairs(_QB_KEY_LIST) do
+    if name ~= "なし" then
+        pcall(function() _qbCodeOf[name] = Enum.KeyCode[name] end)
+    end
+end
+
+-- flagId のキーバインドを更新する（古いバインドを自動削除）
+local function _qbSetKey(flagId, keyName)
+    -- 既存の割り当てを解除
+    for kv, fid in pairs(_qbKeyMap) do
+        if fid == flagId then _qbKeyMap[kv] = nil end
+    end
+    -- 新しいキーを登録
+    if keyName and keyName ~= "なし" then
+        local kc = _qbCodeOf[keyName]
+        if kc then _qbKeyMap[kc.Value] = flagId end
+    end
+end
+
+-- Core toggle: master switch チェック → 状態反転 → コールバック → 通知
 local function _quickToggle(flagId)
     if not _qbEnabled then return end
     local nv = not (_qbState[flagId] or false)
@@ -595,20 +631,28 @@ local function _quickToggle(flagId)
     })
 end
 
--- Register labels and initial states for each quick-bindable feature
--- (Millenium keybind elements handle all key listening and rebinding)
+-- UserInputService リスナー（_qbKeyMap を見てトグル発火）
+local _UIS_qb = game:GetService("UserInputService")
+_UIS_qb.InputBegan:Connect(function(inp, processed)
+    if processed or not _qbEnabled then return end
+    local fid = _qbKeyMap[inp.KeyCode.Value]
+    if fid then pcall(_quickToggle, fid) end
+end)
+
+-- 機能定義（label, flagId, デフォルトキー）
 local _qbDefs = {
-    { flagId = "EspEnabled",    label = "Player ESP",    },
-    { flagId = "VoidToggle",    label = "Void",          },
-    { flagId = "OrbitToggle",   label = "Orbit",         },
-    { flagId = "PredToggle",    label = "Prediction V2", },
-    { flagId = "AntiBaitToggle",label = "Anti-Bait V2",  },
-    { flagId = "SlingToggle",   label = "Sling Bypass",  },
-    { flagId = "AaToggle",      label = "Anti-Aim",      },
+    { flagId = "EspEnabled",     label = "Player ESP",    default = "Z" },
+    { flagId = "VoidToggle",     label = "Void",          default = "X" },
+    { flagId = "OrbitToggle",    label = "Orbit",         default = "C" },
+    { flagId = "PredToggle",     label = "Prediction V2", default = "V" },
+    { flagId = "AntiBaitToggle", label = "Anti-Bait V2",  default = "B" },
+    { flagId = "SlingToggle",    label = "Sling Bypass",  default = "N" },
+    { flagId = "AaToggle",       label = "Anti-Aim",      default = "M" },
 }
 for _, d in ipairs(_qbDefs) do
     _qbLabels[d.flagId] = d.label
     _qbState[d.flagId]  = false
+    _qbSetKey(d.flagId, d.default)  -- デフォルトキーを登録
 end
 
 -- ╔═══════════════════════════════════════════════════════════════════════╗
@@ -72081,9 +72125,10 @@ tbl17.j1()(boot)
 getgenv()._UNC_KiciaStore = tbl17.bG()
 end)()
 -- ── Quick Binds UI ────────────────────────────────────────────────────────
--- ① マスタートグルで全キーバインドをまとめて ON/OFF
--- ② 各機能を Click → キー押下でリバインド可能
+-- ドロップダウンで好きなキーを選ぶだけで即設定・即反映
+-- Delta iOS / PC どちらでも確実に動作する実装
 local QBL = Tabs.Settings:AddLeftGroupbox("Quick Binds")
+local QBR = Tabs.Settings:AddRightGroupbox("Quick Binds (2)")
 
 -- ── マスタースイッチ ──────────────────────────────────────────────────────
 QBL:AddToggle("QbMasterToggle", {
@@ -72099,37 +72144,59 @@ QBL:AddToggle("QbMasterToggle", {
         })
     end,
 })
+QBL:AddLabel("ドロップダウンでキーを選ぶだけで設定完了")
 
-QBL:AddLabel("↓ クリック → キー押下でリバインド")
-
--- ── 各機能のキーバインド ──────────────────────────────────────────────────
-QBL:AddKeybind("EspEnabled", {
+-- ── 左列: ESP / Void / Orbit / Prediction ────────────────────────────────
+QBL:AddDropdown("QbKeyEsp", {
     Text    = "Player ESP",
-    Tooltip = "デフォルト: Z",
+    Default = "Z",
+    Values  = _QB_KEY_LIST,
+    Tooltip = "押すと ESP が ON/OFF",
+    Callback = function(v) _qbSetKey("EspEnabled", v) end,
 })
-QBL:AddKeybind("VoidToggle", {
+QBL:AddDropdown("QbKeyVoid", {
     Text    = "Void",
-    Tooltip = "デフォルト: X",
+    Default = "X",
+    Values  = _QB_KEY_LIST,
+    Tooltip = "押すと Void が ON/OFF",
+    Callback = function(v) _qbSetKey("VoidToggle", v) end,
 })
-QBL:AddKeybind("OrbitToggle", {
+QBL:AddDropdown("QbKeyOrbit", {
     Text    = "Orbit",
-    Tooltip = "デフォルト: C",
+    Default = "C",
+    Values  = _QB_KEY_LIST,
+    Tooltip = "押すと Orbit が ON/OFF",
+    Callback = function(v) _qbSetKey("OrbitToggle", v) end,
 })
-QBL:AddKeybind("PredToggle", {
+QBL:AddDropdown("QbKeyPred", {
     Text    = "Prediction V2",
-    Tooltip = "デフォルト: V",
+    Default = "V",
+    Values  = _QB_KEY_LIST,
+    Tooltip = "押すと Prediction が ON/OFF",
+    Callback = function(v) _qbSetKey("PredToggle", v) end,
 })
-QBL:AddKeybind("AntiBaitToggle", {
+
+-- ── 右列: Anti-Bait / Sling / Anti-Aim ───────────────────────────────────
+QBR:AddDropdown("QbKeyAntiBait", {
     Text    = "Anti-Bait V2",
-    Tooltip = "デフォルト: B",
+    Default = "B",
+    Values  = _QB_KEY_LIST,
+    Tooltip = "押すと Anti-Bait が ON/OFF",
+    Callback = function(v) _qbSetKey("AntiBaitToggle", v) end,
 })
-QBL:AddKeybind("SlingToggle", {
+QBR:AddDropdown("QbKeySling", {
     Text    = "Sling Bypass",
-    Tooltip = "デフォルト: N",
+    Default = "N",
+    Values  = _QB_KEY_LIST,
+    Tooltip = "押すと Sling Bypass が ON/OFF",
+    Callback = function(v) _qbSetKey("SlingToggle", v) end,
 })
-QBL:AddKeybind("AaToggle", {
+QBR:AddDropdown("QbKeyAa", {
     Text    = "Anti-Aim",
-    Tooltip = "デフォルト: M",
+    Default = "M",
+    Values  = _QB_KEY_LIST,
+    Tooltip = "押すと Anti-Aim が ON/OFF",
+    Callback = function(v) _qbSetKey("AaToggle", v) end,
 })
 
 local MenuG = Tabs.Settings:AddRightGroupbox("Server Tools")
