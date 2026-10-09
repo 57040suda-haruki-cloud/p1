@@ -5005,6 +5005,238 @@ KauraR:AddSlider("KillAuraRange", { Text=_t("攻撃範囲 (studs)","Aura Range (
 end -- Kill Aura scope
 
 -- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Knife Rage
+-- ═══════════════════════════════════════════════════════════════
+do -- Knife Rage scope
+local _knrCFG = {
+    enabled    = false,
+    autoEquip  = true,
+    speedBoost = true,
+    range      = 12,
+    swing      = true,
+    panic      = false, -- パニック時は解除
+}
+local _knrCon  = nil
+local _knrConD = nil
+local _knrRS   = game:GetService("RunService")
+local _knrP    = game:GetService("Players")
+local _knrUIS  = game:GetService("UserInputService")
+local _knrVIM  = nil
+pcall(function() _knrVIM = game:GetService("VirtualInputManager") end)
+
+local _knrOrigSpeed = nil
+
+local KnrL = Tabs.Player:AddLeftGroupbox("Knife Rage")
+local KnrR = Tabs.Player:AddRightGroupbox("Knife Rage Config")
+
+-- ナイフ系ツール名パターン
+local _knrKnifeNames = {
+    "Knife", "knife", "ナイフ", "Blade", "blade",
+    "Dagger", "dagger", "Melee", "melee", "Saber",
+    "Katana", "katana", "Sword", "sword"
+}
+
+local function _knrIsKnife(tool)
+    if not tool then return false end
+    for _, pat in ipairs(_knrKnifeNames) do
+        if tool.Name:find(pat) then return true end
+    end
+    -- ハンドルのみでGunとかFireが名前に入ってなければナイフ扱い
+    if tool:FindFirstChild("Handle") and
+       not tool.Name:lower():find("gun") and
+       not tool.Name:lower():find("shot") and
+       not tool.Name:lower():find("rifle") and
+       not tool.Name:lower():find("pistol") then
+        -- Grips/Activateイベントがあればメレー候補
+        if tool:FindFirstChild("Slash") or
+           tool:FindFirstChild("Stab") or
+           tool:FindFirstChild("Hit") then
+            return true
+        end
+    end
+    return false
+end
+
+local function _knrGetKnife(char)
+    for _, tool in ipairs(char:GetChildren()) do
+        if tool:IsA("Tool") and _knrIsKnife(tool) then
+            return tool
+        end
+    end
+    -- バックパック内も確認
+    local lp = _knrP.LocalPlayer
+    if lp.Backpack then
+        for _, tool in ipairs(lp.Backpack:GetChildren()) do
+            if tool:IsA("Tool") and _knrIsKnife(tool) then
+                return tool
+            end
+        end
+    end
+    return nil
+end
+
+local function _knrEquip(char, knife)
+    pcall(function()
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum and knife then hum:EquipTool(knife) end
+    end)
+end
+
+local function _knrSwing(knife)
+    pcall(function()
+        -- マウスクリックシミュレート (ツール起動)
+        if knife and knife.Parent and knife.Parent:FindFirstChildOfClass("Humanoid") then
+            local activateEv = knife:FindFirstChild("Activate") or
+                               knife:FindFirstChild("Slash") or
+                               knife:FindFirstChild("OnActivated")
+            if activateEv and activateEv:IsA("RemoteEvent") then
+                activateEv:FireServer()
+            else
+                -- VIM経由でマウスクリック
+                if _knrVIM then
+                    _knrVIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                    task.wait(0.05)
+                    _knrVIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                end
+            end
+        end
+    end)
+end
+
+local function _knrGetClosestEnemy(hrp)
+    local closest, closestDist = nil, math.huge
+    for _, p in ipairs(_knrP:GetPlayers()) do
+        if p ~= _knrP.LocalPlayer and p.Character then
+            local phrp = p.Character:FindFirstChild("HumanoidRootPart")
+            local phum = p.Character:FindFirstChildOfClass("Humanoid")
+            if phrp and phum and phum.Health > 0 then
+                local d = (hrp.Position - phrp.Position).Magnitude
+                if d < closestDist then
+                    closestDist = d
+                    closest = { player=p, hrp=phrp, dist=d }
+                end
+            end
+        end
+    end
+    return closest
+end
+
+KnrL:AddToggle("KnifeRageEnabled", {
+    Text    = _t("ナイフレイジ有効", "Knife Rage"),
+    Default = false,
+    Tooltip = _t("ナイフ装備時に近距離の敵を自動攻撃", "Auto-attack nearby enemies with knife"),
+    Callback = function(v)
+        _knrCFG.enabled = v
+        local lp   = _knrP.LocalPlayer
+        local char = lp.Character
+        if v then
+            _knrCon = _knrRS.Heartbeat:Connect(function()
+                if not _knrCFG.enabled then return end
+                local c = lp.Character
+                if not c then return end
+                local hrp  = c:FindFirstChild("HumanoidRootPart")
+                local hum  = c:FindFirstChildOfClass("Humanoid")
+                if not hrp or not hum or hum.Health <= 0 then return end
+
+                -- 最近傍の敵チェック
+                local enemy = _knrGetClosestEnemy(hrp)
+                if not enemy or enemy.dist > _knrCFG.range then return end
+
+                -- ナイフを探して装備
+                local knife = _knrGetKnife(c)
+                if not knife then return end
+
+                -- 未装備なら装備
+                if knife.Parent ~= c then
+                    if _knrCFG.autoEquip then
+                        _knrEquip(c, knife)
+                        task.wait(0.1)
+                    else
+                        return
+                    end
+                end
+
+                -- スピードブースト
+                if _knrCFG.speedBoost then
+                    if not _knrOrigSpeed then
+                        _knrOrigSpeed = hum.WalkSpeed
+                    end
+                    hum.WalkSpeed = math.max(hum.WalkSpeed, _knrOrigSpeed * 1.6)
+                end
+
+                -- 敵の方を向く
+                pcall(function()
+                    local targetPos = enemy.hrp.Position
+                    hrp.CFrame = CFrame.new(hrp.Position, Vector3.new(targetPos.X, hrp.Position.Y, targetPos.Z))
+                end)
+
+                -- スイング
+                if _knrCFG.swing then
+                    _knrSwing(knife)
+                end
+            end)
+
+            -- 離脱時にスピードを戻す
+            _knrConD = lp.CharacterAdded:Connect(function(newChar)
+                _knrOrigSpeed = nil
+            end)
+
+            Notification.new({ Title=_t("🔪 Knife Rage","🔪 Knife Rage"),
+                Content=_t("有効化 — 射程 ","Enabled — Range ").._knrCFG.range.."st", Duration=2 })
+        else
+            if _knrCon  then _knrCon:Disconnect();  _knrCon  = nil end
+            if _knrConD then _knrConD:Disconnect(); _knrConD = nil end
+            -- スピードを元に戻す
+            if _knrOrigSpeed and char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then hum.WalkSpeed = _knrOrigSpeed end
+            end
+            _knrOrigSpeed = nil
+        end
+    end })
+
+KnrL:AddToggle("KnifeRageAutoEquip", {
+    Text    = _t("自動装備","Auto Equip Knife"),
+    Default = true,
+    Tooltip = _t("ナイフが未装備でも自動で装備する","Equip knife automatically if not held"),
+    Callback = function(v) _knrCFG.autoEquip = v end })
+
+KnrL:AddToggle("KnifeRageSpeed", {
+    Text    = _t("スピードブースト","Speed Boost"),
+    Default = true,
+    Tooltip = _t("ナイフレイジ中は移動速度を1.6倍","1.6x walk speed during Knife Rage"),
+    Callback = function(v)
+        _knrCFG.speedBoost = v
+        if not v and _knrOrigSpeed then
+            local lp  = _knrP.LocalPlayer
+            local char = lp.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then hum.WalkSpeed = _knrOrigSpeed end
+            end
+            _knrOrigSpeed = nil
+        end
+    end })
+
+KnrL:AddToggle("KnifeRageSwing", {
+    Text    = _t("オートスイング","Auto Swing"),
+    Default = true,
+    Tooltip = _t("射程内の敵に自動でスイング","Auto swing at enemies in range"),
+    Callback = function(v) _knrCFG.swing = v end })
+
+KnrR:AddSlider("KnifeRageRange", {
+    Text    = _t("射程 (studs)","Knife Range (studs)"),
+    Default = 12, Min = 4, Max = 40, Rounding = 0,
+    Callback = function(v) _knrCFG.range = v end })
+
+KnrR:AddLabel(_t("── ナイフ名パターン ──","── Knife Name Patterns ──"))
+KnrR:AddLabel("Knife / Blade / Dagger")
+KnrR:AddLabel("Melee / Saber / Katana")
+KnrR:AddLabel("Sword / slash・stabイベント")
+
+end -- Knife Rage scope
+
+-- ═══════════════════════════════════════════════════════════════
 --  UNCODE v1 ·  Hitbox Expander
 -- ═══════════════════════════════════════════════════════════════
 do -- Hitbox Expander scope
