@@ -5888,6 +5888,167 @@ HvHR1:AddDropdown("AbLockMode", {
     Callback = function(v) _kSet({"Aimbot","TargetLock","Mode"}, v) end
 })
 
+-- ── BONE PRIORITY ─────────────────────────────────────────────
+HvHR1:AddDropdown("AbBonePriority", {
+    Text = _t("ボーン優先","Bone Priority"),
+    Values = { "Head", "Neck", "UpperTorso", "Torso", "LowerTorso" },
+    Default = 1,
+    Tooltip = _t("エイムボットが狙う部位を選択","Choose which bone the aimbot targets"),
+    Callback = function(v)
+        _kSet({"Aimbot","BoneTarget"}, v)
+        _kSet({"SilentAim","HitboxPoint"}, v)
+    end
+})
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Smooth Aim  (カメラLerp補間)
+-- ═══════════════════════════════════════════════════════════════
+do -- Smooth Aim scope
+local _smCFG  = { enabled=false, factor=0.12, humanness=0.25, maxDeg=8 }
+local _smCon  = nil
+local _smRS   = game:GetService("RunService")
+local _smP    = game:GetService("Players")
+local SmL = HvHTab:AddLeftGroupbox("Smooth Aim")
+local SmR = HvHTab:AddRightGroupbox("Smooth Aim Config")
+
+SmL:AddToggle("SmoothAimEnabled", { Text=_t("スムースエイム有効","Smooth Aim"), Default=false,
+    Tooltip=_t("エイムボットに人間らしい補間を追加","Add human-like lerp/curve to aimbot"),
+    Callback = function(v)
+        _smCFG.enabled = v
+        local cam = workspace.CurrentCamera
+        if v then
+            local targetCF = cam.CFrame
+            _smCon = _smRS.RenderStepped:Connect(function(dt)
+                if not _smCFG.enabled then return end
+                local lp = _smP.LocalPlayer
+                -- 最近傍の敵を探す
+                local char = lp.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                local closest, closestPos = math.huge, nil
+                for _, p in ipairs(_smP:GetPlayers()) do
+                    if p ~= lp and p.Character then
+                        local phrp = p.Character:FindFirstChild("HumanoidRootPart")
+                        local phum = p.Character:FindFirstChildOfClass("Humanoid")
+                        if phrp and phum and phum.Health > 0 then
+                            local d = (hrp.Position - phrp.Position).Magnitude
+                            if d < closest then
+                                closest = d
+                                -- ボーン優先に応じた照準先
+                                local boneNames = {"Head","Neck","UpperTorso","HumanoidRootPart","LowerTorso"}
+                                local bone = p.Character:FindFirstChild(boneNames[1]) or phrp
+                                closestPos = bone.Position
+                            end
+                        end
+                    end
+                end
+                if closestPos then
+                    -- 補間係数 = lerp factor + humanness noise
+                    local noise   = math.random() * _smCFG.humanness * 0.04 - (_smCFG.humanness * 0.02)
+                    local alpha   = math.clamp(_smCFG.factor + noise, 0.01, 1.0)
+                    local dir     = (closestPos - cam.CFrame.Position).Unit
+                    local targetRot = CFrame.new(cam.CFrame.Position, cam.CFrame.Position + dir)
+                    -- 最大角度クランプ
+                    local curDir  = cam.CFrame.LookVector
+                    local angle   = math.deg(math.acos(math.clamp(curDir:Dot(dir), -1, 1)))
+                    if angle > 0 and angle <= _smCFG.maxDeg then
+                        cam.CFrame = cam.CFrame:Lerp(targetRot, alpha)
+                    end
+                end
+            end)
+        else
+            if _smCon then _smCon:Disconnect(); _smCon = nil end
+        end
+    end })
+SmL:AddToggle("SmoothAimLock", { Text=_t("最大角度制限","Max Angle Clamp"), Default=true,
+    Callback = function(v) _smCFG.maxDeg = v and 8 or 360 end })
+SmR:AddSlider("SmoothAimFactor", { Text=_t("補間係数","Lerp Factor"),
+    Default=12, Min=1, Max=50, Rounding=0,
+    Callback = function(v) _smCFG.factor = v / 100 end })
+SmR:AddSlider("SmoothAimHumanness", { Text=_t("揺れ量 (Humanness)","Humanness"),
+    Default=25, Min=0, Max=100, Rounding=0,
+    Callback = function(v) _smCFG.humanness = v / 100 end })
+SmR:AddSlider("SmoothAimMaxDeg", { Text=_t("最大角度 (°)","Max Angle (°)"),
+    Default=8, Min=1, Max=45, Rounding=0,
+    Callback = function(v) _smCFG.maxDeg = v end })
+end -- Smooth Aim scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Target Auto Switch
+-- ═══════════════════════════════════════════════════════════════
+do -- Target Auto Switch scope
+local _tsCFG  = { enabled=false, mode="Closest", notifOnSwitch=true }
+local _tsCon  = nil
+local _tsRS   = game:GetService("RunService")
+local _tsP    = game:GetService("Players")
+local _tsCurr = nil
+local TsL = HvHTab:AddLeftGroupbox("Target Auto Switch")
+local TsR = HvHTab:AddRightGroupbox("Target Switch Config")
+
+local function _tsPickNext(excludeName)
+    local lp = _tsP.LocalPlayer
+    local char = lp.Character
+    if not char then return nil end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    local best, bestScore = nil, -math.huge
+    for _, p in ipairs(_tsP:GetPlayers()) do
+        if p ~= lp and p.Name ~= excludeName and p.Character then
+            local phrp = p.Character:FindFirstChild("HumanoidRootPart")
+            local phum = p.Character:FindFirstChildOfClass("Humanoid")
+            if phrp and phum and phum.Health > 0 then
+                local d = (hrp.Position - phrp.Position).Magnitude
+                local score = _tsCFG.mode == "Closest" and (-d)
+                           or _tsCFG.mode == "Lowest HP" and (-phum.Health)
+                           or (-d) -- fallback
+                if score > bestScore then bestScore = score; best = p end
+            end
+        end
+    end
+    return best
+end
+
+TsL:AddToggle("TargetSwitchEnabled", { Text=_t("ターゲット自動スイッチ","Target Auto Switch"), Default=false,
+    Tooltip=_t("ターゲット撃破後に次の敵へ自動切替","Auto switch to next enemy after kill"),
+    Callback = function(v)
+        _tsCFG.enabled = v
+        if v then
+            _tsCon = _tsRS.Heartbeat:Connect(function()
+                if not _tsCFG.enabled then return end
+                -- 現在のターゲットが死亡したか確認
+                if _tsCurr and _tsCurr.Character then
+                    local phum = _tsCurr.Character:FindFirstChildOfClass("Humanoid")
+                    if phum and phum.Health <= 0 then
+                        local dead = _tsCurr.Name
+                        local next = _tsPickNext(dead)
+                        _tsCurr = next
+                        if next then
+                            _kSet({"Aimbot","ForceTarget"}, next.Name)
+                            if _tsCFG.notifOnSwitch then
+                                Notification.new({ Title=_t("🎯 ターゲット切替","🎯 Target Switched"),
+                                    Content=_t("→ ","→ ")..next.Name, Duration=2 })
+                            end
+                        end
+                    end
+                else
+                    -- ターゲット未設定 → 最近傍を初期設定
+                    _tsCurr = _tsPickNext(nil)
+                    if _tsCurr then _kSet({"Aimbot","ForceTarget"}, _tsCurr.Name) end
+                end
+            end)
+        else
+            if _tsCon then _tsCon:Disconnect(); _tsCon = nil end
+            _tsCurr = nil
+        end
+    end })
+TsL:AddToggle("TargetSwitchNotif", { Text=_t("切替通知","Switch Notification"), Default=true,
+    Callback = function(v) _tsCFG.notifOnSwitch = v end })
+TsR:AddDropdown("TargetSwitchMode", { Text=_t("切替優先度","Priority Mode"),
+    Values={ "Closest", "Lowest HP", "Highest HP" }, Default=1,
+    Callback = function(v) _tsCFG.mode = v end })
+end -- Target Auto Switch scope
+
 -- ── RAGEBOT ───────────────────────────────────────────────────
 HvHL2:AddToggle("RbEnabled", {
     Text = "Ragebot",
@@ -7041,6 +7202,183 @@ HvHR4:AddSlider("RainbowChamsSpeed", { Text=_t("色変化速度","Color Cycle Sp
     Default=1, Min=0.1, Max=10, Rounding=1,
     Callback = function(v) _rbCFG.speed = v end })
 end -- Rainbow Chams scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Distance-Based ESP Color
+-- ═══════════════════════════════════════════════════════════════
+do -- Distance Color ESP scope
+local _dcCFG  = { enabled=false, nearDist=30, farDist=200 }
+local _dcCon  = nil
+local _dcRS   = game:GetService("RunService")
+local _dcP    = game:GetService("Players")
+
+HvHL4:AddToggle("DistColorEnabled", { Text=_t("距離別ESPカラー","Distance Color ESP"), Default=false,
+    Tooltip=_t("近い敵=赤、遠い敵=青に自動グラデーション","Near=red far=blue gradient on highlights"),
+    Callback = function(v)
+        _dcCFG.enabled = v
+        if v then
+            _dcCon = _dcRS.Heartbeat:Connect(function()
+                if not _dcCFG.enabled then return end
+                local lp = _dcP.LocalPlayer
+                local char = lp.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                for _, p in ipairs(_dcP:GetPlayers()) do
+                    if p ~= lp and p.Character then
+                        local phrp = p.Character:FindFirstChild("HumanoidRootPart")
+                        if phrp then
+                            local d     = (hrp.Position - phrp.Position).Magnitude
+                            local t     = math.clamp((d - _dcCFG.nearDist) / (_dcCFG.farDist - _dcCFG.nearDist), 0, 1)
+                            -- near=赤(0°) far=青(240°)
+                            local hue   = t * (240/360)
+                            local color = Color3.fromHSV(hue, 1, 1)
+                            for _, hl in ipairs(p.Character:GetDescendants()) do
+                                if hl:IsA("Highlight") then
+                                    hl.OutlineColor = color
+                                    if hl.FillTransparency < 1 then hl.FillColor = color end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if _dcCon then _dcCon:Disconnect(); _dcCon = nil end
+        end
+    end })
+HvHR4:AddSlider("DistColorNear", { Text=_t("近距離しきい値 (studs)","Near Threshold (studs)"),
+    Default=30, Min=5, Max=100, Rounding=0, Callback = function(v) _dcCFG.nearDist = v end })
+HvHR4:AddSlider("DistColorFar",  { Text=_t("遠距離しきい値 (studs)","Far Threshold (studs)"),
+    Default=200, Min=50, Max=1000, Rounding=0, Callback = function(v) _dcCFG.farDist = v end })
+end -- Distance Color ESP scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Wallbang ESP
+-- ═══════════════════════════════════════════════════════════════
+do -- Wallbang ESP scope
+local _wbCFG  = { enabled=false, color=Color3.fromRGB(255,120,0), maxThick=0.5 }
+local _wbCon  = nil
+local _wbRS   = game:GetService("RunService")
+local _wbP    = game:GetService("Players")
+
+-- 貫通可能マテリアルセット (薄い壁・窓・金属メッシュ等)
+local _wbPenetrableMats = {
+    [Enum.Material.Glass]       = true,
+    [Enum.Material.SmoothPlastic] = true,
+    [Enum.Material.Metal]       = true,
+    [Enum.Material.Foil]        = true,
+}
+
+HvHL4:AddToggle("WallbangEnabled", { Text=_t("ウォールバングESP","Wallbang ESP"), Default=false,
+    Tooltip=_t("貫通可能な壁をオレンジハイライト表示","Highlight walls you can shoot through"),
+    Callback = function(v)
+        _wbCFG.enabled = v
+        if v then
+            _wbCon = _wbRS.Heartbeat:Connect(function()
+                if not _wbCFG.enabled then return end
+                local lp  = _wbP.LocalPlayer
+                local char = lp.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                -- 全プレイヤーとの間にある壁をチェック
+                for _, p in ipairs(_wbP:GetPlayers()) do
+                    if p ~= lp and p.Character then
+                        local phrp = p.Character:FindFirstChild("HumanoidRootPart")
+                        if phrp then
+                            local origin = hrp.Position
+                            local target = phrp.Position
+                            local dir    = (target - origin)
+                            local ray    = Ray.new(origin, dir)
+                            local ignoreList = {char, p.Character}
+                            local hit, _ = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
+                            if hit and _wbPenetrableMats[hit.Material] and hit.Size.Magnitude <= _wbCFG.maxThick * 50 then
+                                -- 貫通可能な壁をハイライト
+                                local existing = hit:FindFirstChildOfClass("SelectionBox")
+                                if not existing then
+                                    local sb = Instance.new("SelectionBox")
+                                    sb.Adornee             = hit
+                                    sb.Color3              = _wbCFG.color
+                                    sb.LineThickness       = 0.08
+                                    sb.SurfaceColor3       = _wbCFG.color
+                                    sb.SurfaceTransparency = 0.5
+                                    sb.Parent              = workspace
+                                    task.delay(0.5, function() pcall(function() sb:Destroy() end) end)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if _wbCon then _wbCon:Disconnect(); _wbCon = nil end
+        end
+    end })
+HvHR4:AddColorpicker("WallbangColor", { Text=_t("ウォールバング色","Wallbang Color"),
+    Default=Color3.fromRGB(255,120,0),
+    Callback = function(v) _wbCFG.color = v end })
+end -- Wallbang ESP scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Respawn Predictor
+-- ═══════════════════════════════════════════════════════════════
+do -- Respawn Predictor scope
+local _rpCFG  = { enabled=false, showTimer=true }
+local _rpBills = {}
+local _rpCon   = nil
+local _rpRS    = game:GetService("RunService")
+local _rpP     = game:GetService("Players")
+
+local function _rpClear()
+    for _, b in pairs(_rpBills) do pcall(function() b:Destroy() end) end
+    _rpBills = {}
+end
+
+local function _rpShowSpawn(spawnPart, label)
+    pcall(function()
+        local bb = Instance.new("BillboardGui")
+        bb.Size  = UDim2.new(0, 100, 0, 30)
+        bb.StudsOffset = Vector3.new(0, 3, 0)
+        bb.Adornee = spawnPart
+        bb.AlwaysOnTop = true
+        bb.Parent = workspace
+        local tl = Instance.new("TextLabel")
+        tl.Size   = UDim2.new(1, 0, 1, 0)
+        tl.Text   = label
+        tl.TextColor3 = Color3.fromRGB(255,200,0)
+        tl.TextSize = 14
+        tl.Font   = Enum.Font.GothamBold
+        tl.BackgroundTransparency = 1
+        tl.Parent = bb
+        table.insert(_rpBills, bb)
+    end)
+end
+
+HvHL4:AddToggle("RespawnPredEnabled", { Text=_t("リスポーン予測","Respawn Predictor"), Default=false,
+    Tooltip=_t("スポーン地点を予測表示","Predict and highlight enemy spawn locations"),
+    Callback = function(v)
+        _rpCFG.enabled = v
+        if v then
+            _rpClear()
+            -- スポーンロケーションを全収集
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("SpawnLocation") then
+                    _rpShowSpawn(obj, _t("⟳ SPAWN","⟳ SPAWN"))
+                end
+            end
+            -- 死亡検知 → 該当スポーン強調
+            _rpCon = _rpP.PlayerRemoving:Connect(function()
+                _rpClear()
+            end)
+        else
+            if _rpCon then _rpCon:Disconnect(); _rpCon = nil end
+            _rpClear()
+        end
+    end })
+HvHL4:AddToggle("RespawnPredTimer", { Text=_t("リスポーンタイマー表示","Show Respawn Timer"), Default=true,
+    Callback = function(v) _rpCFG.showTimer = v end })
+end -- Respawn Predictor scope
 
 -- ── VISUAL CONFIG (right side) ────────────────────────────────
 HvHR4:AddToggle("CxEnabled", {
@@ -74265,6 +74603,317 @@ FlagR:AddSlider("FakeLagDelay", { Text=_t("遅延 (秒)","Delay (sec)"),
     Callback = function(v) _fLagCFG.delay = v end })
 end -- Fake Lag scope
 
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Damage Log HUD
+-- ═══════════════════════════════════════════════════════════════
+do -- Damage Log scope
+local _dlogCFG  = { enabled=false, maxEntries=10 }
+local _dlogGui  = nil
+local _dlogCon  = nil
+local _dlogList = {}
+local DlogL = Tabs.Settings:AddLeftGroupbox("Damage Log HUD")
+local DlogR = Tabs.Settings:AddRightGroupbox("Damage Log Config")
+
+local function _dlogRebuild()
+    if not _dlogGui then return end
+    local frame = _dlogGui:FindFirstChild("DlogFrame")
+    if not frame then return end
+    for _, c in ipairs(frame:GetChildren()) do
+        if c:IsA("TextLabel") then c:Destroy() end
+    end
+    local y = 0
+    for i = #_dlogList, math.max(1, #_dlogList - _dlogCFG.maxEntries + 1), -1 do
+        local entry = _dlogList[i]
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, 0, 0, 16)
+        lbl.Position = UDim2.new(0, 0, 0, y)
+        lbl.Text = entry.text
+        lbl.TextColor3 = entry.color
+        lbl.TextSize = 13
+        lbl.Font = Enum.Font.Gotham
+        lbl.BackgroundTransparency = 1
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Parent = frame
+        y = y + 17
+    end
+    frame.Size = UDim2.new(0, 220, 0, math.max(y, 1))
+end
+
+local function _dlogAdd(text, color)
+    table.insert(_dlogList, { text=text, color=color })
+    if #_dlogList > 50 then table.remove(_dlogList, 1) end
+    _dlogRebuild()
+end
+
+DlogL:AddToggle("DamageLogEnabled", { Text=_t("ダメージログ有効","Damage Log"), Default=false,
+    Tooltip=_t("与ダメ/被ダメの履歴をHUD表示","Show damage history on HUD"),
+    Callback = function(v)
+        _dlogCFG.enabled = v
+        if v then
+            if _dlogGui then _dlogGui:Destroy() end
+            local sg = Instance.new("ScreenGui")
+            sg.Name = "UNC_DlogHUD"; sg.ResetOnSpawn = false; sg.DisplayOrder = 12
+            pcall(function() sg.Parent = game:GetService("CoreGui") end)
+            if not sg.Parent then sg.Parent = game:GetService("Players").LocalPlayer.PlayerGui end
+            _dlogGui = sg
+            local hdr = Instance.new("TextLabel")
+            hdr.Size = UDim2.new(0, 220, 0, 18)
+            hdr.Position = UDim2.new(1, -240, 0, 60)
+            hdr.Text = "── DAMAGE LOG ──"
+            hdr.TextColor3 = Color3.fromRGB(200,200,200)
+            hdr.TextSize = 11; hdr.Font = Enum.Font.GothamBold
+            hdr.BackgroundColor3 = Color3.fromRGB(10,10,10)
+            hdr.BackgroundTransparency = 0.4; hdr.BorderSizePixel = 0
+            hdr.Parent = sg
+            local fr = Instance.new("Frame")
+            fr.Name = "DlogFrame"
+            fr.Position = UDim2.new(1, -240, 0, 80)
+            fr.Size = UDim2.new(0, 220, 0, 0)
+            fr.BackgroundTransparency = 0.6
+            fr.BackgroundColor3 = Color3.fromRGB(5,5,5)
+            fr.BorderSizePixel = 0
+            fr.Parent = sg
+            -- 自分へのダメージ監視
+            local lp = game:GetService("Players").LocalPlayer
+            local function _watchSelf(char)
+                if _dlogCon then _dlogCon:Disconnect() end
+                local hum = char:WaitForChild("Humanoid", 5)
+                if not hum then return end
+                local prevHP = hum.Health
+                _dlogCon = hum.HealthChanged:Connect(function(hp)
+                    if not _dlogCFG.enabled then return end
+                    local diff = hp - prevHP
+                    if diff < -0.5 then
+                        _dlogAdd(string.format("⬇ 被ダメ  %.0f", math.abs(diff)), Color3.fromRGB(255,80,80))
+                    elseif diff > 0.5 then
+                        _dlogAdd(string.format("⬆ 回復   %.0f", diff), Color3.fromRGB(80,255,120))
+                    end
+                    prevHP = hp
+                end)
+            end
+            if lp.Character then _watchSelf(lp.Character) end
+            lp.CharacterAdded:Connect(function(c)
+                task.wait(0.3)
+                if _dlogCFG.enabled then _watchSelf(c) end
+            end)
+        else
+            if _dlogCon then _dlogCon:Disconnect(); _dlogCon = nil end
+            if _dlogGui then _dlogGui:Destroy(); _dlogGui = nil end
+        end
+    end })
+DlogL:AddButton(_t("ログクリア","Clear Log"), function()
+    _dlogList = {}
+    _dlogRebuild()
+end)
+DlogR:AddSlider("DamageLogMaxEntries", { Text=_t("表示行数","Max Entries"),
+    Default=10, Min=3, Max=30, Rounding=0,
+    Callback = function(v) _dlogCFG.maxEntries = v; _dlogRebuild() end })
+end -- Damage Log scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Speedometer + Hit Rate HUD
+-- ═══════════════════════════════════════════════════════════════
+do -- Speedometer & Hit Rate scope
+local _spdCFG  = { enabled=false }
+local _hrCFG   = { enabled=false, shots=0, hits=0 }
+local _spdGui  = nil
+local _spdCon  = nil
+local _spdRS   = game:GetService("RunService")
+local SpdL = Tabs.Settings:AddLeftGroupbox("Speedometer / Hit Rate")
+local SpdR = Tabs.Settings:AddRightGroupbox("Speed & Hit Config")
+
+local function _spdBuild()
+    if _spdGui then _spdGui:Destroy() end
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "UNC_SpdHUD"; sg.ResetOnSpawn = false; sg.DisplayOrder = 11
+    pcall(function() sg.Parent = game:GetService("CoreGui") end)
+    if not sg.Parent then sg.Parent = game:GetService("Players").LocalPlayer.PlayerGui end
+    _spdGui = sg
+    -- 速度メーター
+    local spd = Instance.new("TextLabel")
+    spd.Name = "SpdLabel"
+    spd.Size = UDim2.new(0, 160, 0, 22)
+    spd.Position = UDim2.new(0.5, -80, 1, -80)
+    spd.Text = "0.0 studs/s"
+    spd.TextColor3 = Color3.fromRGB(255,255,255)
+    spd.TextSize = 16; spd.Font = Enum.Font.GothamBold
+    spd.BackgroundTransparency = 0.5
+    spd.BackgroundColor3 = Color3.fromRGB(10,10,10)
+    spd.BorderSizePixel = 0
+    spd.Parent = sg
+    -- 命中率
+    local hr = Instance.new("TextLabel")
+    hr.Name = "HrLabel"
+    hr.Size = UDim2.new(0, 160, 0, 22)
+    hr.Position = UDim2.new(0.5, -80, 1, -110)
+    hr.Text = "Acc: 0/0 (0%)"
+    hr.TextColor3 = Color3.fromRGB(100,220,255)
+    hr.TextSize = 14; hr.Font = Enum.Font.Gotham
+    hr.BackgroundTransparency = 0.5
+    hr.BackgroundColor3 = Color3.fromRGB(10,10,10)
+    hr.BorderSizePixel = 0
+    hr.Parent = sg
+end
+
+SpdL:AddToggle("SpeedoEnabled", { Text=_t("スピードメーター","Speedometer"), Default=false,
+    Tooltip=_t("現在の移動速度をHUD表示","Show current movement speed on HUD"),
+    Callback = function(v)
+        _spdCFG.enabled = v
+        if v then
+            _spdBuild()
+            local lp = game:GetService("Players").LocalPlayer
+            local prevPos = nil
+            _spdCon = _spdRS.Heartbeat:Connect(function(dt)
+                if not _spdCFG.enabled or not _spdGui then return end
+                local char = lp.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local pos = hrp.Position
+                    if prevPos then
+                        local spd = (pos - prevPos).Magnitude / dt
+                        local lbl = _spdGui:FindFirstChild("SpdLabel")
+                        if lbl then lbl.Text = string.format("%.1f studs/s", spd) end
+                    end
+                    prevPos = pos
+                end
+                if _hrCFG.enabled then
+                    local lbl = _spdGui:FindFirstChild("HrLabel")
+                    if lbl then
+                        local acc = _hrCFG.shots > 0
+                            and math.floor(_hrCFG.hits / _hrCFG.shots * 100) or 0
+                        lbl.Text = string.format("Acc: %d/%d (%d%%)", _hrCFG.hits, _hrCFG.shots, acc)
+                    end
+                end
+            end)
+        else
+            if _spdCon then _spdCon:Disconnect(); _spdCon = nil end
+            if _spdGui then _spdGui:Destroy(); _spdGui = nil end
+        end
+    end })
+SpdL:AddToggle("HitRateEnabled", { Text=_t("命中率HUD","Hit Rate HUD"), Default=false,
+    Tooltip=_t("発射数・命中数・命中率をリアルタイム表示","Show shots fired, hits, accuracy live"),
+    Callback = function(v)
+        _hrCFG.enabled = v
+        if v and not _spdGui then _spdBuild() end
+        -- 命中をキルフィードから検知（通知経由フック）
+        if v then
+            pcall(function()
+                local RS = game:GetService("ReplicatedStorage")
+                local hitEv = RS:FindFirstChild("HitConfirm") or RS:FindFirstChild("ShotFired")
+                if hitEv then
+                    hitEv.OnClientEvent:Connect(function(isHit)
+                        _hrCFG.shots = _hrCFG.shots + 1
+                        if isHit then _hrCFG.hits = _hrCFG.hits + 1 end
+                    end)
+                end
+            end)
+        end
+    end })
+SpdL:AddButton(_t("命中率リセット","Reset Hit Rate"), function()
+    _hrCFG.shots = 0; _hrCFG.hits = 0
+    Notification.new({ Title=_t("命中率","Hit Rate"), Content=_t("リセットしました","Reset"), Duration=2 })
+end)
+end -- Speedometer & Hit Rate scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Sound ESP+ (方向コンパス)
+-- ═══════════════════════════════════════════════════════════════
+do -- Sound ESP Plus scope
+local _sndCFG  = { enabled=false, gunOnly=false }
+local _sndGui  = nil
+local _sndConRS = nil
+local _sndEvents = {}
+local SndL = Tabs.Settings:AddLeftGroupbox("Sound ESP+")
+local SndR = Tabs.Settings:AddRightGroupbox("Sound ESP Config")
+
+local function _sndDirArrow(angle, label, duration)
+    pcall(function()
+        if not _sndGui then return end
+        local container = _sndGui:FindFirstChild("SndCompass")
+        if not container then return end
+        -- 方向インジケーター
+        local arrow = Instance.new("TextLabel")
+        arrow.Size = UDim2.new(0, 40, 0, 40)
+        local cx, cy = 100, 100  -- compass center (200x200 frame)
+        local r = 80
+        local rad = math.rad(angle - 90)
+        arrow.Position = UDim2.new(0, cx + math.cos(rad)*r - 20, 0, cy + math.sin(rad)*r - 20)
+        arrow.Text = "🔴"
+        arrow.TextSize = 18
+        arrow.BackgroundTransparency = 1
+        arrow.Font = Enum.Font.GothamBold
+        arrow.TextColor3 = Color3.fromRGB(255,80,80)
+        arrow.Parent = container
+        game:GetService("Debris"):AddItem(arrow, duration or 2)
+    end)
+end
+
+SndL:AddToggle("SoundEspPlusEnabled", { Text=_t("サウンドESP+ 有効","Sound ESP+"), Default=false,
+    Tooltip=_t("銃声・足音の方向をコンパスで表示","Show gunshot/footstep direction on compass"),
+    Callback = function(v)
+        _sndCFG.enabled = v
+        if v then
+            -- GUIビルド
+            local sg = Instance.new("ScreenGui")
+            sg.Name = "UNC_SndESP"; sg.ResetOnSpawn = false; sg.DisplayOrder = 13
+            pcall(function() sg.Parent = game:GetService("CoreGui") end)
+            if not sg.Parent then sg.Parent = game:GetService("Players").LocalPlayer.PlayerGui end
+            _sndGui = sg
+            local compass = Instance.new("Frame")
+            compass.Name = "SndCompass"
+            compass.Size = UDim2.new(0, 200, 0, 200)
+            compass.Position = UDim2.new(0.5, -100, 0, 10)
+            compass.BackgroundTransparency = 0.85
+            compass.BackgroundColor3 = Color3.fromRGB(0,0,0)
+            compass.BorderSizePixel = 0
+            local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(1,0); corner.Parent = compass
+            compass.Parent = sg
+            -- N/S/E/Wラベル
+            for _, info in ipairs({{0,"N"},{90,"E"},{180,"S"},{270,"W"}}) do
+                local deg, lbl = info[1], info[2]
+                local txt = Instance.new("TextLabel")
+                local rad = math.rad(deg - 90)
+                txt.Size = UDim2.new(0, 20, 0, 20)
+                txt.Position = UDim2.new(0, 100 + math.cos(rad)*88 - 10, 0, 100 + math.sin(rad)*88 - 10)
+                txt.Text = lbl; txt.TextSize = 12; txt.Font = Enum.Font.GothamBold
+                txt.TextColor3 = Color3.fromRGB(180,180,180); txt.BackgroundTransparency = 1
+                txt.Parent = compass
+            end
+            -- 音源監視
+            _sndConRS = game:GetService("RunService").Heartbeat:Connect(function()
+                if not _sndCFG.enabled then return end
+                local lp  = game:GetService("Players").LocalPlayer
+                local char = lp.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                local cam = workspace.CurrentCamera
+                -- 他プレイヤーのサウンドを検知
+                for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+                    if p ~= lp and p.Character then
+                        for _, snd in ipairs(p.Character:GetDescendants()) do
+                            if snd:IsA("Sound") and snd.IsPlaying then
+                                local isGun = snd.Name:lower():find("shoot") or snd.Name:lower():find("fire") or snd.Name:lower():find("gun")
+                                if not _sndCFG.gunOnly or isGun then
+                                    local sndPos = snd.Parent and snd.Parent:IsA("BasePart") and snd.Parent.Position or hrp.Position
+                                    local rel    = cam.CFrame:PointToObjectSpace(sndPos)
+                                    local angle  = math.deg(math.atan2(rel.X, -rel.Z)) % 360
+                                    _sndDirArrow(angle, snd.Name, 1.5)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if _sndConRS then _sndConRS:Disconnect(); _sndConRS = nil end
+            if _sndGui then _sndGui:Destroy(); _sndGui = nil end
+        end
+    end })
+SndL:AddToggle("SoundEspGunOnly", { Text=_t("銃声のみ","Gun Sounds Only"), Default=false,
+    Callback = function(v) _sndCFG.gunOnly = v end })
+end -- Sound ESP Plus scope
 
 do -- FPS Boost scope
 local FpsG = Tabs.Settings:AddLeftGroupbox("FPS Boost")
@@ -74611,6 +75260,195 @@ FpsG:AddButton("Reset FPS Boost", function()
 end)
 
 end -- FPS Boost scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Config Save / Load
+-- ═══════════════════════════════════════════════════════════════
+do -- Config Save scope
+local _cfgPath  = "uncode_config.json"
+local _cfgL = Tabs.Settings:AddLeftGroupbox("Config Save / Load")
+local _cfgR = Tabs.Settings:AddRightGroupbox("Config Info")
+
+local function _cfgCollect()
+    local data = {}
+    if Toggles then
+        for k, v in pairs(Toggles) do
+            pcall(function() data["T:"..k] = v.Value end)
+        end
+    end
+    if Options then
+        for k, v in pairs(Options) do
+            pcall(function() data["O:"..k] = v.Value end)
+        end
+    end
+    return data
+end
+
+_cfgL:AddButton(_t("設定を保存","Save Config"), function()
+    pcall(function()
+        local data = _cfgCollect()
+        local json = game:GetService("HttpService"):JSONEncode(data)
+        if writefile then
+            writefile(_cfgPath, json)
+            Notification.new({ Title=_t("💾 保存完了","💾 Saved"),
+                Content=_cfgPath.._t(" に保存しました"," written"), Duration=3 })
+        else
+            Notification.new({ Title=_t("⚠ 保存失敗","⚠ Save Failed"),
+                Content=_t("writefile未対応","writefile not supported"), Duration=3 })
+        end
+    end)
+end)
+
+_cfgL:AddButton(_t("設定を読込","Load Config"), function()
+    pcall(function()
+        if not readfile then
+            Notification.new({ Title=_t("⚠ 読込失敗","⚠ Load Failed"),
+                Content=_t("readfile未対応","readfile not supported"), Duration=3 })
+            return
+        end
+        local ok, json = pcall(readfile, _cfgPath)
+        if not ok or not json then
+            Notification.new({ Title=_t("⚠ ファイルなし","⚠ No File"),
+                Content=_cfgPath.._t(" が見つかりません"," not found"), Duration=3 })
+            return
+        end
+        local data = game:GetService("HttpService"):JSONDecode(json)
+        local count = 0
+        for key, val in pairs(data) do
+            local prefix = key:sub(1,2)
+            local id     = key:sub(3)
+            if prefix == "T:" and Toggles and Toggles[id] then
+                pcall(function() Toggles[id]:SetValue(val) end); count = count + 1
+            elseif prefix == "O:" and Options and Options[id] then
+                pcall(function() Options[id]:SetValue(val) end); count = count + 1
+            end
+        end
+        Notification.new({ Title=_t("📂 読込完了","📂 Loaded"),
+            Content=count.._t(" 設定を復元"," settings restored"), Duration=3 })
+    end)
+end)
+
+_cfgR:AddLabel(_t("ファイル: ","File: ").._cfgPath)
+_cfgR:AddLabel(_t("保存場所: exploitフォルダ","Location: exploit folder"))
+end -- Config Save scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Auto Update Checker
+-- ═══════════════════════════════════════════════════════════════
+do -- Auto Update scope
+local _updCFG   = { enabled=false, checkedOnce=false }
+local _updBuild = "20261009-h"
+local _updUrl   = "https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/version.txt"
+local UpdL = Tabs.Settings:AddLeftGroupbox("Auto Update Checker")
+
+UpdL:AddToggle("AutoUpdateEnabled", { Text=_t("起動時にアップデート確認","Check Update on Load"), Default=false,
+    Tooltip=_t("GitHubの最新バージョンと比較","Compare with latest version on GitHub"),
+    Callback = function(v)
+        _updCFG.enabled = v
+    end })
+UpdL:AddButton(_t("今すぐ確認","Check Now"), function()
+    pcall(function()
+        local HS = game:GetService("HttpService")
+        local ok, body = pcall(function()
+            return HS:GetAsync(_updUrl, true)
+        end)
+        if ok and body then
+            local latest = body:match("^%s*(.-)%s*$")
+            if latest == _updBuild then
+                Notification.new({ Title=_t("✅ 最新版","✅ Up to date"),
+                    Content=_t("現在のビルド: ","Current build: ").._updBuild, Duration=4 })
+            else
+                Notification.new({ Title=_t("🔄 アップデートあり","🔄 Update Available"),
+                    Content=_t("最新: ","Latest: ")..latest.." / "
+                        .._t("現在: ","Current: ").._updBuild, Duration=6 })
+            end
+        else
+            Notification.new({ Title=_t("⚠ 確認失敗","⚠ Check Failed"),
+                Content=_t("GitHub接続エラー","GitHub connection error"), Duration=3 })
+        end
+    end)
+end)
+
+-- 起動時チェック (enabled=true のとき)
+task.delay(3, function()
+    if _updCFG.enabled and not _updCFG.checkedOnce then
+        _updCFG.checkedOnce = true
+        pcall(function()
+            local HS = game:GetService("HttpService")
+            local body = HS:GetAsync(_updUrl, true)
+            local latest = body:match("^%s*(.-)%s*$")
+            if latest ~= _updBuild then
+                Notification.new({ Title=_t("🔄 アップデートあり","🔄 Update Available"),
+                    Content=_t("最新: ","Latest: ")..latest, Duration=6 })
+            end
+        end)
+    end
+end)
+end -- Auto Update scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  UI Color Theme
+-- ═══════════════════════════════════════════════════════════════
+do -- UI Color Theme scope
+local _themeCFG = { current="Default" }
+local _themes   = {
+    Default  = { accent=Color3.fromRGB(100,160,255), bg=Color3.fromRGB(20,20,30) },
+    Crimson  = { accent=Color3.fromRGB(220,50,50),   bg=Color3.fromRGB(25,10,10) },
+    Emerald  = { accent=Color3.fromRGB(50,200,100),  bg=Color3.fromRGB(10,25,15) },
+    Gold     = { accent=Color3.fromRGB(255,200,50),  bg=Color3.fromRGB(25,20,5)  },
+    Neon     = { accent=Color3.fromRGB(0,255,220),   bg=Color3.fromRGB(5,20,25)  },
+    Midnight = { accent=Color3.fromRGB(160,90,255),  bg=Color3.fromRGB(15,5,30)  },
+}
+local ThemeL = Tabs.Settings:AddLeftGroupbox("UI Color Theme")
+local ThemeR = Tabs.Settings:AddRightGroupbox("Theme Config")
+
+local function _applyTheme(name)
+    local t = _themes[name]
+    if not t then return end
+    _themeCFG.current = name
+    pcall(function()
+        -- Millenium UIのアクセントカラー変更 (利用可能な場合)
+        if _mlLib and _mlLib.SetAccent then
+            _mlLib:SetAccent(t.accent)
+        end
+        -- 全ScreenGuiのUIStroke/TextLabel色を更新
+        for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+            if gui:IsA("UIStroke") and gui.Name:find("UNC") then
+                gui.Color = t.accent
+            end
+        end
+        Notification.new({ Title=_t("🎨 テーマ変更","🎨 Theme Changed"),
+            Content=name, Duration=2 })
+    end)
+end
+
+ThemeL:AddDropdown("UIThemeSelect", { Text=_t("テーマ選択","Select Theme"),
+    Values={"Default","Crimson","Emerald","Gold","Neon","Midnight"}, Default=1,
+    Callback = function(v) _applyTheme(v) end })
+ThemeL:AddToggle("UIThemeRainbow", { Text=_t("レインボーUI","Rainbow UI"), Default=false,
+    Callback = function(v)
+        if v then
+            task.spawn(function()
+                while Toggles.UIThemeRainbow and Toggles.UIThemeRainbow.Value do
+                    local hue = (tick() * 0.2) % 1
+                    pcall(function()
+                        if _mlLib and _mlLib.SetAccent then
+                            _mlLib:SetAccent(Color3.fromHSV(hue, 1, 1))
+                        end
+                    end)
+                    task.wait(0.05)
+                end
+            end)
+        end
+    end })
+ThemeR:AddColorpicker("UIThemeAccent", { Text=_t("アクセントカラー","Accent Color"),
+    Default=Color3.fromRGB(100,160,255),
+    Callback = function(v)
+        pcall(function()
+            if _mlLib and _mlLib.SetAccent then _mlLib:SetAccent(v) end
+        end)
+    end })
+end -- UI Color Theme scope
 
 -- ── Community Configs ──────────────────────────────────────────────────────
 do
