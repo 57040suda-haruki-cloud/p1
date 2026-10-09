@@ -4269,7 +4269,7 @@ end -- Player Tab scope
 -- ============================================================
 
 do -- Combat/HvH UI scope (register isolation)
-warn("[UNCODE] Combat/HvH tab init — build 20261007-d")
+warn("[UNCODE] Combat/HvH tab init — build 20261009-e")
 
 -- Combat tab: Silent Aim, Aimbot, Visuals
 local HvHTab   = Tabs.Combat
@@ -4325,6 +4325,54 @@ HvHL1:AddToggle("SaNotReloading", {
     Default = true,
     Callback = function(v) _kSet({"SilentAim","ActivationConditions","NotReloading"}, v) end
 })
+HvHL1:AddToggle("SaScopedIn", {
+    Text = "Activate: Scoped In",
+    Default = false,
+    Callback = function(v) _kSet({"SilentAim","ActivationConditions","ScopedIn"}, v) end
+})
+HvHL1:AddSlider("SaActivationChance", {
+    Text = "Activation Chance",
+    Default = 100,
+    Min = 0, Max = 100, Rounding = 0,
+    Suffix = "%",
+    Tooltip = "Chance per-shot that Silent Aim activates (100 = always).",
+    Callback = function(v) _kSet({"SilentAim","ActivationChance"}, v) end
+})
+HvHL1:AddSlider("SaReactionTime", {
+    Text = "Reaction Delay",
+    Default = 0,
+    Min = 0, Max = 500, Rounding = 0,
+    Suffix = "ms",
+    Callback = function(v) _kSet({"SilentAim","ReactionTime"}, v / 1000) end
+})
+HvHL1:AddSlider("SaSwitchDelay", {
+    Text = "Target Switch Delay",
+    Default = 0,
+    Min = 0, Max = 500, Rounding = 0,
+    Suffix = "ms",
+    Callback = function(v) _kSet({"SilentAim","SwitchDelay"}, v / 1000) end
+})
+HvHL1:AddDropdown("SaHitboxPoint", {
+    Text = "Hitbox Point",
+    Values = {"Center", "Surface"},
+    Default = 1,
+    Tooltip = "Which point on the hitbox to aim at. Surface = closest point to your crosshair.",
+    Callback = function(v) _kSet({"SilentAim","HitboxPoint","Type"}, v) end
+})
+HvHL1:AddDropdown("SaHitboxSelect", {
+    Text = "Hitbox Selection",
+    Values = {"ClosestToCrosshair", "Random"},
+    Default = 1,
+    Tooltip = "How to pick the target hitbox part.",
+    Callback = function(v) _kSet({"SilentAim","HitboxSelection","Type"}, v) end
+})
+HvHL1:AddDropdown("SaManipMode", {
+    Text = "Manipulate Mode",
+    Values = {"Linear", "Spring", "Lock"},
+    Default = 1,
+    Tooltip = "Algorithm used for aim manipulation overlay.",
+    Callback = function(v) _kSet({"SilentAim","Manipulate","Mode"}, v) end
+})
 
 -- ── AIMBOT ────────────────────────────────────────────────────
 HvHR1:AddToggle("AbEnabled", {
@@ -4373,6 +4421,42 @@ HvHR1:AddToggle("AbNotReloading", {
     Text = "Activate: Not Reloading",
     Default = true,
     Callback = function(v) _kSet({"Aimbot","ActivationConditions","NotReloading"}, v) end
+})
+HvHR1:AddSlider("AbReactionTime", {
+    Text = "Reaction Delay",
+    Default = 0,
+    Min = 0, Max = 500, Rounding = 0,
+    Suffix = "ms",
+    Callback = function(v) _kSet({"Aimbot","ReactionTime"}, v / 1000) end
+})
+HvHR1:AddSlider("AbSwitchDelay", {
+    Text = "Target Switch Delay",
+    Default = 0,
+    Min = 0, Max = 500, Rounding = 0,
+    Suffix = "ms",
+    Callback = function(v) _kSet({"Aimbot","SwitchDelay"}, v / 1000) end
+})
+HvHR1:AddDropdown("AbAimMode", {
+    Text = "Aim Mode",
+    Values = {"Lock", "Linear", "Spring"},
+    Default = 1,
+    Tooltip = "How the aimbot moves your camera toward the target.",
+    Callback = function(v) _kSet({"Aimbot","Mode","Type"}, v) end
+})
+HvHR1:AddSlider("AbAimSpeed", {
+    Text = "Aim Speed",
+    Default = 50,
+    Min = 1, Max = 100, Rounding = 0,
+    Suffix = "%",
+    Tooltip = "Speed for Linear / Spring aim modes (ignored in Lock mode).",
+    Callback = function(v) _kSet({"Aimbot","Mode","Speed"}, v / 100) end
+})
+HvHR1:AddDropdown("AbLockMode", {
+    Text = "Target Lock Mode",
+    Values = {"ToggleLock", "AutoLock", "ManualOnly"},
+    Default = 1,
+    Tooltip = "How Target Lock behaves when enabled.",
+    Callback = function(v) _kSet({"Aimbot","TargetLock","Mode"}, v) end
 })
 
 -- ── RAGEBOT ───────────────────────────────────────────────────
@@ -4427,9 +4511,9 @@ HvHR2:AddSlider("RbShootFrames", {
 })
 HvHR2:AddDropdown("RbEvasion", {
     Text = "Evasion Mode",
-    Values = {"Random", "ProjectileBreaker", "Translocate"},
-    Default = 1,
-    Tooltip = "How the Ragebot evades incoming projectiles.",
+    Values = {"Off", "ProjectileBreaker", "Random", "Translocate"},
+    Default = 2,
+    Tooltip = "How the Ragebot evades projectiles. ProjectileBreaker is safest. Random/Translocate can kill you if set wrong.",
     Callback = function(v) _kSet({"Ragebot","Evasion","Mode"}, v) end
 })
 HvHR2:AddDropdown("RbOnEmpty", {
@@ -4445,10 +4529,45 @@ HvHR2:AddSlider("RbEvasionRadius", {
     Callback = function(v) _kSet({"Ragebot","Evasion","Random","BaseRadius"}, v) end
 })
 HvHR2:AddSlider("RbTranslocateOffset", {
-    Text = "Translocate Offset",
-    Default = -5,
-    Min = -50, Max = 50, Rounding = 0,
+    Text = "Translocate Y Offset",
+    Default = 0,
+    Min = -3, Max = 20, Rounding = 0,
+    Tooltip = "Vertical offset when Translocate evasion fires. Negative = down (causes death). Keep at 0+.",
     Callback = function(v) _kSet({"Ragebot","Evasion","Translocate","Offset"}, v) end
+})
+HvHR2:AddSlider("RbPbDepthUp", {
+    Text = "PB Depth Up",
+    Default = 5,
+    Min = 0, Max = 25, Rounding = 1,
+    Tooltip = "ProjectileBreaker: max upward movement per evasion. Min is always 0 (no going underground).",
+    Callback = function(v)
+        _kSet({"Ragebot","Evasion","ProjectileBreaker","DepthUp","Min"}, 0)
+        _kSet({"Ragebot","Evasion","ProjectileBreaker","DepthUp","Max"}, v)
+    end
+})
+HvHR2:AddSlider("RbPbDepthFwd", {
+    Text = "PB Depth Forward",
+    Default = 5,
+    Min = 0, Max = 25, Rounding = 1,
+    Tooltip = "ProjectileBreaker: forward/backward evasion movement range.",
+    Callback = function(v)
+        _kSet({"Ragebot","Evasion","ProjectileBreaker","DepthForward","Min"}, -v)
+        _kSet({"Ragebot","Evasion","ProjectileBreaker","DepthForward","Max"}, v)
+    end
+})
+HvHR2:AddToggle("RbRandAnchor", {
+    Text = "Random: Anchor to Character",
+    Default = true,
+    Tooltip = "Keep Random evasion positions relative to your character (prevents underground teleports).",
+    Callback = function(v) _kSet({"Ragebot","Evasion","Random","AnchorFromCharacter"}, v) end
+})
+HvHR2:AddSlider("RbRandFactor", {
+    Text = "Random: Radius Variance",
+    Default = 30,
+    Min = 0, Max = 100, Rounding = 0,
+    Suffix = "%",
+    Tooltip = "Adds random variance to the base evasion radius.",
+    Callback = function(v) _kSet({"Ragebot","Evasion","Random","RadiusRandomFactor"}, v / 100) end
 })
 
 -- ── TRIGGERBOT ────────────────────────────────────────────────
@@ -4462,6 +4581,36 @@ HvHL3:AddToggle("TbVisible", {
     Text = "Target: Visible Only",
     Default = true,
     Callback = function(v) _kSet({"Triggerbot","TargetConditions","Visible"}, v) end
+})
+HvHL3:AddToggle("TbVulnerable", {
+    Text = "Target: Vulnerable Only",
+    Default = true,
+    Callback = function(v) _kSet({"Triggerbot","TargetConditions","Vulnerable"}, v) end
+})
+HvHL3:AddToggle("TbNotShielded", {
+    Text = "Target: Not Shielded",
+    Default = true,
+    Callback = function(v) _kSet({"Triggerbot","TargetConditions","NotShielded"}, v) end
+})
+HvHL3:AddToggle("TbNotDeflecting", {
+    Text = "Target: Not Deflecting",
+    Default = true,
+    Callback = function(v) _kSet({"Triggerbot","TargetConditions","NotDeflecting"}, v) end
+})
+HvHL3:AddSlider("TbReactionTime", {
+    Text = "Reaction Delay",
+    Default = 0,
+    Min = 0, Max = 500, Rounding = 0,
+    Suffix = "ms",
+    Callback = function(v) _kSet({"Triggerbot","ReactionTime"}, v / 1000) end
+})
+HvHL3:AddSlider("TbReleaseTime", {
+    Text = "Release Delay",
+    Default = 0,
+    Min = 0, Max = 500, Rounding = 0,
+    Suffix = "ms",
+    Tooltip = "Delay before releasing fire after target leaves crosshair.",
+    Callback = function(v) _kSet({"Triggerbot","ReleaseTime"}, v / 1000) end
 })
 
 -- ── FLICKBOT ──────────────────────────────────────────────────
@@ -4513,11 +4662,18 @@ HvHR3:AddSlider("FbHumanness", {
 -- ── VISUALS ───────────────────────────────────────────────────
 -- ESP state table (mirrors what we've set in KiciaStore)
 local _espState = {
-    Name     = false,
-    HealthBar= false,
-    Box      = false,
-    Tracer   = false,
-    Skeleton = false,
+    Name       = false,
+    HealthBar  = false,
+    Box        = false,
+    Tracer     = false,
+    Skeleton   = false,
+    FilledBox  = false,
+    HealthNumber = false,
+    HeldWeapon = false,
+    AmmoBar    = false,
+    Distance   = false,
+    HeadMarker = false,
+    Chams      = false,
 }
 HvHL4:AddToggle("EspEnabled", {
     Text = "Player ESP",
@@ -4578,6 +4734,70 @@ HvHL4:AddToggle("EspSkeleton", {
         _kSet({"Esp","Team","Skeleton","Enabled"}, v)
     end
 })
+HvHL4:AddToggle("EspFilledBox", {
+    Text = "ESP: Filled Box",
+    Default = false,
+    Callback = function(v)
+        _espState.FilledBox = v
+        _kSet({"Esp","Enemy","FilledBox","Enabled"}, v)
+        _kSet({"Esp","Team","FilledBox","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspHealthNum", {
+    Text = "ESP: Health Number",
+    Default = false,
+    Callback = function(v)
+        _espState.HealthNumber = v
+        _kSet({"Esp","Enemy","HealthNumber","Enabled"}, v)
+        _kSet({"Esp","Team","HealthNumber","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspHeldWeapon", {
+    Text = "ESP: Held Weapon",
+    Default = false,
+    Callback = function(v)
+        _espState.HeldWeapon = v
+        _kSet({"Esp","Enemy","HeldWeapon","Enabled"}, v)
+        _kSet({"Esp","Team","HeldWeapon","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspAmmoBar", {
+    Text = "ESP: Ammo Bar",
+    Default = false,
+    Callback = function(v)
+        _espState.AmmoBar = v
+        _kSet({"Esp","Enemy","AmmoBar","Enabled"}, v)
+        _kSet({"Esp","Team","AmmoBar","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspDistance", {
+    Text = "ESP: Distance",
+    Default = false,
+    Callback = function(v)
+        _espState.Distance = v
+        _kSet({"Esp","Enemy","Distance","Enabled"}, v)
+        _kSet({"Esp","Team","Distance","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspHeadMarker", {
+    Text = "ESP: Head Marker",
+    Default = false,
+    Callback = function(v)
+        _espState.HeadMarker = v
+        _kSet({"Esp","Enemy","HeadMarker","Enabled"}, v)
+        _kSet({"Esp","Team","HeadMarker","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspChams", {
+    Text = "ESP: Chams",
+    Default = false,
+    Tooltip = "Render enemies through walls with a highlight material.",
+    Callback = function(v)
+        _espState.Chams = v
+        _kSet({"Esp","Enemy","Chams","Enabled"}, v)
+        _kSet({"Esp","Team","Chams","Enabled"}, v)
+    end
+})
 
 -- ── VISUAL CONFIG (right side) ────────────────────────────────
 HvHR4:AddToggle("CxEnabled", {
@@ -4626,6 +4846,106 @@ HvHR4:AddToggle("WeaponHandling", {
     Text = "Weapon Handling",
     Default = false,
     Callback = function(v) _kSet({"WeaponHandling","Enabled"}, v) end
+})
+
+-- ── BULLET TRACERS ────────────────────────────────────────────
+local HvHL5 = HvHTab:AddLeftGroupbox("Bullet Tracers")
+local HvHR5 = HvHTab:AddRightGroupbox("Hit / Elim Feedback")
+local HvHL6 = HvHTab:AddLeftGroupbox("Sound Visualizer")
+
+HvHL5:AddToggle("BtEnabled", {
+    Text = "Bullet Tracers",
+    Default = false,
+    Tooltip = "Show tracer lines from you to where your bullets go.",
+    Callback = function(v) _kSet({"BulletTracers","Enabled"}, v) end
+})
+HvHL5:AddSlider("BtWidth", {
+    Text = "Tracer Width",
+    Default = 10,
+    Min = 2, Max = 50, Rounding = 0,
+    Tooltip = "Width of the tracer lines (in hundredths of a stud).",
+    Callback = function(v) _kSet({"BulletTracers","Width"}, v / 100) end
+})
+HvHL5:AddSlider("BtLifetime", {
+    Text = "Tracer Lifetime",
+    Default = 10,
+    Min = 1, Max = 50, Rounding = 0,
+    Suffix = "× 0.1s",
+    Callback = function(v) _kSet({"BulletTracers","Lifetime"}, v / 10) end
+})
+HvHL5:AddSlider("BtFadeTime", {
+    Text = "Fade Time",
+    Default = 3,
+    Min = 0, Max = 30, Rounding = 0,
+    Suffix = "× 0.1s",
+    Callback = function(v) _kSet({"BulletTracers","FadeTime"}, v / 10) end
+})
+
+-- ── HIT / ELIMINATION FEEDBACK ────────────────────────────────
+HvHR5:AddToggle("PhEnabled", {
+    Text = "Player Hit Feedback",
+    Default = false,
+    Tooltip = "Enable all hit feedback effects.",
+    Callback = function(v) _kSet({"PlayerHit","Enabled"}, v) end
+})
+HvHR5:AddToggle("PhSound", {
+    Text = "Hit Sound",
+    Default = false,
+    Callback = function(v) _kSet({"PlayerHit","Sound","Enabled"}, v) end
+})
+HvHR5:AddToggle("PhChams", {
+    Text = "Hit Chams Flash",
+    Default = false,
+    Callback = function(v) _kSet({"PlayerHit","Chams","Enabled"}, v) end
+})
+HvHR5:AddToggle("PhFlash", {
+    Text = "Hit Screen Flash",
+    Default = false,
+    Callback = function(v) _kSet({"PlayerHit","HitFlash","Enabled"}, v) end
+})
+HvHR5:AddToggle("PeEnabled", {
+    Text = "Elimination Feedback",
+    Default = false,
+    Tooltip = "Enable all kill/elimination feedback effects.",
+    Callback = function(v) _kSet({"PlayerElimination","Enabled"}, v) end
+})
+HvHR5:AddToggle("PeSound", {
+    Text = "Kill Sound",
+    Default = false,
+    Callback = function(v) _kSet({"PlayerElimination","Sound","Enabled"}, v) end
+})
+HvHR5:AddToggle("PeChams", {
+    Text = "Kill Chams Flash",
+    Default = false,
+    Callback = function(v) _kSet({"PlayerElimination","Chams","Enabled"}, v) end
+})
+HvHR5:AddToggle("PeFlash", {
+    Text = "Kill Screen Flash",
+    Default = false,
+    Callback = function(v) _kSet({"PlayerElimination","KillFlash","Enabled"}, v) end
+})
+
+-- ── SOUND VISUALIZER ──────────────────────────────────────────
+HvHL6:AddToggle("SvEnabled", {
+    Text = "Sound Visualizer",
+    Default = false,
+    Tooltip = "Show visual indicators for enemy sounds (footsteps etc.).",
+    Callback = function(v) _kSet({"SoundVisualizer","Enabled"}, v) end
+})
+HvHL6:AddDropdown("SvSource", {
+    Text = "Sound Source Filter",
+    Values = {"All", "Enemies", "Team", "Self"},
+    Default = 2,
+    Tooltip = "Whose sounds to visualize.",
+    Callback = function(v) _kSet({"SoundVisualizer","Source"}, v) end
+})
+HvHL6:AddSlider("SvMinVol", {
+    Text = "Minimum Volume",
+    Default = 10,
+    Min = 0, Max = 100, Rounding = 0,
+    Suffix = "%",
+    Tooltip = "Only show sounds louder than this threshold.",
+    Callback = function(v) _kSet({"SoundVisualizer","MinVolume"}, v / 100) end
 })
 
 end -- HvH UI scope
@@ -71516,9 +71836,12 @@ CfgG:AddButton("Load Rage Config", function()
     -- Ragebot (max)
     _T("RbEnabled", true)   _T("RbHackers", true)   _T("RbHealthLead", true)
     _T("RbPrimary", true)   _T("RbSecondary", true)   _T("RbMelee", true)
-    _O("RbStability", 0)   _O("RbShootFrames", 1)   _O("RbEvasion", "Translocate")
-    _O("RbOnEmpty", "SwapOrReload")   _O("RbEvasionRadius", 200)   _O("RbTranslocateOffset", -50)
-    _kSet({"Ragebot","Evasion","Mode"}, "Translocate")   _kSet({"Ragebot","Evasion","Translocate","Offset"}, -50)
+    _O("RbStability", 0)   _O("RbShootFrames", 1)   _O("RbEvasion", "ProjectileBreaker")
+    _O("RbOnEmpty", "SwapOrReload")   _O("RbEvasionRadius", 150)   _O("RbTranslocateOffset", 0)
+    _kSet({"Ragebot","Evasion","Mode"}, "ProjectileBreaker")
+    _kSet({"Ragebot","Evasion","ProjectileBreaker","DepthUp","Min"}, 0)
+    _kSet({"Ragebot","Evasion","ProjectileBreaker","DepthUp","Max"}, 8)
+    _kSet({"Ragebot","Evasion","Random","AnchorFromCharacter"}, true)
     -- Triggerbot
     _T("TbEnabled", true)   _T("TbVisible", false)
     -- Flickbot (max)
@@ -71622,5 +71945,5 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
 pcall(function() SaveManager:LoadAutoloadConfig() end)
 
-Library:Notify({ Title = "UNCODE v1  [build 20261007-d]", Description = "Rivals HvH | Combat・HvH・Player・Settings ✓ loaded", Time = 6 })
+Library:Notify({ Title = "UNCODE v1  [build 20261009-e]", Description = "Rivals HvH | Combat・HvH・Player・Settings ✓ loaded", Time = 6 })
 end)()
