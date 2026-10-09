@@ -4285,6 +4285,29 @@ AddBindableToggle(PLV, "PlDeviceSpoof", "Device Spoof (VR)", false, function(v)
     if v then _kSet({"DeviceSpoof","SpoofType"}, "VR") end
 end)
 
+AddBindableToggle(PLV, "PlCamFov", "Custom FOV", false, function(v)
+    _kSet({"CameraFov","Enabled"}, v)
+end)
+PLV2:AddSlider("PlCamFovValue", {
+    Text = "FOV Value",
+    Default = 70, Min = 30, Max = 120, Rounding = 0,
+    Callback = function(v) _kSet({"CameraFov","Value"}, v) end
+})
+
+AddBindableToggle(PLV, "PlStretchRes", "Stretched Resolution", false, function(v)
+    _kSet({"StretchedResolution","Enabled"}, v)
+end)
+PLV2:AddSlider("PlStretchResX", {
+    Text = "Stretch Width (X)",
+    Default = 13, Min = 1, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"StretchedResolution","X"}, v) end
+})
+PLV2:AddSlider("PlStretchResY", {
+    Text = "Stretch Height (Y)",
+    Default = 10, Min = 1, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"StretchedResolution","Y"}, v) end
+})
+
 -- ── Item Modifiers (Kicia) ─────────────────────────────────────
 local PLI  = Tabs.Player:AddLeftGroupbox("Item Modifiers")
 local PLI2 = Tabs.Player:AddRightGroupbox("Modifier Config")
