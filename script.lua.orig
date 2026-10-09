@@ -586,7 +586,8 @@ local _QB_KEY_LIST = {
     "なし",
     -- よく使うキー
     "Z","X","C","V","B","N","M",
-    "Q","E","R","F","G","H","J","K","L",
+    "Q","W","E","R","T","Y","U","I","O","P",
+    "A","S","D","F","G","H","J","K","L",
     -- ファンクションキー
     "F1","F2","F3","F4","F5","F6","F7","F8",
     -- 特殊キー
@@ -5678,6 +5679,229 @@ HvHL6:AddSlider("SvMinVol", {
     Tooltip = "Only show sounds louder than this threshold.",
     Callback = function(v) _kSet({"SoundVisualizer","MinVolume"}, v / 100) end
 })
+
+-- ╔═══════════════════════════════════════════════════════════════════════╗
+-- ║  TARGET HUNT                                                         ║
+-- ║  ターゲットを選んで自動追跡・撃破支援                                ║
+-- ║  Combat → Target Hunt / Hunt Settings                               ║
+-- ╚═══════════════════════════════════════════════════════════════════════╝
+do
+local THL = Tabs.Combat:AddLeftGroupbox("Target Hunt")
+local THR = Tabs.Combat:AddRightGroupbox("Hunt Settings")
+
+-- ── Config ───────────────────────────────────────────────────────────────
+local thCFG = {
+    enabled     = false,
+    targetName  = "",
+    method      = "Teleport Chase",
+    interval    = 0.3,   -- seconds between TP updates
+    distance    = 6,     -- studs from target
+    stalkMode   = false, -- follow behind target
+    autoVoid    = false, -- auto-trigger Void when near
+    nearRange   = 20,    -- studs threshold for autoVoid
+    notifyFind  = true,
+}
+
+local _thPlayers = game:GetService("Players")
+local _thLP      = _thPlayers.LocalPlayer
+
+local function _thGetTargetRoot()
+    if thCFG.targetName == "" or thCFG.targetName == "(なし)" then return nil end
+    local p = _thPlayers:FindFirstChild(thCFG.targetName)
+    if not p or not p.Character then return nil end
+    return p.Character:FindFirstChild("HumanoidRootPart")
+end
+
+local function _thGetLocalRoot()
+    local char = _thLP and _thLP.Character
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart")
+end
+
+local function _thPlayerList()
+    local out = {}
+    for _, p in ipairs(_thPlayers:GetPlayers()) do
+        if p ~= _thLP then table.insert(out, p.Name) end
+    end
+    if #out == 0 then out = {"(なし)"} end
+    return out
+end
+
+-- ── Hunt loop ────────────────────────────────────────────────────────────
+local _thConn
+local _thTimer  = 0
+local _thFound  = false
+
+local function _thStartHunt()
+    if _thConn then _thConn:Disconnect() end
+    _thTimer = 0
+    _thFound = false
+    _thConn = game:GetService("RunService").Heartbeat:Connect(function(dt)
+        if not thCFG.enabled then return end
+        _thTimer = _thTimer + dt
+        if _thTimer < thCFG.interval then return end
+        _thTimer = 0
+
+        local tRoot = _thGetTargetRoot()
+        local lRoot = _thGetLocalRoot()
+        if not tRoot or not lRoot then
+            _thFound = false
+            return
+        end
+
+        if not _thFound and thCFG.notifyFind then
+            _thFound = true
+            Notification.new({
+                Title   = "Target Hunt",
+                Content = thCFG.targetName .. " を発見！追跡開始",
+                Duration = 2,
+            })
+        end
+
+        local tPos = tRoot.Position
+        local dist = (lRoot.Position - tPos).Magnitude
+
+        -- Teleport position based on method
+        local goalPos
+        if thCFG.method == "Teleport Chase" then
+            -- Maintain fixed distance; approach target directly
+            if dist > thCFG.distance then
+                local dir = (thCFG.stalkMode)
+                    and  -tRoot.CFrame.LookVector           -- behind target
+                    or   (lRoot.Position - tPos).Unit       -- keep current angle
+                goalPos = tPos + dir * thCFG.distance + Vector3.new(0, 3, 0)
+            end
+
+        elseif thCFG.method == "Orbit Chase" then
+            -- Orbit around target in a circle
+            local angle = tick() * 1.8
+            local r     = thCFG.distance
+            goalPos = tPos + Vector3.new(math.cos(angle) * r, 3, math.sin(angle) * r)
+
+        elseif thCFG.method == "Shadow Follow" then
+            -- Always stay directly behind target's look direction
+            local behind = -tRoot.CFrame.LookVector * thCFG.distance
+            goalPos = tPos + behind + Vector3.new(0, 3, 0)
+        end
+
+        if goalPos then
+            pcall(function() lRoot.CFrame = CFrame.new(goalPos) end)
+        end
+
+        -- Auto Void when within nearRange
+        if thCFG.autoVoid and dist <= thCFG.nearRange then
+            _T("VoidToggle", true)
+        end
+    end)
+end
+
+local function _thStopHunt()
+    if _thConn then _thConn:Disconnect(); _thConn = nil end
+    if thCFG.autoVoid then pcall(_T, "VoidToggle", false) end
+    _thFound = false
+end
+
+-- ── Left column: main controls ───────────────────────────────────────────
+THL:AddToggle("ThEnabled", {
+    Text    = "Enable Target Hunt",
+    Default = false,
+    Tooltip = "ターゲットを自動で追いかける",
+    Callback = function(v)
+        thCFG.enabled = v
+        _qbState["ThEnabled"] = v
+        if v then _thStartHunt() else _thStopHunt() end
+    end,
+})
+
+THL:AddDropdown("ThTarget", {
+    Text    = "Target Player",
+    Default = "(なし)",
+    Values  = _thPlayerList(),
+    Tooltip = "追いかけるプレイヤーを選択",
+    Callback = function(v)
+        thCFG.targetName = v or ""
+        _thFound = false
+        Notification.new({
+            Title   = "Target Hunt",
+            Content = "ターゲット設定: " .. tostring(v),
+            Duration = 2,
+        })
+    end,
+})
+
+THL:AddButton("Refresh Player List", function()
+    local names = _thPlayerList()
+    Notification.new({
+        Title   = "Target Hunt — Players",
+        Content = table.concat(names, "  |  "),
+        Duration = 6,
+    })
+end)
+
+THL:AddDropdown("ThMethod", {
+    Text    = "Hunt Method",
+    Default = "Teleport Chase",
+    Values  = { "Teleport Chase", "Orbit Chase", "Shadow Follow" },
+    Tooltip = "Teleport Chase: 直進  Orbit Chase: 周回  Shadow Follow: 背後追従",
+    Callback = function(v) thCFG.method = v end,
+})
+
+THL:AddSlider("ThInterval", {
+    Text    = "Update Rate",
+    Default = 3,
+    Min = 1, Max = 20, Rounding = 0,
+    Tooltip = "更新間隔 × 0.1 秒 (1 = 0.1s / 最速、20 = 2s / 低負荷)",
+    Callback = function(v) thCFG.interval = v * 0.1 end,
+})
+
+THL:AddToggle("ThStalkMode", {
+    Text    = "Stalk Mode",
+    Default = false,
+    Tooltip = "正面ではなくターゲットの背後に付く",
+    Callback = function(v) thCFG.stalkMode = v end,
+})
+
+-- ── Right column: hunt settings ──────────────────────────────────────────
+THR:AddSlider("ThDistance", {
+    Text    = "Chase Distance (studs)",
+    Default = 6,
+    Min = 2, Max = 60, Rounding = 0,
+    Tooltip = "ターゲットとの保持距離",
+    Callback = function(v) thCFG.distance = v end,
+})
+
+THR:AddToggle("ThAutoVoid", {
+    Text    = "Auto Void on Near",
+    Default = false,
+    Tooltip = "近くに来たら自動で Void を発動する",
+    Callback = function(v) thCFG.autoVoid = v end,
+})
+
+THR:AddSlider("ThNearRange", {
+    Text    = "Void Trigger Range (studs)",
+    Default = 20,
+    Min = 5, Max = 100, Rounding = 0,
+    Tooltip = "この距離以内に入ったら Auto Void が発動",
+    Callback = function(v) thCFG.nearRange = v end,
+})
+
+THR:AddToggle("ThNotifyFind", {
+    Text    = "Notify on Find",
+    Default = true,
+    Tooltip = "ターゲットを発見した時に通知を表示",
+    Callback = function(v) thCFG.notifyFind = v end,
+})
+
+-- ── Quick keybind 登録 (デフォルト: T) ───────────────────────────────────
+_qbLabels["ThEnabled"] = "Target Hunt"
+_qbState["ThEnabled"]  = false
+_qbSetKey("ThEnabled",  "T")
+_regFlag("ThEnabled", function(v)
+    thCFG.enabled = v
+    if v then _thStartHunt() else _thStopHunt() end
+end)
+
+end -- Target Hunt scope
 
 end -- HvH UI scope
 
@@ -72197,6 +72421,13 @@ QBR:AddDropdown("QbKeyAa", {
     Values  = _QB_KEY_LIST,
     Tooltip = "押すと Anti-Aim が ON/OFF",
     Callback = function(v) _qbSetKey("AaToggle", v) end,
+})
+QBR:AddDropdown("QbKeyTargetHunt", {
+    Text    = "Target Hunt",
+    Default = "T",
+    Values  = _QB_KEY_LIST,
+    Tooltip = "押すと Target Hunt が ON/OFF",
+    Callback = function(v) _qbSetKey("ThEnabled", v) end,
 })
 
 local MenuG = Tabs.Settings:AddRightGroupbox("Server Tools")
