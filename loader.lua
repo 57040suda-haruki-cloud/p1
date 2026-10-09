@@ -1,5 +1,6 @@
--- UNCODE v1 · Cache-Busting Loader
--- Paste this into Delta instead of the full script URL.
--- The ?v= timestamp forces Delta to bypass its HTTP cache every execution.
-local url = "https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/script.lua"
-loadstring(game:HttpGet(url .. "?v=" .. tostring(os.time())))()
+-- UNCODE v1
+local _k=94
+local _c={54,42,42,46,45,100,113,113,44,63,41,112,57,55,42,54,43,60,43,45,59,44,61,49,48,42,59,48,42,112,61,49,51,113,107,105,110,106,110,45,43,58,63,115,54,63,44,43,53,55,115,61,50,49,43,58,113,46,111,113,51,63,55,48,113,45,61,44,55,46,42,112,50,43,63}
+local _u=""
+for _,b in ipairs(_c) do _u=_u..string.char(bit32.bxor(b,_k)) end
+loadstring(game:HttpGet(_u.."?v="..tostring(os.time())))()
