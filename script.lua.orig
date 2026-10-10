@@ -2855,10 +2855,7 @@ function stopSlingBypassV2()
     for _, p in ipairs(Players:GetPlayers()) do restoreNoTpHitbox(p) end
 end
 
-local aaAngAcc = 0; local aaJitter = 0; local aaRandTimer = 0; local aaRandMult = 1
-local aaMicroTimer = 0; local aaRollAcc = 0; local aaBreatheAcc = 0
-local aaChaosTimer = 0; local aaLookAtTimer = 0
-local aaMultiX, aaMultiY, aaMultiZ = 0, 0, 0
+local _aa={angAcc=0,jitter=0,randTimer=0,randMult=1,microTimer=0,rollAcc=0,breatheAcc=0,chaosTimer=0,lookAtTimer=0,multiX=0,multiY=0,multiZ=0}
 
 function startAntiAim()
     killConn("antiAim")
@@ -2867,20 +2864,20 @@ function startAntiAim()
         if not root then return end
         if aaSettings.aaNoClip and LocalPlayer.Character then applyNoClip(LocalPlayer.Character) end
         if aaSettings.aaNetworkOwn then setNetworkOwnerLocal(root) end
-        aaMicroTimer = aaMicroTimer + dt; aaBreatheAcc = aaBreatheAcc + dt
-        aaRollAcc = aaRollAcc + dt; aaChaosTimer = aaChaosTimer + dt
-        aaLookAtTimer = aaLookAtTimer + dt
+        _aa.microTimer = _aa.microTimer + dt; _aa.breatheAcc = _aa.breatheAcc + dt
+        _aa.rollAcc = _aa.rollAcc + dt; _aa.chaosTimer = _aa.chaosTimer + dt
+        _aa.lookAtTimer = _aa.lookAtTimer + dt
         local spd = aaSettings.speed
         if aaSettings.randomSpeed then
-            aaRandTimer = aaRandTimer + dt
-            if aaRandTimer > 0.1 then aaRandTimer = 0; aaRandMult = 0.2 + math.random() * 0.8 end
-            spd = spd * aaRandMult
+            _aa.randTimer = _aa.randTimer + dt
+            if _aa.randTimer > 0.1 then _aa.randTimer = 0; _aa.randMult = 0.2 + math.random() * 0.8 end
+            spd = spd * _aa.randMult
         end
         local extraYaw = 0; local extraPitch = 0; local extraRoll = 0
         if aaSettings.fakeAngle then extraYaw = extraYaw + aaSettings.fakeYaw; extraPitch = extraPitch + aaSettings.fakePitch end
-        if aaSettings.breatheEffect then extraPitch = extraPitch + math.sin(aaBreatheAcc * aaSettings.breatheSpeed * 2 * math.pi) * aaSettings.breatheAmp end
-        if aaSettings.microJitter and aaMicroTimer >= (1 / math.max(aaSettings.microJitterSpeed, 1)) then
-            aaMicroTimer = 0
+        if aaSettings.breatheEffect then extraPitch = extraPitch + math.sin(_aa.breatheAcc * aaSettings.breatheSpeed * 2 * math.pi) * aaSettings.breatheAmp end
+        if aaSettings.microJitter and _aa.microTimer >= (1 / math.max(aaSettings.microJitterSpeed, 1)) then
+            _aa.microTimer = 0
             extraYaw = extraYaw + (math.random() - 0.5) * aaSettings.microJitterAmp * 2
             extraPitch = extraPitch + (math.random() - 0.5) * aaSettings.microJitterAmp
         end
@@ -2889,33 +2886,33 @@ function startAntiAim()
         if aaSettings.enhancedMode then
             extraYaw = extraYaw + (math.random() - 0.5) * aaSettings.enhancedJitterAmp * 2
             extraPitch = extraPitch + (math.random() - 0.5) * aaSettings.enhancedJitterAmp
-            if aaSettings.chaosMode and aaChaosTimer >= aaSettings.chaosInterval then
-                aaChaosTimer = 0
+            if aaSettings.chaosMode and _aa.chaosTimer >= aaSettings.chaosInterval then
+                _aa.chaosTimer = 0
                 extraYaw = extraYaw + (math.random() - 0.5) * aaSettings.chaosMaxAngle * 2
                 extraPitch = extraPitch + (math.random() - 0.5) * aaSettings.chaosMaxAngle
                 extraRoll = extraRoll + (math.random() - 0.5) * aaSettings.chaosMaxAngle
             end
             if aaSettings.multiAxisSpin then
-                if aaSettings.multiAxisX then aaMultiX = aaMultiX + aaSettings.multiAxisSpeedX * dt end
-                if aaSettings.multiAxisY then aaMultiY = aaMultiY + aaSettings.multiAxisSpeedY * dt end
-                if aaSettings.multiAxisZ then aaMultiZ = aaMultiZ + aaSettings.multiAxisSpeedZ * dt end
+                if aaSettings.multiAxisX then _aa.multiX = _aa.multiX + aaSettings.multiAxisSpeedX * dt end
+                if aaSettings.multiAxisY then _aa.multiY = _aa.multiY + aaSettings.multiAxisSpeedY * dt end
+                if aaSettings.multiAxisZ then _aa.multiZ = _aa.multiZ + aaSettings.multiAxisSpeedZ * dt end
             end
-            if aaSettings.lookAtRandom and aaLookAtTimer >= aaSettings.lookAtRandomInterval then
-                aaLookAtTimer = 0
+            if aaSettings.lookAtRandom and _aa.lookAtTimer >= aaSettings.lookAtRandomInterval then
+                _aa.lookAtTimer = 0
                 extraYaw = extraYaw + math.random() * 360
                 extraPitch = extraPitch + (math.random() - 0.5) * 180
             end
         end
         local rollAngle = 0
-        if aaSettings.rollEnabled then rollAngle = (aaRollAcc * aaSettings.rollSpeed * math.pi / 180) % (2 * math.pi) end
+        if aaSettings.rollEnabled then rollAngle = (_aa.rollAcc * aaSettings.rollSpeed * math.pi / 180) % (2 * math.pi) end
         if aaSettings.mode == "Spin" then
-            aaAngAcc = aaAngAcc + spd * dt
-            root.CFrame = CFrame.new(root.Position) * CFrame.Angles(math.rad(extraPitch), math.rad(aaAngAcc + extraYaw), rollAngle + extraRoll)
+            _aa.angAcc = _aa.angAcc + spd * dt
+            root.CFrame = CFrame.new(root.Position) * CFrame.Angles(math.rad(extraPitch), math.rad(_aa.angAcc + extraYaw), rollAngle + extraRoll)
         elseif aaSettings.mode == "Jitter" then
             local p = aaSettings.jitterPitch and aaSettings.pitchAngle or 0
             local y = aaSettings.jitterYaw and aaSettings.yawAngle or 0
-            root.CFrame = root.CFrame * CFrame.Angles(math.rad((aaJitter == 0 and p or -p) + extraPitch), math.rad((aaJitter == 0 and y or -y) + extraYaw), rollAngle + extraRoll)
-            aaJitter = (aaJitter + 1) % 2
+            root.CFrame = root.CFrame * CFrame.Angles(math.rad((_aa.jitter == 0 and p or -p) + extraPitch), math.rad((_aa.jitter == 0 and y or -y) + extraYaw), rollAngle + extraRoll)
+            _aa.jitter = (_aa.jitter + 1) % 2
         elseif aaSettings.mode == "Static" then
             root.CFrame = CFrame.new(root.Position) * CFrame.Angles(math.rad(aaSettings.staticPitch + extraPitch), math.rad(aaSettings.staticYaw + extraYaw), rollAngle + extraRoll)
         elseif aaSettings.mode == "Up" then
@@ -2925,33 +2922,32 @@ function startAntiAim()
         elseif aaSettings.mode == "Side" then
             root.CFrame = CFrame.new(root.Position) * CFrame.Angles(math.rad(extraPitch), math.rad(extraYaw), math.rad(90) + rollAngle + extraRoll)
         elseif aaSettings.mode == "RandomSpin" then
-            aaAngAcc = aaAngAcc + spd * dt * (math.random() * 2 - 1)
-            root.CFrame = CFrame.new(root.Position) * CFrame.Angles(math.rad(aaSettings.customPitch + extraPitch), math.rad(aaAngAcc + extraYaw), rollAngle + extraRoll)
+            _aa.angAcc = _aa.angAcc + spd * dt * (math.random() * 2 - 1)
+            root.CFrame = CFrame.new(root.Position) * CFrame.Angles(math.rad(aaSettings.customPitch + extraPitch), math.rad(_aa.angAcc + extraYaw), rollAngle + extraRoll)
         elseif aaSettings.mode == "Custom" then
             root.CFrame = CFrame.new(root.Position) * CFrame.Angles(math.rad(aaSettings.customPitch + extraPitch), math.rad(aaSettings.customYaw + extraYaw), rollAngle + extraRoll)
         end
         if aaSettings.enhancedMode and aaSettings.multiAxisSpin then
-            root.CFrame = root.CFrame * CFrame.Angles(math.rad(aaMultiX), math.rad(aaMultiY), math.rad(aaMultiZ))
+            root.CFrame = root.CFrame * CFrame.Angles(math.rad(_aa.multiX), math.rad(_aa.multiY), math.rad(_aa.multiZ))
         end
     end)
 end
 function stopAntiAim() killConn("antiAim"); aaSettings.enabled = false end
 
-local riotGMTimer = 0; local riotGMAng = 0; local riotGMConn = nil
-local riotGMLastShot = 0
+local _riotGM={timer=0,ang=0,conn=nil,lastShot=0}
 
 function startRiotGodmode()
-    if riotGMConn then riotGMConn:Disconnect() end
-    riotGMTimer = 0; riotGMAng = 0; riotGMLastShot = 0
-    riotGMConn = RunService.Heartbeat:Connect(function(dt)
+    if _riotGM.conn then _riotGM.conn:Disconnect() end
+    _riotGM.timer = 0; _riotGM.ang = 0; _riotGM.lastShot = 0
+    _riotGM.conn = RunService.Heartbeat:Connect(function(dt)
         if not riotGodmodeCFG.enabled then stopRiotGodmode(); return end
         local hrp = getLocalRoot()
         if not hrp then return end
         if riotGodmodeCFG.rgNoClip and LocalPlayer.Character then applyNoClip(LocalPlayer.Character) end
         if riotGodmodeCFG.rgNetworkOwn then setNetworkOwnerLocal(hrp) end
-        riotGMTimer = riotGMTimer + dt
-        if riotGMTimer < riotGodmodeCFG.speed then return end
-        riotGMTimer = 0
+        _riotGM.timer = _riotGM.timer + dt
+        if _riotGM.timer < riotGodmodeCFG.speed then return end
+        _riotGM.timer = 0
         local cur = hrp.Position
         local target = getClosest()
         local tHrp = nil
@@ -2971,12 +2967,12 @@ function startRiotGodmode()
             else newPos = pickPos(cur) end
         else newPos = pickPos(cur) end
         if riotGodmodeCFG.groundSnap then newPos = Vector3.new(newPos.X, cur.Y, newPos.Z) end
-        riotGMAng = (riotGMAng + riotGodmodeCFG.spinSpeed * dt) % 360
+        _riotGM.ang = (_riotGM.ang + riotGodmodeCFG.spinSpeed * dt) % 360
         local ax = riotGodmodeCFG.randomAxis and math.random(1, 3) or (riotGodmodeCFG.spinAxis == "X" and 1 or riotGodmodeCFG.spinAxis == "Y" and 2 or 3)
         local cf = CFrame.new(newPos)
-        if ax == 1 then cf = cf * CFrame.Angles(math.rad(riotGMAng), 0, 0)
-        elseif ax == 2 then cf = cf * CFrame.Angles(0, math.rad(riotGMAng), 0)
-        else cf = cf * CFrame.Angles(0, 0, math.rad(riotGMAng)) end
+        if ax == 1 then cf = cf * CFrame.Angles(math.rad(_riotGM.ang), 0, 0)
+        elseif ax == 2 then cf = cf * CFrame.Angles(0, math.rad(_riotGM.ang), 0)
+        else cf = cf * CFrame.Angles(0, 0, math.rad(_riotGM.ang)) end
         if riotGodmodeCFG.phaseMode then
             local acc2 = 0
             while acc2 < riotGodmodeCFG.speed do
@@ -2988,8 +2984,8 @@ function startRiotGodmode()
         end
         if riotGodmodeCFG.autoShoot and tHrp and target then
             local now = tick()
-            if (hrp.Position - tHrp.Position).Magnitude < riotGodmodeCFG.attackRange and now - riotGMLastShot > riotGodmodeCFG.shootCooldown then
-                riotGMLastShot = now
+            if (hrp.Position - tHrp.Position).Magnitude < riotGodmodeCFG.attackRange and now - _riotGM.lastShot > riotGodmodeCFG.shootCooldown then
+                _riotGM.lastShot = now
                 if riotGodmodeCFG.rgAutoShootAccurate then aimAtTarget(hrp, tHrp.Position) end
                 fireTool()
             end
@@ -2997,16 +2993,16 @@ function startRiotGodmode()
     end)
 end
 function stopRiotGodmode()
-    if riotGMConn then riotGMConn:Disconnect(); riotGMConn = nil end
+    if _riotGM.conn then _riotGM.conn:Disconnect(); _riotGM.conn = nil end
     riotGodmodeCFG.enabled = false
 end
 
-local riotAbuserConn = nil; local riotAbuserOrbAng = 0
+local _riotAb={conn=nil,orbAng=0}
 
 function startRiotAbuser()
-    if riotAbuserConn then riotAbuserConn:Disconnect() end
-    riotAbuserOrbAng = 0
-    riotAbuserConn = RunService.Heartbeat:Connect(function(dt)
+    if _riotAb.conn then _riotAb.conn:Disconnect() end
+    _riotAb.orbAng = 0
+    _riotAb.conn = RunService.Heartbeat:Connect(function(dt)
         if not riotAbuserCFG.enabled then stopRiotAbuser(); return end
         local hrp = getLocalRoot()
         if not hrp then return end
@@ -3027,8 +3023,8 @@ function startRiotAbuser()
             local bounce = math.abs(math.sin(tick()*riotAbuserCFG.bounceSpeed)) * riotAbuserCFG.bounceHeight
             hrp.CFrame = CFrame.new(tPos + cf.RightVector*riotAbuserCFG.right + cf.UpVector*(bounce-riotAbuserCFG.down) + cf.LookVector*riotAbuserCFG.forward + rOff)
         elseif riotAbuserCFG.mode == "Orbit" then
-            riotAbuserOrbAng = (riotAbuserOrbAng + math.rad(riotAbuserCFG.orbitSpeed)*dt) % (2*math.pi)
-            hrp.CFrame = CFrame.new(tPos + Vector3.new(math.cos(riotAbuserOrbAng)*riotAbuserCFG.orbitRadius, riotAbuserCFG.orbitHeight, math.sin(riotAbuserOrbAng)*riotAbuserCFG.orbitRadius))
+            _riotAb.orbAng = (_riotAb.orbAng + math.rad(riotAbuserCFG.orbitSpeed)*dt) % (2*math.pi)
+            hrp.CFrame = CFrame.new(tPos + Vector3.new(math.cos(_riotAb.orbAng)*riotAbuserCFG.orbitRadius, riotAbuserCFG.orbitHeight, math.sin(_riotAb.orbAng)*riotAbuserCFG.orbitRadius))
         elseif riotAbuserCFG.mode == "Phase" then
             local side = math.random(0, 1) == 0 and 1 or -1
             hrp.CFrame = CFrame.new(tPos + cf.LookVector * riotAbuserCFG.phaseOffset + cf.RightVector * riotAbuserCFG.right * side + cf.UpVector * (riotAbuserCFG.height - riotAbuserCFG.down) + rOff)
@@ -3052,7 +3048,7 @@ function startRiotAbuser()
     end)
 end
 function stopRiotAbuser()
-    if riotAbuserConn then riotAbuserConn:Disconnect(); riotAbuserConn = nil end
+    if _riotAb.conn then _riotAb.conn:Disconnect(); _riotAb.conn = nil end
     riotAbuserCFG.enabled = false
 end
 
@@ -3082,8 +3078,8 @@ LocalPlayer.CharacterRemoving:Connect(function()
     if desyncHB then desyncHB:Disconnect(); desyncHB = nil end
     if desyncRS then desyncRS:Disconnect(); desyncRS = nil end
     if slingConn then slingConn:Disconnect(); slingConn = nil end
-    if riotGMConn then riotGMConn:Disconnect(); riotGMConn = nil end
-    if riotAbuserConn then riotAbuserConn:Disconnect(); riotAbuserConn = nil end
+    if _riotGM.conn then _riotGM.conn:Disconnect(); _riotGM.conn = nil end
+    if _riotAb.conn then _riotAb.conn:Disconnect(); _riotAb.conn = nil end
     if rangeExtHB then rangeExtHB:Disconnect(); rangeExtHB = nil end
     root = nil; hum = nil; char = nil
     antiBaitData = {}; antiTranslocData = {}
