@@ -32,29 +32,36 @@ do
             pcall(setthreadidentity, 8)
         end
 
-        local okEnv, renv = pcall(getrenv)
-        local setmetatableTarget = okEnv and renv and renv.setmetatable
-        if hookfunction and setmetatableTarget then
-            local oldSetmetatable = setmetatableTarget
-            local okHook, hooked = pcall(hookfunction, setmetatableTarget, safeNewcclosure(function(Table, Metatable)
-                if Metatable and type(Metatable) == "table" and rawget(Metatable, "__mode") then
-                    local mode = rawget(Metatable, "__mode")
-                    if mode == "kv" or mode == "v" or mode == "k" then
-                        local okTrace, trace = pcall(debug.traceback)
-                        trace = okTrace and trace or ""
-                        if trace:find("MiscellaneousController", 1, true)
-                            or trace:find("CameraSecurity", 1, true)
-                            or trace:find("AnalyticsPipelineController", 1, true) then
-                            return oldSetmetatable({1, 2, 3}, {})
+        pcall(function()
+            local okEnv, renv = pcall(getrenv)
+            local setmetatableTarget = okEnv and renv and renv.setmetatable
+            if hookfunction and setmetatableTarget then
+                local oldSetmetatable = setmetatableTarget
+                local cb = safeNewcclosure(function(Table, Metatable)
+                    local ok2, result = pcall(function()
+                        if Metatable and type(Metatable) == "table" and rawget(Metatable, "__mode") then
+                            local mode = rawget(Metatable, "__mode")
+                            if mode == "kv" or mode == "v" or mode == "k" then
+                                local okTrace, trace = pcall(debug.traceback)
+                                trace = okTrace and trace or ""
+                                if trace:find("MiscellaneousController", 1, true)
+                                    or trace:find("CameraSecurity", 1, true)
+                                    or trace:find("AnalyticsPipelineController", 1, true) then
+                                    return oldSetmetatable({1, 2, 3}, {})
+                                end
+                            end
                         end
-                    end
+                        return oldSetmetatable(Table, Metatable)
+                    end)
+                    if ok2 then return result end
+                    return oldSetmetatable(Table, Metatable)
+                end)
+                local okHook, hooked = pcall(hookfunction, setmetatableTarget, cb)
+                if okHook and hooked then
+                    oldSetmetatable = hooked
                 end
-                return oldSetmetatable(Table, Metatable)
-            end))
-            if okHook and hooked then
-                oldSetmetatable = hooked
             end
-        end
+        end)
 
         local okPlayer, localPlayer = pcall(function()
             return cloneref(game:GetService("Players")).LocalPlayer
