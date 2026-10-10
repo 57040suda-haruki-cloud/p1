@@ -4219,6 +4219,7 @@ local _skSaveConfig, _skLoadConfig
 end)()  -- end skinchanger function scope
 
 -- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
+do
 local SK  = Tabs.SkinChanger:AddLeftGroupbox("SkinChanger")
 local SKR = Tabs.SkinChanger:AddRightGroupbox("Info")
 
@@ -4239,6 +4240,7 @@ SKR:AddLabel("Use the in-game shop / wardrobe")
 SKR:AddLabel("UI to equip skins, charms, wraps.")
 SKR:AddLabel("Config saved to:")
 SKR:AddLabel("Rivals-Skinchanger/skins.txt")
+end
 
 
 
@@ -4259,6 +4261,7 @@ end
 --  Wired to Kicia ReactiveStore via _kSet / getgenv()._UNC_KiciaStore
 -- ============================================================
 do -- Player Tab scope
+do
 local PLM  = Tabs.Player:AddLeftGroupbox("Movement")
 local PLM2 = Tabs.Player:AddRightGroupbox("Movement Config")
 local PLS  = Tabs.Player:AddLeftGroupbox("Player Spoofer")
@@ -4692,6 +4695,7 @@ PLS:AddButton(_t("全スプーフ ON","All Spoof ON"), function()
         Content=_t("全"..#_spfAllIds.."項目を有効化", #_spfAllIds.." items enabled"), Duration=3 })
 end)
 PLS:AddButton(_t("全スプーフ OFF","All Spoof OFF"), function()
+end
     for _, id in ipairs(_spfAllIds) do
         if Toggles[id] then pcall(function() Toggles[id]:SetValue(false) end) end
     end
@@ -4701,6 +4705,7 @@ end)
 end -- Spoofer bulk toggle scope
 
 -- ── World / Removables (Kicia) ─────────────────────────────────
+do
 local PLW = Tabs.Player:AddLeftGroupbox("World")
 
 AddBindableToggle(PLW, "WrNoFlashbang", "No Flashbang", false, function(v)
@@ -4725,10 +4730,12 @@ AddBindableToggle(PLW, "WrNoMuzzleFlash", "No Muzzle Flash", false, function(v)
     _kSet({"Removables","NoMuzzleFlash"}, v)
 end)
 AddBindableToggle(PLW, "WrNoHitmarker", "No Hitmarker", false, function(v)
+end
     _kSet({"Removables","NoHitmarker"}, v)
 end)
 
 -- ── Camera & Visual (Kicia) ────────────────────────────────────
+do
 local PLV  = Tabs.Player:AddLeftGroupbox("Camera & Visual")
 local PLV2 = Tabs.Player:AddRightGroupbox("Camera Config")
 
@@ -4807,12 +4814,14 @@ PLV2:AddSlider("PlStretchResX", {
     Callback = function(v) _kSet({"StretchedResolution","X"}, v) end
 })
 PLV2:AddSlider("PlStretchResY", {
+end
     Text = "Stretch Height (Y)",
     Default = 10, Min = 1, Max = 100, Rounding = 0,
     Callback = function(v) _kSet({"StretchedResolution","Y"}, v) end
 })
 
 -- ── Item Modifiers (Kicia) ─────────────────────────────────────
+do
 local PLI  = Tabs.Player:AddLeftGroupbox("Item Modifiers")
 local PLI2 = Tabs.Player:AddRightGroupbox("Modifier Config")
 
@@ -4913,12 +4922,14 @@ PLI2:AddToggle("ImExtendMeleeRangeEnabled", {
     Callback = function(v) _kSet({"ItemModifiers","ExtendMeleeRange","Enabled"}, v) end
 })
 PLI2:AddSlider("ImExtendMeleeRange", {
+end
     Text = "Melee Range",
     Default = 10, Min = 0, Max = 100, Rounding = 0,
     Callback = function(v) _kSet({"ItemModifiers","ExtendMeleeRange","Range"}, v) end
 })
 
 -- ── AUTO PICKUP (FFA 回復・弾拾い) ───────────────────────────────────
+do
 local PLPick  = Tabs.Player:AddLeftGroupbox("Auto Pickup")
 local PLPick2 = Tabs.Player:AddRightGroupbox("Pickup Config")
 
@@ -4936,12 +4947,14 @@ PLPick2:AddToggle("PickupHealth", {
     Callback = function(v) _kSet({"AutoPickupDrops","Types","Health"}, v) end
 })
 PLPick2:AddToggle("PickupAmmo", {
+end
     Text    = "Collect Ammo Drops",
     Default = true,
     Tooltip = "Automatically collect ammo drops when magazine is not full.",
     Callback = function(v) _kSet({"AutoPickupDrops","Types","Ammo"}, v) end
 })
 
+do
 local PLAuto = Tabs.Player:AddLeftGroupbox("Auto Actions")
 PLAuto:AddToggle("AutoRespawn", {
     Text    = "Auto Respawn",
@@ -4950,6 +4963,7 @@ PLAuto:AddToggle("AutoRespawn", {
     Callback = function(v) _kSet({"AutoRespawn","Enabled"}, v) end
 })
 PLAuto:AddToggle("AntiKatana", {
+end
     Text    = "Anti Katana",
     Default = true,
     Tooltip = "Block Katana hits by countering the melee detection.",
@@ -4962,6 +4976,8 @@ PLAuto:AddToggle("AntiKatana", {
 -- ╚══════════════════════════════════════════════════════════════════╝
 do
 local BhopL = Tabs.Player:AddLeftGroupbox("Bhop / Movement Utils")
+end
+do
 local BhopR = Tabs.Player:AddRightGroupbox("Bhop Config")
 
 local _bhopCFG = { enabled=false, mode="Auto", holdDelay=0.01 }
@@ -5016,6 +5032,8 @@ end -- Bhop scope
 -- ╚══════════════════════════════════════════════════════════════════╝
 do
 local AfkL = Tabs.Player:AddLeftGroupbox("Anti-AFK")
+end
+do
 local AfkR = Tabs.Player:AddRightGroupbox("AFK Config")
 
 local _afkCFG  = { enabled=false, interval=25, jitter=true }
@@ -5081,6 +5099,7 @@ local _kauraCFG = { enabled=false, range=30 }
 local _kauraCon = nil
 local _kauraRS  = game:GetService("RunService")
 local _kauraP   = game:GetService("Players")
+do
 local KauraL = Tabs.Player:AddLeftGroupbox("Kill Aura")
 local KauraR = Tabs.Player:AddRightGroupbox("Kill Aura Config")
 
@@ -5126,6 +5145,7 @@ KauraL:AddToggle("KillAuraEnabled", { Text=_t("キルオーラ有効","Kill Aura
         end
     end })
 KauraR:AddSlider("KillAuraRange", { Text=_t("攻撃範囲 (studs)","Aura Range (studs)"),
+end
     Default=30, Min=5, Max=100, Rounding=0,
     Callback = function(v) _kauraCFG.range = v end })
 end -- Kill Aura scope
@@ -5152,6 +5172,7 @@ pcall(function() _knrVIM = game:GetService("VirtualInputManager") end)
 
 local _knrOrigSpeed = nil
 
+do
 local KnrL = Tabs.Player:AddLeftGroupbox("Knife Rage")
 local KnrR = Tabs.Player:AddRightGroupbox("Knife Rage Config")
 
@@ -5359,6 +5380,7 @@ KnrR:AddLabel(_t("── ナイフ名パターン ──","── Knife Name Pat
 KnrR:AddLabel("Knife / Blade / Dagger")
 KnrR:AddLabel("Melee / Saber / Katana")
 KnrR:AddLabel("Sword / slash・stabイベント")
+end
 
 end -- Knife Rage scope
 
@@ -5370,6 +5392,7 @@ local _hbxCFG = { enabled=false, scale=2.0 }
 local _hbxCon = nil
 local _hbxRS  = game:GetService("RunService")
 local _hbxP   = game:GetService("Players")
+do
 local HbxL = Tabs.Player:AddLeftGroupbox("Hitbox Expander")
 local HbxR = Tabs.Player:AddRightGroupbox("Hitbox Config")
 
@@ -5413,6 +5436,7 @@ HbxL:AddToggle("HitboxExpandEnabled", { Text=_t("ヒットボックス拡大","H
         end
     end })
 HbxR:AddSlider("HitboxExpandScale", { Text=_t("拡大倍率","Scale Factor"),
+end
     Default=2, Min=1, Max=10, Rounding=1,
     Callback = function(v)
         _hbxCFG.scale = v
@@ -5425,9 +5449,11 @@ end -- Hitbox Expander scope
 do -- No Fall Damage scope
 local _nfdCFG = { enabled=false }
 local _nfdCon = nil
+do
 local _nfdL = Tabs.Player:AddLeftGroupbox("Fall Protection")
 
 _nfdL:AddToggle("NoFallDamageEnabled", { Text=_t("落下ダメージ無効","No Fall Damage"), Default=false,
+end
     Tooltip=_t("落下によるHPダメージを防ぐ","Prevents fall damage"),
     Callback = function(v)
         _nfdCFG.enabled = v
@@ -5468,6 +5494,7 @@ end -- No Fall Damage scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Damage Multiplier scope
 local _dmgCFG = { enabled=false, mult=2.0 }
+do
 local _dmgL = Tabs.Player:AddLeftGroupbox("Damage Modifier")
 local _dmgR = Tabs.Player:AddRightGroupbox("Damage Config")
 
@@ -5496,6 +5523,7 @@ _dmgL:AddToggle("DmgMultEnabled", { Text=_t("ダメージ倍率有効","Damage M
         end
     end })
 _dmgR:AddSlider("DmgMultValue", { Text=_t("倍率","Multiplier"),
+end
     Default=2, Min=1, Max=20, Rounding=1,
     Callback = function(v) _dmgCFG.mult = v end })
 end -- Damage Multiplier scope
@@ -5508,6 +5536,7 @@ local _adsCFG = { enabled=false, range=50 }
 local _adsCon = nil
 local _adsRS  = game:GetService("RunService")
 local _adsP   = game:GetService("Players")
+do
 local AdsL = Tabs.Player:AddLeftGroupbox("Auto ADS")
 local AdsR = Tabs.Player:AddRightGroupbox("ADS Config")
 
@@ -5546,6 +5575,7 @@ AdsL:AddToggle("AutoAdsEnabled", { Text=_t("自動スコープ/ADS","Auto Scope 
         end
     end })
 AdsR:AddSlider("AutoAdsRange", { Text=_t("ADS発動距離 (studs)","ADS Trigger Range (studs)"),
+end
     Default=50, Min=10, Max=300, Rounding=0,
     Callback = function(v) _adsCFG.range = v end })
 end -- Auto Scope scope
@@ -5555,6 +5585,7 @@ end -- Auto Scope scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Size Modifier scope
 local _szCFG = { enabled=false, scale=1.0 }
+do
 local _szL = Tabs.Player:AddLeftGroupbox("Size Modifier")
 local _szR = Tabs.Player:AddRightGroupbox("Size Config")
 
@@ -5583,6 +5614,7 @@ _szL:AddToggle("SizeModEnabled", { Text=_t("サイズ変更有効","Size Modifie
         end)
     end })
 _szR:AddSlider("SizeModScale", { Text=_t("スケール","Scale"),
+end
     Default=1, Min=0.1, Max=5, Rounding=1,
     Callback = function(v)
         _szCFG.scale = v
@@ -5596,6 +5628,7 @@ end -- Size Modifier scope
 do -- Auto Block scope
 local _ablkCFG = { enabled=false, hpThreshold=80 }
 local _ablkCon = nil
+do
 local _ablkL = Tabs.Player:AddLeftGroupbox("Auto Block")
 local _ablkR = Tabs.Player:AddRightGroupbox("Block Config")
 
@@ -5639,6 +5672,7 @@ _ablkL:AddToggle("AutoBlockEnabled", { Text=_t("自動ブロック","Auto Block"
         end)
     end })
 _ablkR:AddSlider("AutoBlockThreshold", { Text=_t("発動HP割合(%)","Trigger HP %"),
+end
     Default=80, Min=10, Max=100, Rounding=0,
     Callback = function(v) _ablkCFG.hpThreshold = v end })
 end -- Auto Block scope
@@ -5648,9 +5682,11 @@ end -- Auto Block scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Silent Walk scope
 local _swCFG = { enabled=false }
+do
 local _swL = Tabs.Player:AddLeftGroupbox("Silent Walk")
 
 _swL:AddToggle("SilentWalkEnabled", { Text=_t("無音歩行","Silent Walk"), Default=false,
+end
     Tooltip=_t("自キャラの足音を消す","Mute your footstep sounds"),
     Callback = function(v)
         _swCFG.enabled = v
@@ -5678,6 +5714,7 @@ end -- Silent Walk scope
 do -- Anti-Hit Emergency TP scope
 local _ahCFG = { enabled=false, hpThreshold=30, range=60 }
 local _ahCon  = nil
+do
 local _ahL = Tabs.Player:AddLeftGroupbox("Emergency TP")
 local _ahR = Tabs.Player:AddRightGroupbox("Emergency Config")
 
@@ -5723,6 +5760,7 @@ _ahR:AddSlider("AntiHitHpThreshold", { Text=_t("発動HP割合(%)","Trigger HP %
     Default=30, Min=5, Max=80, Rounding=0,
     Callback = function(v) _ahCFG.hpThreshold = v end })
 _ahR:AddSlider("AntiHitRange", { Text=_t("TP距離 (studs)","Escape Range (studs)"),
+end
     Default=60, Min=10, Max=300, Rounding=0,
     Callback = function(v) _ahCFG.range = v end })
 end -- Anti-Hit Emergency TP scope
@@ -5735,6 +5773,7 @@ end -- Player Tab scope
 
 do -- World Tab scope
 
+do
 local WL1 = Tabs.World:AddLeftGroupbox("World Changer")
 local WR1 = Tabs.World:AddRightGroupbox("Lighting")
 local WL2 = Tabs.World:AddLeftGroupbox("Atmosphere")
@@ -5836,6 +5875,7 @@ WR3:AddToggle("WCDepthOfField", { Text="Depth of Field", Default=false,
 WR3:AddSlider("WCDofFar", { Text="Far Intensity", Default=75, Min=0, Max=100, Rounding=0,
     Callback = function(v) _kSet({"DepthOfField","FarIntensity"}, v/100) end })
 WR3:AddSlider("WCDofNear", { Text="Near Intensity", Default=75, Min=0, Max=100, Rounding=0,
+end
     Callback = function(v) _kSet({"DepthOfField","NearIntensity"}, v/100) end })
 
 -- ═══════════════════════════════════════════════════════════════
@@ -5843,6 +5883,7 @@ WR3:AddSlider("WCDofNear", { Text="Near Intensity", Default=75, Min=0, Max=100, 
 -- ═══════════════════════════════════════════════════════════════
 do -- Gravity Modifier scope
 local _gravCFG = { enabled=false, value=196.2 }
+do
 local GravL = Tabs.World:AddLeftGroupbox("Gravity Modifier")
 local GravR = Tabs.World:AddRightGroupbox("Gravity Config")
 
@@ -5863,6 +5904,7 @@ GravL:AddButton(_t("重力リセット","Reset Gravity"), function()
         Content=_t("重力をデフォルト値 (196.2) にリセット","Gravity reset to default (196.2)"), Duration=2 })
 end)
 GravR:AddSlider("GravityValue", { Text=_t("重力値","Gravity Value"),
+end
     Default=196, Min=0, Max=1000, Rounding=0,
     Callback = function(v)
         _gravCFG.value = v
@@ -5907,6 +5949,7 @@ end)
 if #_rivalsMaps    == 0 then _rivalsMaps    = {"Arena","Citadel","Ruins","Factory","Bridge"} end
 if #_rivalsWeapons == 0 then _rivalsWeapons = {"Rifle","Shotgun","Sniper","SMG","Pistol","Revolver","Katana"} end
 
+do
 local AutoL1 = Tabs.Automation:AddLeftGroupbox("Queue Automation")
 local AutoR1 = Tabs.Automation:AddRightGroupbox("Queue Config")
 local AutoL2 = Tabs.Automation:AddLeftGroupbox("Match Automation")
@@ -6041,6 +6084,7 @@ AutoR3:AddToggle("SubspaceAutoTrigger", {
     Callback = function(v) _kSet({"SubspaceTripmines","AutoTrigger"}, v) end
 })
 AutoR3:AddToggle("SubspaceTeamTrigger", {
+end
     Text    = "Trigger on Teammates",
     Default = false,
     Tooltip = "Also trigger tripmines when teammates are in range.",
@@ -6065,6 +6109,7 @@ local HvHR1    = HvHTab:AddRightGroupbox("Aimbot")
 local HvHL4    = HvHTab:AddLeftGroupbox("Visuals")
 local HvHR4    = HvHTab:AddRightGroupbox("Visual Config")
 -- HvH tab: Ragebot, Triggerbot, Flickbot
+do
 local HvHL2    = Tabs.HvH:AddLeftGroupbox("Ragebot")
 local HvHR2    = Tabs.HvH:AddRightGroupbox("Rage Config")
 local HvHL3    = Tabs.HvH:AddLeftGroupbox("Triggerbot / Flickbot")
@@ -6600,6 +6645,7 @@ HvHR3:AddSlider("FbCurvature", {
     Callback = function(v) _kSet({"Flickbot","Curvature"}, v) end
 })
 HvHR3:AddSlider("FbHumanness", {
+end
     Text = "Humanness",
     Default = 30,
     Min = 0, Max = 100, Rounding = 0,
@@ -6613,9 +6659,17 @@ HvHR3:AddSlider("FbHumanness", {
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 do
 local _UAAL  = Tabs.HvH:AddLeftGroupbox("Underground AA")
+end
+do
 local _UAAR  = Tabs.HvH:AddRightGroupbox("AA Config")
+end
+do
 local _URVL  = Tabs.HvH:AddLeftGroupbox("Resolver")
+end
+do
 local _URVR  = Tabs.HvH:AddRightGroupbox("Resolver Config")
+end
+do
 local _UAPL  = Tabs.HvH:AddLeftGroupbox("Auto Peek")
 
 -- ── Underground AA ─────────────────────────────────────────────────────
@@ -6914,6 +6968,8 @@ end -- Underground AA / Resolver / Auto Peek scope
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 do
 local _RTL  = Tabs.HvH:AddLeftGroupbox("Rage Trap")
+end
+do
 local _RTR  = Tabs.HvH:AddRightGroupbox("Trap Config")
 
 local _rtCFG = {
@@ -74645,6 +74701,7 @@ end)()
 -- ║  ▶ ドロップダウン: リストから選ぶ                              ║
 -- ║  ▶ 「🎯 バインド変更」ボタン: 次に押したキーを自動登録         ║
 -- ╚══════════════════════════════════════════════════════════════════╝
+do
 local QBL = Tabs.Settings:AddLeftGroupbox("Quick Binds")
 local QBR = Tabs.Settings:AddRightGroupbox("Quick Binds (2)")
 
@@ -74711,6 +74768,7 @@ _addQbEntry(QBR, "QbKeyRtrap",     "Rage Trap",       "RtEnabled",      "なし"
 
 -- ── 現在のバインド確認ボタン ──────────────────────────────────────────────
 QBR:AddButton(_t("📋 現在のバインド一覧を通知表示","📋 Show Current Binds"), function()
+end
     local lines = {}
     for flagId, dispKey in pairs(_qbKeyDisplay) do
         if dispKey and dispKey ~= "なし" then
@@ -74728,11 +74786,13 @@ QBR:AddButton(_t("📋 現在のバインド一覧を通知表示","📋 Show Cu
     })
 end)
 
+do
 local MenuG = Tabs.Settings:AddRightGroupbox("Server Tools")
 MenuG:AddButton("Rejoin Server", function()
     pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer) end)
 end)
 MenuG:AddButton("Server Hop", function()
+end
     pcall(function()
         local Http = game:GetService("HttpService")
         local TS = game:GetService("TeleportService")
@@ -74745,6 +74805,7 @@ MenuG:AddButton("Server Hop", function()
     end)
 end)
 
+do
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 -- Menu keybind via NeverLose UserSettings
 window.UserSettings:AddLabel("Menu Keybind"):AddKeybind({
@@ -74769,6 +74830,7 @@ UIGroup:AddButton("Unload Script", function()
     pcall(function() window:Destroy() end)
 end)
 UIGroup:AddDropdown("LangSelect", {
+end
     Text    = "言語 / Language",
     Default = "JP",
     Values  = {"JP","EN"},
@@ -74836,6 +74898,8 @@ end -- Panic Key scope
 -- ╚══════════════════════════════════════════════════════════════════╝
 do
 local KdaG  = Tabs.Settings:AddLeftGroupbox("Session KDA")
+end
+do
 local KdaGR = Tabs.Settings:AddRightGroupbox("KDA Config")
 
 local _kda = { kills=0, deaths=0, assists=0, enabled=false }
@@ -74924,6 +74988,7 @@ end -- Session KDA scope
 do -- Fake Lag scope
 local _fLagCFG = { enabled=false, delay=0.2 }
 local _fLagCon = nil
+do
 local FlagL = Tabs.Settings:AddLeftGroupbox("Fake Lag / Lag Switch")
 local FlagR = Tabs.Settings:AddRightGroupbox("Lag Config")
 
@@ -74960,6 +75025,7 @@ FlagL:AddButton(_t("ラグスパイク (1秒)","Lag Spike (1s)"), function()
         Content=_t("1秒間の強制ラグを発生させました","1s forced lag spike triggered"), Duration=2 })
 end)
 FlagR:AddSlider("FakeLagDelay", { Text=_t("遅延 (秒)","Delay (sec)"),
+end
     Default=0.2, Min=0.05, Max=2.0, Rounding=2,
     Callback = function(v) _fLagCFG.delay = v end })
 end -- Fake Lag scope
@@ -74972,6 +75038,7 @@ local _dlogCFG  = { enabled=false, maxEntries=10 }
 local _dlogGui  = nil
 local _dlogCon  = nil
 local _dlogList = {}
+do
 local DlogL = Tabs.Settings:AddLeftGroupbox("Damage Log HUD")
 local DlogR = Tabs.Settings:AddRightGroupbox("Damage Log Config")
 
@@ -75067,6 +75134,7 @@ DlogL:AddButton(_t("ログクリア","Clear Log"), function()
     _dlogRebuild()
 end)
 DlogR:AddSlider("DamageLogMaxEntries", { Text=_t("表示行数","Max Entries"),
+end
     Default=10, Min=3, Max=30, Rounding=0,
     Callback = function(v) _dlogCFG.maxEntries = v; _dlogRebuild() end })
 end -- Damage Log scope
@@ -75080,6 +75148,7 @@ local _hrCFG   = { enabled=false, shots=0, hits=0 }
 local _spdGui  = nil
 local _spdCon  = nil
 local _spdRS   = game:GetService("RunService")
+do
 local SpdL = Tabs.Settings:AddLeftGroupbox("Speedometer / Hit Rate")
 local SpdR = Tabs.Settings:AddRightGroupbox("Speed & Hit Config")
 
@@ -75172,6 +75241,7 @@ SpdL:AddToggle("HitRateEnabled", { Text=_t("命中率HUD","Hit Rate HUD"), Defau
         end
     end })
 SpdL:AddButton(_t("命中率リセット","Reset Hit Rate"), function()
+end
     _hrCFG.shots = 0; _hrCFG.hits = 0
     Notification.new({ Title=_t("命中率","Hit Rate"), Content=_t("リセットしました","Reset"), Duration=2 })
 end)
@@ -75185,6 +75255,7 @@ local _sndCFG  = { enabled=false, gunOnly=false }
 local _sndGui  = nil
 local _sndConRS = nil
 local _sndEvents = {}
+do
 local SndL = Tabs.Settings:AddLeftGroupbox("Sound ESP+")
 local SndR = Tabs.Settings:AddRightGroupbox("Sound ESP Config")
 
@@ -75273,10 +75344,12 @@ SndL:AddToggle("SoundEspPlusEnabled", { Text=_t("サウンドESP+ 有効","Sound
         end
     end })
 SndL:AddToggle("SoundEspGunOnly", { Text=_t("銃声のみ","Gun Sounds Only"), Default=false,
+end
     Callback = function(v) _sndCFG.gunOnly = v end })
 end -- Sound ESP Plus scope
 
 do -- FPS Boost scope
+do
 local FpsG = Tabs.Settings:AddLeftGroupbox("FPS Boost")
 
 -- ── state ─────────────────────────────────────────────────────
@@ -75598,6 +75671,7 @@ FpsG:AddButton("Apply All FPS Boost", function()
 end)
 
 FpsG:AddButton("Reset FPS Boost", function()
+end
     setParticles(true)
     setShadows(true)
     setPostFx(true)
@@ -75627,6 +75701,7 @@ end -- FPS Boost scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Config Save scope
 local _cfgPath  = "uncode_config.json"
+do
 local _cfgL = Tabs.Settings:AddLeftGroupbox("Config Save / Load")
 local _cfgR = Tabs.Settings:AddRightGroupbox("Config Info")
 
@@ -75691,6 +75766,7 @@ end)
 
 _cfgR:AddLabel(_t("ファイル: ","File: ").._cfgPath)
 _cfgR:AddLabel(_t("保存場所: exploitフォルダ","Location: exploit folder"))
+end
 end -- Config Save scope
 
 -- ═══════════════════════════════════════════════════════════════
@@ -75700,6 +75776,7 @@ do -- Auto Update scope
 local _updCFG   = { enabled=false, checkedOnce=false }
 local _updBuild = "20261009-h"
 local _updUrl   = "https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/version.txt"
+do
 local UpdL = Tabs.Settings:AddLeftGroupbox("Auto Update Checker")
 
 UpdL:AddToggle("AutoUpdateEnabled", { Text=_t("起動時にアップデート確認","Check Update on Load"), Default=false,
@@ -75708,6 +75785,7 @@ UpdL:AddToggle("AutoUpdateEnabled", { Text=_t("起動時にアップデート確
         _updCFG.enabled = v
     end })
 UpdL:AddButton(_t("今すぐ確認","Check Now"), function()
+end
     pcall(function()
         local HS = game:GetService("HttpService")
         local ok, body = pcall(function()
@@ -75760,6 +75838,7 @@ local _themes   = {
     Neon     = { accent=Color3.fromRGB(0,255,220),   bg=Color3.fromRGB(5,20,25)  },
     Midnight = { accent=Color3.fromRGB(160,90,255),  bg=Color3.fromRGB(15,5,30)  },
 }
+do
 local ThemeL = Tabs.Settings:AddLeftGroupbox("UI Color Theme")
 local ThemeR = Tabs.Settings:AddRightGroupbox("Theme Config")
 
@@ -75803,6 +75882,7 @@ ThemeL:AddToggle("UIThemeRainbow", { Text=_t("レインボーUI","Rainbow UI"), 
         end
     end })
 ThemeR:AddColorpicker("UIThemeAccent", { Text=_t("アクセントカラー","Accent Color"),
+end
     Default=Color3.fromRGB(100,160,255),
     Callback = function(v)
         pcall(function()
