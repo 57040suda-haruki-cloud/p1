@@ -7231,28 +7231,29 @@ end
 local function _wfStart()
     _wfConn = game:GetService("RunService").Heartbeat:Connect(function()
         for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
-            if plr == _wfLP then goto continue end
-            local isTeam = false
-            pcall(function()
-                isTeam = (plr.Team == _wfLP.Team)
-            end)
-            if isTeam and not _wfCFG.teamVisible then
-                _wfRemove(plr)
-                goto continue
-            end
-            -- charが変わったら再適用
-            local char = plr.Character
-            local hl   = _wfHighlights[plr]
-            if not hl or not hl.Parent or hl.Adornee ~= char then
-                _wfApply(plr)
-            else
-                -- 色・壁越し設定をリアルタイム反映
-                hl.OutlineColor = _wfCFG.color
-                hl.DepthMode = _wfCFG.wallhack
-                    and Enum.HighlightDepthMode.AlwaysOnTop
-                    or  Enum.HighlightDepthMode.Occluded
-            end
-            ::continue::
+            repeat
+                if plr == _wfLP then break end
+                local isTeam = false
+                pcall(function()
+                    isTeam = (plr.Team == _wfLP.Team)
+                end)
+                if isTeam and not _wfCFG.teamVisible then
+                    _wfRemove(plr)
+                    break
+                end
+                -- charが変わったら再適用
+                local char = plr.Character
+                local hl   = _wfHighlights[plr]
+                if not hl or not hl.Parent or hl.Adornee ~= char then
+                    _wfApply(plr)
+                else
+                    -- 色・壁越し設定をリアルタイム反映
+                    hl.OutlineColor = _wfCFG.color
+                    hl.DepthMode = _wfCFG.wallhack
+                        and Enum.HighlightDepthMode.AlwaysOnTop
+                        or  Enum.HighlightDepthMode.Occluded
+                end
+            until true
         end
         -- 抜けたプレイヤーのクリーンアップ
         for plr, _ in pairs(_wfHighlights) do
