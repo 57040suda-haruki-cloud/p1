@@ -3116,6 +3116,8 @@ VG:AddSlider("VoidYMin", { Text = "Y Min", Default = -1e15, Min = -1e15, Max = 1
 VG:AddSlider("VoidYMax", { Text = "Y Max", Default = 1e15, Min = -1e15, Max = 1e15, Rounding = 0, Callback = function(v) CFG.VOID_Y_MAX = v end })
 VG:AddSlider("Radius", { Text = "Radius (B)", Default = 200, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) CFG.RADIUS = v * 1e9 end })
 
+end
+do
 local VG1b = Tabs.VoidSpam:AddRightGroupbox("Void Helpers")
 AddBindableToggle(VG1b, "VoidPredictive", "Predictive Void", false, function(v) CFG.VOID_PREDICTIVE = v end)
 VG1b:AddSlider("VoidPredictLead", { Text = "Predict Lead (x0.01s)", Default = 15, Min = 1, Max = 100, Rounding = 0, Callback = function(v) CFG.VOID_PREDICT_LEAD = v * 0.01 end })
@@ -3130,6 +3132,8 @@ AddBindableToggle(VG1b, "VoidLogPositions", "Log Positions to Console", false, f
 VG1b:AddSlider("VoidSafeRadius", { Text = "Safe Radius (studs)", Default = 0, Min = 0, Max = 200, Rounding = 0, Callback = function(v) CFG.VOID_SAFE_RADIUS = v end })
 AddBindableToggle(VG1b, "VoidPreserveY", "Preserve Y Position", false, function(v) CFG.TP_PRESERVE_Y = v end)
 
+end
+do
 local VG1c = Tabs.VoidSpam:AddLeftGroupbox("Void Duration / Region")
 AddBindableToggle(VG1c, "VoidDurationEnabled", "Enable Duration Limit", false, function(v) CFG.VOID_DURATION_ENABLED = v end)
 VG1c:AddSlider("VoidDuration", { Text = "Duration (s)", Default = 10, Min = 1, Max = 300, Rounding = 0, Callback = function(v) CFG.VOID_DURATION = v end })
@@ -3151,6 +3155,8 @@ VG1c:AddSlider("VoidRegionCollapseSpd", { Text = "Collapse Speed (studs/s)", Def
 AddBindableToggle(VG1c, "VoidRegionNotifyOnExit", "Notify On Region Exit", false, function(v) CFG.VOID_REGION_NOTIFY_EXIT = v end)
 AddBindableToggle(VG1c, "VoidRegionSnapToEdge", "Snap Back To Edge", true, function(v) CFG.VOID_REGION_SNAP_EDGE = v end)
 
+end
+do
 local VG2 = Tabs.VoidSpam:AddRightGroupbox("TP Everywhere")
 AddBindableToggle(VG2, "TpRandToggle", "Randomize Studs", true, function(v) CFG.TP_RAND_ENABLED = v end)
 VG2:AddSlider("TpRandMin", { Text = "Random Min Studs", Default = -1e15, Min = -1e15, Max = 0, Rounding = 0, Callback = function(v) CFG.TP_RAND_MIN = v end })
@@ -3168,6 +3174,8 @@ VG2:AddSlider("TpCornerW", { Text = "Corner Weight (%)", Default = 55, Min = 0, 
 VG2:AddSlider("TpEdgeW", { Text = "Edge Weight (%)", Default = 35, Min = 0, Max = 100, Rounding = 0, Callback = function(v) CFG.TP_EDGE_WEIGHT = v * 0.01 end })
 VG2:AddSlider("TpScreenJitter", { Text = "Screen Jitter (%)", Default = 12, Min = 0, Max = 100, Rounding = 0, Callback = function(v) CFG.TP_SCREEN_JITTER = v * 0.01 end })
 
+end
+do
 local VG3 = Tabs.VoidSpam:AddLeftGroupbox("Smart Evasion V2")
 AddBindableToggle(VG3, "SmartEvasionToggle", "Enable Smart Evasion V2", false, function(v) CFG.SMART_EVASION = v end)
 VG3:AddSlider("EvasionRange", { Text = "Detection Range", Default = 80, Min = 10, Max = 500, Rounding = 0, Callback = function(v) CFG.EVASION_RANGE = v end })
@@ -3181,6 +3189,8 @@ AddBindableToggle(VG3, "EvasionLayered", "Layered Cumulative", true, function(v)
 AddBindableToggle(VG3, "EvasionThreatScale", "Threat-Scaled Cooldown", true, function(v) CFG.EVASION_THREAT_SCALE = v end)
 AddBindableToggle(VG3, "EvasionInfiniteRange", "Infinite Range Evasion", true, function(v) CFG.SMART_EVASION_INF = v end)
 
+end
+do
 local VK = Tabs.VoidSpam:AddRightGroupbox("Void Killer")
 AddBindableToggle(VK, "VoidKillerToggle", "Enable Void Killer", true, function(v) CFG.VOID_KILLER_ENABLED = v end)
 AddBindableToggle(VK, "VoidKillerDesync", "Desync Target", true, function(v) CFG.VOID_KILLER_DESYNC = v end)
