@@ -3223,6 +3223,8 @@ AddBindableToggle(OG, "OrbitRandRad", "Random Radius", false, function(v) cfg.or
 OG:AddSlider("OrbitRandMin", { Text = "Min Rand Radius", Default = 5, Min = 1, Max = 50, Rounding = 0, Callback = function(v) cfg.orbitRandMin = v end })
 OG:AddSlider("OrbitRandMax", { Text = "Max Rand Radius", Default = 20, Min = 1, Max = 50, Rounding = 0, Callback = function(v) cfg.orbitRandMax = v end })
 
+end
+do
 local OG2 = Tabs.Orbit:AddRightGroupbox("Helpful Options")
 AddBindableToggle(OG2, "OrbitFace", "Face Target", true, function(v) cfg.orbitFace = v end)
 AddBindableToggle(OG2, "OrbitPredict", "Predict Target Movement", true, function(v) cfg.orbitPredict = v end)
@@ -3313,6 +3315,8 @@ PG:AddSlider("PredStickOffset", { Text = "Stick Offset", Default = 2, Min = 0, M
 AddBindableToggle(PG, "PredPhaseThrough", "Phase Through Walls", true, function(v) cfgDodge.predPhaseThrough = v end)
 AddBindableToggle(PG, "PredIgnoreCollide", "Ignore Collisions", true, function(v) cfgDodge.predIgnoreCollide = v end)
 
+end
+do
 local PG2 = Tabs.Prediction:AddRightGroupbox("Anti Bait V2")
 AddBindableToggle(PG2, "AntiBaitToggle", "Enable Anti Bait V2", false, function(v) antiBaitCFG.enabled = v; if v then startAntiBaitV2() else stopAntiBait() end end)
 PG2:AddDropdown("AntiBaitDodgeMode", { Text = "Dodge Mode", Default = "Perpendicular", Values = {"Perpendicular","Away","Random"}, Callback = function(v) antiBaitCFG.dodgeMode = v end })
@@ -3394,6 +3398,8 @@ AG:AddSlider("AaBreatheSpeed", { Text = "Breathe Speed", Default = 1, Min = 0.1,
 AddBindableToggle(AG, "AaRandomFlip", "Random Flip", false, function(v) aaSettings.randomFlip = v end)
 AG:AddSlider("AaFlipChance", { Text = "Flip Chance (%)", Default = 5, Min = 1, Max = 50, Rounding = 0, Callback = function(v) aaSettings.flipChance = v * 0.01 end })
 
+end
+do
 local AG2 = Tabs.Defense:AddRightGroupbox("Anti-Aim Helpful Options")
 AddBindableToggle(AG2, "AaEnhancedMode", "Enhanced Mode", true, function(v) aaSettings.enhancedMode = v end)
 AddBindableToggle(AG2, "AaMultiAxisSpin", "Multi Axis Spin", true, function(v) aaSettings.multiAxisSpin = v end)
@@ -3428,6 +3434,8 @@ AddBindableToggle(AG2, "AaAutoShoot", "Auto Shoot", true, function(v) aaSettings
 AG2:AddSlider("AaAutoShootRange", { Text = "Auto Shoot Range", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) aaSettings.aaAutoShootRange = v end })
 AddBindableToggle(AG2, "AaInfiniteRange", "Infinite Range", true, function(v) aaSettings.aaInfiniteRange = v end)
 
+end
+do
 local AG3 = Tabs.Defense:AddLeftGroupbox("Range Extender")
 AddBindableToggle(AG3, "RangeExtToggle", "Enable Range Extender", false, function(v) if v then startRangeExt() else stopRangeExt() end end)
 AG3:AddSlider("RangeExtRange", { Text = "Range (studs)", Default = 5e12, Min = 100, Max = 5e12, Rounding = 0, Callback = function(v) rangeExtCFG.range = v end })
@@ -3446,6 +3454,8 @@ AddBindableToggle(AG3, "RangeExtSafeDistance", "Safe Distance", false, function(
 AG3:AddSlider("RangeExtSafeDist", { Text = "Safe Distance (studs)", Default = 5, Min = 1, Max = 50, Rounding = 0, Callback = function(v) rangeExtCFG.safeDist = v end })
 AG3:AddSlider("RangeExtMaxEnemies", { Text = "Max Enemies To Expand", Default = 50, Min = 1, Max = 50, Rounding = 0, Callback = function(v) rangeExtCFG.maxEnemies = v end })
 
+end
+do
 local AG4 = Tabs.Defense:AddRightGroupbox("Range Extender Helpful Options")
 AddBindableToggle(AG4, "RangeExtRivalsMode", "Rivals Mode", true, function(v) rangeExtCFG.rivalsMode = v end)
 AddBindableToggle(AG4, "RangeExtSelf", "Include Self", true, function(v) rangeExtCFG.includeSelf = v end)
@@ -3476,6 +3486,8 @@ AG4:AddSlider("RangeExtAutoShootRange", { Text = "Auto Shoot Range", Default = 1
 AddBindableToggle(AG4, "RangeExtInfiniteRange", "Infinite Range", true, function(v) rangeExtCFG.rangeExtInfiniteRange = v end)
 AddBindableToggle(AG4, "RangeExtRestore", "Restore On Disable", true, function(v) rangeExtCFG.restoreOnDisable = v end)
 
+end
+do
 local AG5 = Tabs.Defense:AddLeftGroupbox("Anti Translocation")
 AddBindableToggle(AG5, "AntiTranslocToggle", "Enable Anti Translocation", false, function(v) antiTranslocCFG.enabled = v; if v then startAntiTransloc() else stopAntiTransloc() end end)
 AG5:AddDropdown("AntiTranslocMode", { Text = "Mode", Default = "Evade", Values = {"Evade","Freeze","Predict"}, Callback = function(v) antiTranslocCFG.mode = v end })
@@ -3490,6 +3502,8 @@ AddBindableToggle(AG5, "ATNotify", "Notify", true, function(v) antiTranslocCFG.n
 AddBindableToggle(AG5, "ATCounterTp", "Counter Teleport", false, function(v) antiTranslocCFG.counterTeleport = v end)
 AG5:AddSlider("ATCounterOffset", { Text = "Counter TP Offset", Default = 50, Min = 5, Max = 200, Rounding = 0, Callback = function(v) antiTranslocCFG.counterTpOffset = v end })
 
+end
+do
 local AG6 = Tabs.Defense:AddRightGroupbox("Anti Translocation Helpful Options")
 AddBindableToggle(AG6, "ATAutoEvadeAll", "Auto Evade All", false, function(v) antiTranslocCFG.autoEvadeAll = v end)
 AG6:AddSlider("ATEvadeAllRadius", { Text = "Evade All Radius", Default = 200, Min = 10, Max = 1000, Rounding = 0, Callback = function(v) antiTranslocCFG.evadeAllRadius = v end })
@@ -3521,6 +3535,8 @@ AddBindableToggle(AG6, "ATAutoShoot", "Auto Shoot", true, function(v) antiTransl
 AG6:AddSlider("ATAutoShootRange", { Text = "Auto Shoot Range", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) antiTranslocCFG.atAutoShootRange = v end })
 AddBindableToggle(AG6, "ATInfiniteRange", "Infinite Range", true, function(v) antiTranslocCFG.atInfiniteRange = v end)
 
+end
+do
 local AG7 = Tabs.Defense:AddLeftGroupbox("Velocity Desync")
 AddBindableToggle(AG7, "VelDesyncToggle", "Enable Velocity Desync", false, function(v) velDesyncCFG.enabled = v; if v then startVelDesync() else stopVelDesync() end end)
 AG7:AddSlider("VDIntensity", { Text = "Intensity (%)", Default = 50, Min = 1, Max = 100, Rounding = 0, Callback = function(v) velDesyncCFG.intensity = v end })
@@ -3542,6 +3558,8 @@ AddBindableToggle(AG7, "VDOscillate", "Oscillate Velocity", true, function(v) ve
 AG7:AddSlider("VDOscFreq", { Text = "Oscillate Freq", Default = 5, Min = 0.5, Max = 50, Rounding = 1, Callback = function(v) velDesyncCFG.oscillateFreq = v end })
 AG7:AddSlider("VDOscAmp", { Text = "Oscillate Amp", Default = 30, Min = 0, Max = 180, Rounding = 0, Callback = function(v) velDesyncCFG.oscillateAmp = v end })
 
+end
+do
 local AG8 = Tabs.Defense:AddRightGroupbox("Velocity Desync Helpful Options")
 AddBindableToggle(AG8, "VDNoiseVel", "Noise Velocity", true, function(v) velDesyncCFG.noiseVel = v end)
 AG8:AddSlider("VDNoiseScale", { Text = "Noise Scale", Default = 1, Min = 0.1, Max = 10, Rounding = 1, Callback = function(v) velDesyncCFG.noiseScale = v end })
@@ -3588,6 +3606,8 @@ TL:AddSlider("TranslocBurstCount", { Text = "Burst Count", Default = 10, Min = 2
 TL:AddSlider("TranslocBurstInterval", { Text = "Burst Interval (ms)", Default = 1, Min = 1, Max = 100, Rounding = 0, Callback = function(v) translocCFG.burstInterval = v * 0.001 end })
 AddBindableToggle(TL, "TranslocRivalsMode", "Rivals Mode", true, function(v) translocCFG.rivalsMode = v end)
 
+end
+do
 local TL2 = Tabs.Translocation:AddRightGroupbox("Helpful Options")
 AddBindableToggle(TL2, "TranslocFakeVel", "Fake Velocity", true, function(v) translocCFG.fakeVel = v end)
 AddBindableToggle(TL2, "TranslocSnapBack", "Snap Back", true, function(v) translocCFG.snapBack = v end)
@@ -3709,6 +3729,8 @@ AddBindableToggle(SBL, "SlingFastTpPen", "Penetrate (Snap Back)", true, function
 AddBindableToggle(SBL, "SlingFastTpRandAng", "Random Angle Offset", true, function(v) slingCFG.fastTpRandAng = v end)
 SBL:AddSlider("SlingRushCD", { Text = "Rush Cooldown (ms)", Default = 10, Min = 1, Max = 200, Rounding = 0, Callback = function(v) slingCFG.rushCooldown = v * 0.001 end })
 
+end
+do
 local SBR = Tabs.SlingBypass:AddRightGroupbox("Helpful Options")
 AddBindableToggle(SBR, "SlingRivalsMode", "Rivals Mode", true, function(v) slingCFG.rivalsMode = v end)
 AddBindableToggle(SBR, "SlingRivalsInfiniteRange", "Rivals Infinite Range", true, function(v) slingCFG.rivalsInfiniteRange = v end)
@@ -3782,6 +3804,8 @@ AddBindableToggle(RG, "RGAutoAim", "Auto Aim at Target", true, function(v) riotG
 RG:AddSlider("RGAimStrength", { Text = "Aim Strength", Default = 1, Min = 0.1, Max = 3, Rounding = 1, Callback = function(v) riotGodmodeCFG.rgAimStrength = v end })
 AddBindableToggle(RG, "RGInfiniteRange", "Infinite Range", true, function(v) riotGodmodeCFG.rgInfiniteRange = v end)
 
+end
+do
 local RA = Tabs.Riot:AddRightGroupbox("Riot Abuser")
 AddBindableToggle(RA, "RiotAbuserToggle", "Enable Riot Abuser", false, function(v) riotAbuserCFG.enabled = v; if v then startRiotAbuser() else stopRiotAbuser() end end)
 RA:AddDropdown("RAMode", { Text = "Mode", Default = "Stick", Values = {"Stick","Bounce","Orbit","Phase"}, Callback = function(v) riotAbuserCFG.mode = v end })
@@ -7921,6 +7945,8 @@ HvHL6:AddSlider("SvMinVol", {
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 do
 local THL = Tabs.Combat:AddLeftGroupbox("Enemy Info")
+end
+do
 local THR = Tabs.Combat:AddRightGroupbox("Info Settings")
 
 -- ── Config ───────────────────────────────────────────────────────────────
