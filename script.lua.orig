@@ -4219,7 +4219,7 @@ local _skSaveConfig, _skLoadConfig
 end)()  -- end skinchanger function scope
 
 -- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
-(function()  -- fresh 200-register pool: isolates all UI locals from outer fn's 201
+;(function()  -- fresh 200-register pool: isolates all UI locals from outer fn's 201
 (function()  -- own 200-register pool: SK/SKR won't overflow outer fn's 201 locals
 local SK  = Tabs.SkinChanger:AddLeftGroupbox("SkinChanger")
 SK:AddLabel("Status: " .. (_skLoadConfig and "Active ✓" or "Unavailable"))
