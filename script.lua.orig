@@ -40,29 +40,16 @@ local C = (cloneref(game:GetService("Players"))).LocalPlayer;
 local g = C.PlayerScripts;
 
 
-local cameraSecurity = require(g.Modules.CameraSecurity);
-local mt = getrawmetatable(cameraSecurity)
-local b = {};
-
-
-local originalIndex = rawget(getmetatable(cameraSecurity) or {}, "__index");
-local originalTostring = rawget(getmetatable(cameraSecurity) or {}, "__tostring");
-local originalNewindex = rawget(getmetatable(cameraSecurity) or {}, "__newindex");
-
-mt.__index = function(...)
-    return nil;
-end;
-
-mt.__tostring = function(...)
-    return "LocalPlayer = nil";
-end;
-
-mt.__newindex = function(E, G, f, ...)
-    return rawset(E, G, f);
-end;
-
-
-
+local cameraSecurity, b = nil, {}
+pcall(function()
+    cameraSecurity = require(g.Modules.CameraSecurity)
+    if not cameraSecurity then return end
+    local mt = getrawmetatable(cameraSecurity)
+    if not mt then return end
+    mt.__index = function(...) return nil end
+    mt.__tostring = function(...) return "LocalPlayer = nil" end
+    mt.__newindex = function(E, G, f, ...) return rawset(E, G, f) end
+end)
 print(cameraSecurity, b)
 
 
