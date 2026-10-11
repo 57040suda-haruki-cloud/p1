@@ -8820,7 +8820,7 @@ end -- HvH UI scope
 
 task.spawn(function()
     local _kiciaOk, _kiciaErr = pcall(function()
-        ;(function() -- Kicia engine: isolated register scope
+        do -- Kicia engine: isolated register scope
 
 -- ═══════════════════════════════════════════════════════════════
 -- Kicia Rebuild (updated)
@@ -75227,7 +75227,7 @@ local boot = (function()
         GeneralState = state,
         GeneralStateData = stateData,
     }
-end)()
+end  -- close Kicia engine do block
 
 function K.Unload()
     if K.destroyed then return end
