@@ -6671,185 +6671,273 @@ TsR:AddDropdown("TargetSwitchMode", { Text="Priority Mode",
 end -- Target Auto Switch scope
 
 -- ═══════════════════════════════════════════════════════════════
--- Pure-Lua Ragebot + Triggerbot + Flickbot engine
+-- Gear unlock: give all ReplicatedStorage.Gear tools to Backpack
+-- ═══════════════════════════════════════════════════════════════
+do
+    local _gRS     = game:GetService("ReplicatedStorage")
+    local _gFolder = _gRS:FindFirstChild("Gear")
+    if _gFolder and _gFolder:IsA("Folder") then
+        for _, tool in ipairs(_gFolder:GetChildren()) do
+            if tool:IsA("Tool") then
+                tool.Parent = game:GetService("Players").LocalPlayer.Backpack
+            end
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- Rivals Ragebot + Triggerbot + Flickbot engine
+-- Uses FighterController / UseItem remote (server-side hit reg)
 -- ═══════════════════════════════════════════════════════════════
 local _rbCFG2 = {
     enabled      = false,
-    fov          = 300,   -- screen-pixel FOV radius
-    maxRange     = 1000,  -- max stud range to consider targets
-    fireInterval = 0.10,  -- minimum seconds between shots (wired to RbStability)
-    visibleOnly  = false, -- rage = wallbang by default
+    fireInterval = 0.0005, -- matches reference FireRate; RbStability increases this
+    weaponSlot   = "Melee",
 }
 local _tbCFG2 = {
     enabled       = false,
-    fovRadius     = 35,   -- crosshair pixel tolerance for on-target check
+    fovRadius     = 35,
     visibleOnly   = true,
-    reactionDelay = 0,    -- wired to TbReactionTime (seconds)
-    releaseDelay  = 0,    -- wired to TbReleaseTime  (seconds)
+    reactionDelay = 0,
+    releaseDelay  = 0,
 }
 local _fbCFG2 = {
     enabled   = false,
     shoot     = true,
-    cooldown  = 0.25,   -- wired to FbCooldown
-    shotDelay = 0,      -- wired to FbShotDelay
+    cooldown  = 0.25,
+    shotDelay = 0,
 }
-local _rbLastShot = 0
-local _tbOnSince  = nil   -- tick() when crosshair first landed on target
-local _tbOffSince = nil   -- tick() when crosshair left target (release delay)
-local _tbFiring   = false
-local _fbLastFlick = 0
 
--- Fire: mouse1click() primary; Tool:Activate() executor-agnostic fallback
-local function _rbFire()
+local _rbSlots      = { Primary = 1, Secondary = 2, Melee = 3 }
+local _rbLastFire   = 0
+local _fbLastFlick  = 0
+local _rbDeflecting = {}
+local _tbOnSince    = nil
+local _tbOffSince   = nil
+local _tbFiring     = false
+
+-- Lazy-load Rivals modules (available after game loads)
+local _rbUtil, _rbEnum, _rbFC, _rbSC
+local function _rbGetModules()
+    if _rbUtil then return true end
     pcall(function()
-        if mouse1click then
-            mouse1click()
-        else
-            local ch = game:GetService("Players").LocalPlayer.Character
-            if ch then
-                local tool = ch:FindFirstChildOfClass("Tool")
-                if tool and tool.Activate then tool:Activate() end
-            end
-        end
+        local repS = (cloneref or function(x) return x end)(game:GetService("ReplicatedStorage"))
+        local lp   = game:GetService("Players").LocalPlayer
+        _rbUtil = require(repS.Modules.Utility)
+        _rbEnum = require(repS.Modules.EnumLibrary)
+        _rbFC   = require(lp.PlayerScripts.Controllers.FighterController)
+        _rbSC   = require(lp.PlayerScripts.Controllers:WaitForChild("SpectateController", 3))
     end)
+    return _rbUtil ~= nil
 end
 
--- Target finder for Ragebot (own settings, wallbang-capable)
-local function _rbFindNearest(lp, char, cam)
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    local cx, cy = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
-    local best, bestPos = math.huge, nil
-    for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-        if p ~= lp and p.Character then
-            local phum = p.Character:FindFirstChildOfClass("Humanoid")
-            local phrp = p.Character:FindFirstChild("HumanoidRootPart")
-            local phead = p.Character:FindFirstChild("Head") or phrp
-            if phum and phum.Health > 0 and phead and phrp then
-                local inRange = not hrp or
-                    (hrp.Position - phrp.Position).Magnitude <= _rbCFG2.maxRange
-                if inRange then
-                    local sp, onScreen = cam:WorldToViewportPoint(phead.Position)
-                    if onScreen then
-                        local dx, dy = sp.X - cx, sp.Y - cy
-                        local sd = math.sqrt(dx * dx + dy * dy)
-                        if sd < _rbCFG2.fov and sd < best then
-                            local visible = true
-                            if _rbCFG2.visibleOnly then
-                                local rp = RaycastParams.new()
-                                rp.FilterDescendantsInstances = {char, p.Character}
-                                rp.FilterType = Enum.RaycastFilterType.Exclude
-                                local hit = workspace:Raycast(
-                                    cam.CFrame.Position,
-                                    (phead.Position - cam.CFrame.Position).Unit * 1200, rp)
-                                visible = (hit == nil)
-                            end
-                            if visible then best = sd; bestPos = phead.Position end
-                        end
-                    end
-                end
-            end
+-- Keep correct weapon slot equipped
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if _rbCFG2.enabled and _rbGetModules() and _rbFC and _rbFC.LocalFighter then
+            pcall(function() _rbFC.LocalFighter:EquipItem(_rbSlots[_rbCFG2.weaponSlot] or 3) end)
         end
     end
-    return bestPos
+end)
+
+-- Track Katana deflect windows
+local function _rbUpdateDeflect()
+    if not (_rbFC and _rbFC.Objects) then return end
+    for _, fo in _rbFC.Objects do
+        local p = fo.Player
+        if not p then continue end
+        if not fo.Entity or not fo.Entity:IsAlive() or fo:Get("IsSpectating") then
+            _rbDeflecting[p] = false; continue
+        end
+        local eq = fo.EquippedItem
+        local isKatana = eq and eq.ViewModel and eq.ViewModel.Name == "Katana"
+        _rbDeflecting[p] = isKatana and (eq._attack_cooldown and eq._attack_cooldown > tick()) or false
+    end
 end
 
--- On-target check for Triggerbot (tight screen-space FOV)
-local function _tbCheckOnTarget(lp, char, cam)
-    local cx, cy = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
+-- Rivals team / duel enemy check
+local function _rbIsEnemy(p)
+    local lp = game:GetService("Players").LocalPlayer
+    if p == lp then return false end
+    local duel = _rbSC and _rbSC.CurrentDuelSubject
+    local ld   = duel and duel:GetDueler(lp)
+    local lt   = ld and ld:Get("TeamID")
+    if lt and duel and duel.Duelers then
+        for _, d in duel.Duelers do
+            if d.Player == p then return d:Get("TeamID") ~= lt end
+        end
+    end
+    local pT = p:GetAttribute("TeamID")
+    local lT = lp:GetAttribute("TeamID")
+    if pT and lT then return pT ~= lT end
+    return true
+end
+
+-- Closest alive enemy by world distance
+local function _rbGetClosest()
+    local lp   = game:GetService("Players").LocalPlayer
+    local char = lp.Character
+    if not char then return nil, nil, nil end
+    local myR = char:FindFirstChild("HumanoidRootPart")
+    if not myR then return nil, nil, nil end
+    local bestP, bestR, bestH, bestD = nil, nil, nil, 500
     for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-        if p ~= lp and p.Character then
-            local phum = p.Character:FindFirstChildOfClass("Humanoid")
-            local phrp = p.Character:FindFirstChild("HumanoidRootPart")
-            local phead = p.Character:FindFirstChild("Head") or phrp
-            if phum and phum.Health > 0 and phead then
-                local sp, onScreen = cam:WorldToViewportPoint(phead.Position)
-                if onScreen then
-                    local dx, dy = sp.X - cx, sp.Y - cy
-                    if math.sqrt(dx * dx + dy * dy) <= _tbCFG2.fovRadius then
-                        if _tbCFG2.visibleOnly then
-                            local rp = RaycastParams.new()
-                            rp.FilterDescendantsInstances = {char, p.Character}
-                            rp.FilterType = Enum.RaycastFilterType.Exclude
-                            local hit = workspace:Raycast(
-                                cam.CFrame.Position,
-                                (phead.Position - cam.CFrame.Position).Unit * 1200, rp)
-                            if hit then continue end
-                        end
-                        return true
-                    end
-                end
-            end
+        if not _rbIsEnemy(p) then continue end
+        local pc = p.Character
+        if not pc then continue end
+        local pR   = pc:FindFirstChild("HumanoidRootPart")
+        local pH   = pc:FindFirstChild("Head")
+        local pHum = pc:FindFirstChildWhichIsA("Humanoid")
+        if not (pR and pH and pHum and pHum.Health > 0) then continue end
+        local d = (myR.Position - pR.Position).Magnitude
+        if d < bestD then bestD = d; bestP = p; bestR = pR; bestH = pH end
+    end
+    return bestP, bestR, bestH
+end
+
+-- Detect enemy Knife ViewModel (for desync offset choice)
+local function _rbHasKnifeVM(p)
+    if not p then return false end
+    local vm = workspace:FindFirstChild("ViewModels")
+    if not vm then return false end
+    for _, m in vm:GetChildren() do
+        if m:IsA("Model")
+            and string.find(m.Name, p.Name, 1, true)
+            and string.find(m.Name, "Knife", 1, true) then
+            return true
         end
     end
     return false
 end
 
+-- Server-side fire via UseItem remote
+local function _rbFireRemote(targetR, targetH, desyncCF)
+    if not (_rbFC and _rbFC.LocalFighter) then return end
+    local item = _rbFC.LocalFighter.EquippedItem
+    if not item then return end
+    local originPos = desyncCF and desyncCF.Position or targetR.Position
+    local aimCF    = CFrame.lookAt(originPos, targetH.Position)
+    local offset   = Vector3.new(
+        (math.random() - 0.5) * 0.1,
+        (math.random() - 0.5) * 0.1,
+        (math.random() - 0.5) * 0.1)
+    local aimedPos  = targetH.Position + offset
+    local objOffset = targetH.CFrame:ToObjectSpace(CFrame.new(aimedPos))
+    local camData   = {}
+    camData[utf8.char(1)] = {
+        [utf8.char(0)] = _rbUtil:EncodeCFrame(aimCF),
+        [utf8.char(1)] = _rbUtil:EncodeCFrame(targetH.CFrame),
+        [utf8.char(2)] = targetH,
+        [utf8.char(3)] = _rbUtil:EncodeCFrame(objOffset),
+    }
+    pcall(function()
+        game:GetService("ReplicatedStorage").Remotes.Replication.Fighter.UseItem:FireServer(
+            item:Get("ObjectID"),
+            _rbEnum:ToEnum("StartShooting"),
+            camData, nil)
+    end)
+end
+
 RunService.Heartbeat:Connect(function()
     if not (_rbCFG2.enabled or _tbCFG2.enabled or _fbCFG2.enabled) then return end
+    if not _rbGetModules() then return end
+
+    local lp   = game:GetService("Players").LocalPlayer
+    local char = lp.Character
+    if not char then return end
+
+    _rbUpdateDeflect()
+
+    local targetP, targetR, targetH = _rbGetClosest()
+    local desyncCF = nil
+
+    -- Build desync CFrame
+    if targetR and targetH then
+        local dPos = _rbHasKnifeVM(targetP)
+            and (targetR.CFrame * CFrame.new(0, 6, 0)).Position
+            or  (targetR.CFrame * CFrame.new(0, 1, 2)).Position
+        desyncCF = CFrame.lookAt(dPos, targetH.Position)
+    end
+
+    -- Apply HRP desync (restored next RenderStep)
+    if desyncCF then
+        local myR = char:FindFirstChild("HumanoidRootPart")
+        if myR then
+            local oCF, oVel, oRot = myR.CFrame, myR.Velocity, myR.RotVelocity
+            myR.CFrame = desyncCF
+            RunService:BindToRenderStep("__rb_restore", 101, function()
+                if myR then
+                    myR.CFrame      = oCF
+                    myR.Velocity    = oVel
+                    myR.RotVelocity = oRot
+                end
+                RunService:UnbindFromRenderStep("__rb_restore")
+            end)
+        end
+    end
+
     local now = tick()
-    pcall(function()
-        local lp   = game:GetService("Players").LocalPlayer
-        local char = lp.Character
-        if not char then return end
-        local cam = workspace.CurrentCamera
 
-        -- ── RAGEBOT ──────────────────────────────────────────────
-        if _rbCFG2.enabled then
-            local pos = _rbFindNearest(lp, char, cam)
-            if pos then
-                -- Hard snap camera to target (mandatory for Ragebot)
-                local dir = (pos - cam.CFrame.Position).Unit
-                cam.CFrame = CFrame.new(cam.CFrame.Position, cam.CFrame.Position + dir)
-                -- Auto-fire at configured rate
-                if now - _rbLastShot >= _rbCFG2.fireInterval then
-                    _rbLastShot = now
-                    _rbFire()
+    -- ── RAGEBOT ──────────────────────────────────────────────────
+    if _rbCFG2.enabled then
+        if targetP and targetR and targetH
+            and not _rbDeflecting[targetP]
+            and now - _rbLastFire >= _rbCFG2.fireInterval then
+            _rbLastFire = now
+            _rbFireRemote(targetR, targetH, desyncCF)
+        end
+    end
+
+    -- ── TRIGGERBOT ───────────────────────────────────────────────
+    if _tbCFG2.enabled then
+        local onTarget = false
+        if targetH then
+            local cam = workspace.CurrentCamera
+            local sp, vis = cam:WorldToViewportPoint(targetH.Position)
+            if vis then
+                local cx, cy = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
+                local dx, dy = sp.X - cx, sp.Y - cy
+                onTarget = math.sqrt(dx*dx + dy*dy) <= _tbCFG2.fovRadius
+            end
+        end
+        if onTarget then
+            if not _tbOnSince then _tbOnSince = now end
+            _tbOffSince = nil
+            if now - _tbOnSince >= _tbCFG2.reactionDelay then _tbFiring = true end
+        else
+            _tbOnSince = nil
+            if _tbFiring then
+                if not _tbOffSince then _tbOffSince = now end
+                if now - _tbOffSince >= _tbCFG2.releaseDelay then
+                    _tbFiring = false; _tbOffSince = nil
                 end
             end
         end
+        if _tbFiring and targetP and targetR and targetH
+            and not _rbDeflecting[targetP]
+            and now - _rbLastFire >= 0.05 then
+            _rbLastFire = now
+            _rbFireRemote(targetR, targetH, desyncCF)
+        end
+    end
 
-        -- ── TRIGGERBOT ───────────────────────────────────────────
-        if _tbCFG2.enabled then
-            local onTarget = _tbCheckOnTarget(lp, char, cam)
-            if onTarget then
-                if not _tbOnSince then _tbOnSince = now end
-                _tbOffSince = nil
-                if now - _tbOnSince >= _tbCFG2.reactionDelay then
-                    _tbFiring = true
-                end
-            else
-                _tbOnSince = nil
-                if _tbFiring then
-                    if not _tbOffSince then _tbOffSince = now end
-                    if now - _tbOffSince >= _tbCFG2.releaseDelay then
-                        _tbFiring   = false
-                        _tbOffSince = nil
-                    end
-                end
-            end
-            if _tbFiring and now - _rbLastShot >= 0.05 then
-                _rbLastShot = now
-                _rbFire()
+    -- ── FLICKBOT ─────────────────────────────────────────────────
+    if _fbCFG2.enabled and targetP and targetR and targetH then
+        if now - _fbLastFlick >= _fbCFG2.cooldown then
+            local cam = workspace.CurrentCamera
+            local dir = (targetH.Position - cam.CFrame.Position).Unit
+            cam.CFrame = cam.CFrame:Lerp(
+                CFrame.new(cam.CFrame.Position, cam.CFrame.Position + dir),
+                math.clamp(_abCFG2.speed * 3, 0.05, 1.0))
+            if _fbCFG2.shoot and not _rbDeflecting[targetP]
+                and now - _rbLastFire >= _fbCFG2.shotDelay + 0.06 then
+                _rbLastFire  = now
+                _fbLastFlick = now
+                _rbFireRemote(targetR, targetH, desyncCF)
             end
         end
-
-        -- ── FLICKBOT ─────────────────────────────────────────────
-        if _fbCFG2.enabled then
-            local pos = _rbFindNearest(lp, char, cam)
-            if pos and now - _fbLastFlick >= _fbCFG2.cooldown then
-                -- Lerp camera toward target (Flick speed driven by aimbot speed)
-                local dir = (pos - cam.CFrame.Position).Unit
-                cam.CFrame = cam.CFrame:Lerp(
-                    CFrame.new(cam.CFrame.Position, cam.CFrame.Position + dir),
-                    math.clamp(_abCFG2.speed * 3, 0.05, 1.0))
-                if _fbCFG2.shoot and now - _rbLastShot >= _fbCFG2.shotDelay + 0.06 then
-                    _rbLastShot  = now
-                    _fbLastFlick = now
-                    _rbFire()
-                end
-            end
-        end
-    end)
+    end
 end)
 
 -- ── RAGEBOT ───────────────────────────────────────────────────
@@ -6898,7 +6986,7 @@ HvHR2:AddSlider("RbStability", {
     Tooltip = "How stable the Ragebot's shots are (0=instant, 100=very stable).",
     Callback = function(v)
         _kSet({"Ragebot","Stability"}, v / 100)
-        _rbCFG2.fireInterval = 0.05 + (v / 100) * 0.25
+        _rbCFG2.fireInterval = 0.0005 + (v / 100) * 0.05
     end
 })
 HvHR2:AddSlider("RbShootFrames", {
