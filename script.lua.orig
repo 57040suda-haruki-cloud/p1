@@ -934,12 +934,12 @@ do
     local _playPlayer, _playWorld, _playAuto
     local _skinsChanger
     local _cfgKeybinds, _cfgUI, _cfgTools, _cfgHUD, _cfgSave
-    _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred = window:tab({ name = "HvH",     tabs = {"Combat","Aimbot","AA","Trap","Prediction"} })
-    _utilVS,    _utilOrbit,  _utilDef                  = window:tab({ name = "Utility",  tabs = {"VoidSpam","Orbit","Defense"}              })
-    _miscTrans, _miscSling,  _miscRiot                 = window:tab({ name = "Misc",     tabs = {"Transloc.","Sling","Riot"}                })
-    _playPlayer,_playWorld,  _playAuto                 = window:tab({ name = "Player",   tabs = {"Camera","World","Auto"}                   })
-    _skinsChanger                                      = window:tab({ name = "Skins",    tabs = {"SkinChanger"}                            })
-    _cfgKeybinds,_cfgUI,_cfgTools,_cfgHUD,_cfgSave    = window:tab({ name = "Config",   tabs = {"Keybinds","UI","Tools","HUD","Save"}      })
+    _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred = window:tab({ name = "HvH",     tabs = {"Combat","Aimbot","AA","Trap","Pred"}   })
+    _utilVS,    _utilOrbit,  _utilDef                  = window:tab({ name = "Utility",  tabs = {"Void","Orbit","Def"}                  })
+    _miscTrans, _miscSling,  _miscRiot                 = window:tab({ name = "Misc",     tabs = {"Trans","Sling","Riot"}                })
+    _playPlayer,_playWorld,  _playAuto                 = window:tab({ name = "Player",   tabs = {"Camera","World","Auto"}               })
+    _skinsChanger                                      = window:tab({ name = "Skins",    tabs = {"Skins"}                              })
+    _cfgKeybinds,_cfgUI,_cfgTools,_cfgHUD,_cfgSave    = window:tab({ name = "Config",   tabs = {"Binds","UI","Tools","HUD","Save"}     })
     _mlTabMap["Combat"]        = _hvhCombat
     _mlTabMap["HvH"]           = _hvhAimbot
     _mlTabMap["Prediction"]    = _hvhPred
