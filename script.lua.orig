@@ -386,6 +386,12 @@ end
 UNCODELoadingScreen()
 
 ;(function()
+-- ── Reload guard: skip if already running (prevents double-load lag) ──
+if getgenv()._UNC_RUNNING then
+    warn("[UNCODE] Already loaded — rejoin or run _UNC_UNLOAD() first")
+    return
+end
+getgenv()._UNC_RUNNING = true
 -- ╔═══════════════════════════════════════════════════════════════════════╗
 -- ║  UNCODE v1 — Millenium UI  (build 20261009-h)                       ║
 -- ╚═══════════════════════════════════════════════════════════════════════╝
@@ -400,6 +406,13 @@ local window = _mlLib:window({
     gameInfo = "Rivals · UNCODE v1",
 })
 warn("[UNCODE] window created OK")
+-- Unload helper: run getgenv()._UNC_UNLOAD() before re-executing the script
+getgenv()._UNC_UNLOAD = function()
+    pcall(function() window:Destroy() end)
+    getgenv()._UNC_RUNNING = false
+    getgenv()._UNC_UNLOAD  = nil
+    warn("[UNCODE] Unloaded — safe to re-run")
+end
 
 -- ── Notification stub (Millenium has no built-in notify; use Roblox StarterGui) ──
 local _SGui = game:GetService("StarterGui")
@@ -462,6 +475,7 @@ local _qbState   = {}    -- flagId → current bool state
 local _qbLabels  = {}    -- flagId → display name
 local _qbEnabled = true  -- master switch (UI toggle)
 local _qbKeyMap  = {}    -- Enum.KeyCode.Value → flagId  (runtime binding table)
+local _qbMode    = {}    -- flagId → "Toggle" | "Hold" | "Always"
 
 -- 選択可能なキーの一覧（ドロップダウン表示用）
 local _QB_KEY_LIST = {
@@ -571,10 +585,31 @@ _UIS_qb.InputBegan:Connect(function(inp, processed)
         end
         return
     end
-    -- ② 通常トグル
+    -- ② Normal keybind: Toggle / Hold / Always
     if processed or not _qbEnabled then return end
     local fid = _qbKeyMap[inp.KeyCode.Value]
-    if fid then pcall(_quickToggle, fid) end
+    if fid then
+        local mode = _qbMode[fid] or "Toggle"
+        if mode == "Toggle" then
+            pcall(_quickToggle, fid)
+        elseif mode == "Hold" then
+            _qbState[fid] = true
+            pcall(_T, fid, true)
+            pcall(_O, fid, true)
+        end
+        -- "Always" mode: key ignored; feature stays on via _qbMode setter
+    end
+end)
+
+-- InputEnded: release key for Hold mode
+_UIS_qb.InputEnded:Connect(function(inp, processed)
+    if not _qbEnabled then return end
+    local fid = _qbKeyMap[inp.KeyCode.Value]
+    if fid and (_qbMode[fid] or "Toggle") == "Hold" then
+        _qbState[fid] = false
+        pcall(_T, fid, false)
+        pcall(_O, fid, false)
+    end
 end)
 
 -- ╔══════════════════════════════════════════════════════════════════╗
@@ -74708,15 +74743,26 @@ QBL:AddLabel(_t(
 local function _addQbEntry(gb, ddId, label, flagId, defaultKey)
     gb:AddDropdown(ddId, {
         Text    = label,
-        Default = defaultKey or "なし",
+        Default = defaultKey or "None",
         Values  = _QB_KEY_LIST,
-        Tooltip = _t(
-            "リストからキーを選択。好きなキーは[バインド変更]で設定",
-            "Select from list, or use [Change Key] to bind any key."
-        ),
+        Tooltip = "Select key from list, or use [Change Key] to bind any key.",
         Callback = function(v) _qbSetKey(flagId, v) end,
     })
-    gb:AddButton(_t("🎯 バインド変更: "..label, "🎯 Change Key: "..label), function()
+    gb:AddDropdown(ddId.."_Mode", {
+        Text    = label .. " Mode",
+        Default = "Toggle",
+        Values  = {"Toggle","Hold","Always"},
+        Tooltip = "Toggle=press to flip on/off  Hold=active while held  Always=always on",
+        Callback = function(v)
+            _qbMode[flagId] = v
+            if v == "Always" then
+                _qbState[flagId] = true
+                pcall(_T, flagId, true)
+                pcall(_O, flagId, true)
+            end
+        end,
+    })
+    gb:AddButton("Change Key: "..label, function()
         if _G._UNC_QbStartListen then _G._UNC_QbStartListen(flagId) end
     end)
 end
@@ -74755,6 +74801,19 @@ QBR:AddButton(_t("📋 現在のバインド一覧を通知表示","📋 Show Cu
         Duration = 6,
     })
 end)
+
+-- ── Compact keybind boxes on feature tabs ────────────────────────────────
+-- HvH tab: Aimbot/Triggerbot/Flickbot binds
+local HvHKbL = Tabs.HvH:AddLeftGroupbox("Keybinds")
+local HvHKbR = Tabs.HvH:AddRightGroupbox("Keybind Mode")
+_addQbEntry(HvHKbL, "QbHvHTrigger",  "Triggerbot",  "TriggerEnabled",  "None")
+_addQbEntry(HvHKbL, "QbHvHFlick",    "Flickbot",    "FlickEnabled",    "None")
+_addQbEntry(HvHKbR, "QbHvHSmooth",   "Smooth Aim",  "SmAimEnabled",    "None")
+_addQbEntry(HvHKbR, "QbHvHEspToggle","Player ESP",  "EspEnabled",      "None")
+
+-- Trap tab: Rage Trap bind
+local TrapKbL = Tabs.Trap:AddLeftGroupbox("Keybinds")
+_addQbEntry(TrapKbL, "QbTrapRage",   "Rage Trap",   "RtEnabled",       "None")
 
 end)()  -- close Quick Binds section
 ;(function()  -- fresh 200-register pool: Server Tools
@@ -75891,7 +75950,7 @@ CfgG:AddButton("Load Legit Config", function()
     _T("PredShootDetect", true)   _T("PredRaycast", true)   _T("PredReactionLadder", true)
     _T("PredRivalsMode", true)   _T("PredRivalsHitbox", false)
     _T("PredNoClip", true)   _T("PredMassless", true)   _T("PredAutoShoot", false)
-    Library:Notify({ Title = "UNCODE", Description = "Legit Config Loaded", Time = 3 })
+    Notification.new({ Title = "UNCODE", Content = "Legit Config Loaded", Duration = 3 })
 end)
 
 CfgG:AddButton("Load Rage Config", function()
@@ -76001,14 +76060,14 @@ CfgG:AddButton("Load Rage Config", function()
     _T("VDNoClip", true)   _T("VDMassless", true)   _T("VDBypassAnticheat", true)
     -- Auto Pickup (health + ammo)
     _T("PickupEnabled", true)   _T("PickupHealth", true)   _T("PickupAmmo", true)
-    Library:Notify({ Title = "UNCODE", Description = "Rage Config Loaded", Time = 3 })
+    Notification.new({ Title = "UNCODE", Content = "Rage Config Loaded", Duration = 3 })
 end)
 end)()  -- close Community Configs wrapper
 -- ── End Community Configs ──────────────────────────────────────────────────
 
 -- (No watermark loop — Millenium has no watermark API)
 
-_mlLib:init_config(window)
+pcall(function() if _mlLib.init_config then _mlLib:init_config(window) end end)
 
 Notification.new({ Title = "UNCODE v1  [build 20261009-h]", Content = "Rivals HvH | Millenium UI ✓ loaded", Duration = 6 })
 warn("[UNCODE] build 20261009-h — Millenium UI active")
