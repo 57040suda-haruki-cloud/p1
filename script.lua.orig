@@ -75236,6 +75236,8 @@ function K.Unload()
 end
 
 tbl17.j1()(boot)
+end)  -- close pcall wrapper
+end)  -- close task.spawn wrapper
 
 -- ═══════════════════════════════════════════════════════════════
 -- Rivals Visuals V2 (Rivals_Visuals.lua)
