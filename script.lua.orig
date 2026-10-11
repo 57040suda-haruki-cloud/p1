@@ -8818,7 +8818,9 @@ end -- Enemy Info scope
 end -- HvH UI scope
 
 
-task.spawn(function() local _kiciaOk, _kiciaErr = pcall(function() (function() -- Kicia engine: isolated register scope
+task.spawn(function()
+    local _kiciaOk, _kiciaErr = pcall(function()
+        (function() -- Kicia engine: isolated register scope
 
 -- ═══════════════════════════════════════════════════════════════
 -- Kicia Rebuild (updated)
