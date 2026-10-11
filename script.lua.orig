@@ -8833,9 +8833,11 @@ do
         make(dir .. "/configs")
     end
     tbl17.w = function() return W end
+end
 
 --  P: two-way link between a control and a settings path. Sliders ask for
 --  Debounce so dragging writes once per short burst instead of every frame.
+do
     local P = {}
     function P.bind(trove, config, control, path, opts)
         local debounce = opts ~= nil and opts.Debounce == true
@@ -8858,8 +8860,10 @@ do
         end)
     end
     tbl17.P = function() return P end
+end
 
 --  c5: the critically damped Spring (Position, Velocity, Target, Speed, Damper).
+do
     local Spring = {}
     local function posVel(self, now)
         local p0, v0, p1, d, s = self._p0, self._v0, self._target, self._damper, self._speed
@@ -74625,9 +74629,11 @@ tbl17.w().ensureStorageDirectories("kiciarebuild/fonts")
 tbl17.w().ensureStorageDirectories("kiciarebuild/cache")
 for _, sub in ipairs({ "cosmetics/states", "crosshair_textures", "esp_images", "movement_recorder" }) do
     tbl17.w().ensureStorageDirectories("kiciarebuild/rivals/" .. sub)
+end
 
 --  Lithium logo: written to disk once per load and turned into an asset id
 --  for the menu rail and the watermark.
+do
     local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local map = {}
     for i = 1, 64 do map[alphabet:byte(i)] = i - 1 end
@@ -74718,6 +74724,7 @@ function K.Unload()
     pcall(function() GlobalTrove:Destroy() end)
     if getgenv().KiciaRebuild == K then getgenv().KiciaRebuild = nil end
 end
+
 
 
 -- ============================================================
