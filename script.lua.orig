@@ -4249,7 +4249,7 @@ local _skSaveConfig, _skLoadConfig
 end)()  -- end skinchanger function scope
 
 -- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
-local _uiSec1Ok, _uiSec1Err = pcall(function() ;(function()  -- fresh 200-register pool: isolates all UI locals from outer fn's 201
+local _uiSec1Ok, _uiSec1Err = pcall(function() (function()  -- fresh 200-register pool: isolates all UI locals from outer fn's 201
 (function()  -- own 200-register pool: SK/SKR won't overflow outer fn's 201 locals
 local SK  = Tabs.SkinChanger:AddLeftGroupbox("SkinChanger")
 SK:AddLabel("Status: " .. (_skLoadConfig and "Active ✓" or "Unavailable"))
@@ -8225,7 +8225,7 @@ end -- Enemy Info scope
 end -- HvH UI scope
 
 
-task.spawn(function() local _kiciaOk, _kiciaErr = pcall(function() ;(function() -- Kicia engine: isolated register scope
+task.spawn(function() local _kiciaOk, _kiciaErr = pcall(function() (function() -- Kicia engine: isolated register scope
 --==========================================================================
 --  Kicia Rebuild  -  Rivals
 --  Kiciahook v3, rebuilt from a decompiled build.
