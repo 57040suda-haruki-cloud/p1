@@ -270,7 +270,7 @@ local function UNCODELoadingScreen()
     lg.Parent = logo
     local sub = Instance.new("TextLabel")
     sub.Size = UDim2.new(1, -40, 0, 18); sub.Position = UDim2.new(0, 20, 0, 96)
-    sub.BackgroundTransparency = 1; sub.Text = "Rivals HvH — Kicia engine"
+    sub.BackgroundTransparency = 1; sub.Text = "Rivals HvH — UNCODE v1"
     sub.TextColor3 = Color3.fromRGB(140, 160, 200); sub.Font = Enum.Font.Gotham
     sub.TextSize = 12; sub.TextXAlignment = Enum.TextXAlignment.Left
     sub.ZIndex = 11; sub.Parent = card
@@ -397,7 +397,7 @@ warn("[UNCODE] Millenium loaded OK")
 local window = _mlLib:window({
     name     = "UNCODE",
     suffix   = "v1",
-    gameInfo = "Rivals · Kicia HvH Engine",
+    gameInfo = "Rivals · UNCODE v1",
 })
 warn("[UNCODE] window created OK")
 
@@ -687,13 +687,13 @@ end
 
 -- 機能定義（label, flagId, デフォルトキー）
 local _qbDefs = {
-    { flagId = "EspEnabled",     label = "Player ESP",    default = "Z" },
-    { flagId = "VoidToggle",     label = "Void",          default = "X" },
-    { flagId = "OrbitToggle",    label = "Orbit",         default = "C" },
-    { flagId = "PredToggle",     label = "Prediction V2", default = "V" },
-    { flagId = "AntiBaitToggle", label = "Anti-Bait V2",  default = "B" },
-    { flagId = "SlingToggle",    label = "Sling Bypass",  default = "N" },
-    { flagId = "AaToggle",       label = "Anti-Aim",      default = "M" },
+    { flagId = "EspEnabled",     label = "Player ESP",    default = "なし" },
+    { flagId = "VoidToggle",     label = "Void",          default = "なし" },
+    { flagId = "OrbitToggle",    label = "Orbit",         default = "なし" },
+    { flagId = "PredToggle",     label = "Prediction V2", default = "なし" },
+    { flagId = "AntiBaitToggle", label = "Anti-Bait V2",  default = "なし" },
+    { flagId = "SlingToggle",    label = "Sling Bypass",  default = "なし" },
+    { flagId = "AaToggle",       label = "Anti-Aim",      default = "なし" },
 }
 for _, d in ipairs(_qbDefs) do
     _qbLabels[d.flagId] = d.label
@@ -5771,9 +5771,6 @@ end -- Player Tab scope
 -- ============================================================
 
 do -- World Tab scope
-
-end
-do
 local WL1 = Tabs.World:AddLeftGroupbox("World Changer")
 local WR1 = Tabs.World:AddRightGroupbox("Lighting")
 local WL2 = Tabs.World:AddLeftGroupbox("Atmosphere")
@@ -5882,8 +5879,6 @@ WR3:AddSlider("WCDofNear", { Text="Near Intensity", Default=75, Min=0, Max=100, 
 -- ═══════════════════════════════════════════════════════════════
 do -- Gravity Modifier scope
 local _gravCFG = { enabled=false, value=196.2 }
-end
-do
 local GravL = Tabs.World:AddLeftGroupbox("Gravity Modifier")
 local GravR = Tabs.World:AddRightGroupbox("Gravity Config")
 
@@ -5948,8 +5943,6 @@ end)
 if #_rivalsMaps    == 0 then _rivalsMaps    = {"Arena","Citadel","Ruins","Factory","Bridge"} end
 if #_rivalsWeapons == 0 then _rivalsWeapons = {"Rifle","Shotgun","Sniper","SMG","Pistol","Revolver","Katana"} end
 
-end
-do
 local AutoL1 = Tabs.Automation:AddLeftGroupbox("Queue Automation")
 local AutoR1 = Tabs.Automation:AddRightGroupbox("Queue Config")
 local AutoL2 = Tabs.Automation:AddLeftGroupbox("Match Automation")
@@ -6108,8 +6101,6 @@ local HvHR1    = HvHTab:AddRightGroupbox("Aimbot")
 local HvHL4    = HvHTab:AddLeftGroupbox("Visuals")
 local HvHR4    = HvHTab:AddRightGroupbox("Visual Config")
 -- HvH tab: Ragebot, Triggerbot, Flickbot
-end
-do
 local HvHL2    = Tabs.HvH:AddLeftGroupbox("Ragebot")
 local HvHR2    = Tabs.HvH:AddRightGroupbox("Rage Config")
 local HvHL3    = Tabs.HvH:AddLeftGroupbox("Triggerbot / Flickbot")
@@ -8235,7 +8226,7 @@ THR:AddSlider("EIUpdateRate", {
 -- ── Quick keybind 登録 (デフォルト: I) ───────────────────────────────────
 _qbLabels["EnemyInfoEnabled"] = "Enemy Info"
 _qbState["EnemyInfoEnabled"]  = false
-_qbSetKey("EnemyInfoEnabled", "I")
+_qbSetKey("EnemyInfoEnabled", "なし")
 _regFlag("EnemyInfoEnabled", function(v)
     eiCFG.enabled = v
     if v then _eiStart() else _eiStop() end
@@ -74745,18 +74736,18 @@ local function _addQbEntry(gb, ddId, label, flagId, defaultKey)
 end
 
 -- ── 左列 ──────────────────────────────────────────────────────────────────
-_addQbEntry(QBL, "QbKeyEsp",       "Player ESP",      "EspEnabled",     "Z")
-_addQbEntry(QBL, "QbKeyVoid",      "Void",            "VoidToggle",     "X")
-_addQbEntry(QBL, "QbKeyOrbit",     "Orbit",           "OrbitToggle",    "C")
-_addQbEntry(QBL, "QbKeyPred",      "Prediction V2",   "PredToggle",     "V")
+_addQbEntry(QBL, "QbKeyEsp",       "Player ESP",      "EspEnabled",     "なし")
+_addQbEntry(QBL, "QbKeyVoid",      "Void",            "VoidToggle",     "なし")
+_addQbEntry(QBL, "QbKeyOrbit",     "Orbit",           "OrbitToggle",    "なし")
+_addQbEntry(QBL, "QbKeyPred",      "Prediction V2",   "PredToggle",     "なし")
 _addQbEntry(QBL, "QbKeyBhop",      "Bhop",            "BhopEnabled",    "なし")
 _addQbEntry(QBL, "QbKeyWireframe", "Wireframe ESP",   "WireframeEnabled","なし")
 
 -- ── 右列 ──────────────────────────────────────────────────────────────────
-_addQbEntry(QBR, "QbKeyAntiBait",  "Anti-Bait V2",    "AntiBaitToggle", "B")
-_addQbEntry(QBR, "QbKeySling",     "Sling Bypass",    "SlingToggle",    "N")
-_addQbEntry(QBR, "QbKeyAa",        "Anti-Aim",        "AaToggle",       "M")
-_addQbEntry(QBR, "QbKeyEnemyInfo", "Enemy Info",      "EnemyInfoEnabled","I")
+_addQbEntry(QBR, "QbKeyAntiBait",  "Anti-Bait V2",    "AntiBaitToggle", "なし")
+_addQbEntry(QBR, "QbKeySling",     "Sling Bypass",    "SlingToggle",    "なし")
+_addQbEntry(QBR, "QbKeyAa",        "Anti-Aim",        "AaToggle",       "なし")
+_addQbEntry(QBR, "QbKeyEnemyInfo", "Enemy Info",      "EnemyInfoEnabled","なし")
 _addQbEntry(QBR, "QbKeyUaa",       "Underground AA",  "UaaEnabled",     "なし")
 _addQbEntry(QBR, "QbKeyRtrap",     "Rage Trap",       "RtEnabled",      "なし")
 
