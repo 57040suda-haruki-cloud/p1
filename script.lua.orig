@@ -636,7 +636,7 @@ local function _kbHudBuild()
     title.LayoutOrder = 0
     title.Size = UDim2.new(1, 0, 0, 14)
     title.BackgroundTransparency = 1
-    title.Text = "⌨  UNCODE Keybinds"
+    title.Text = "UNCODE Keybinds"
     title.TextColor3 = Color3.fromRGB(255, 200, 60)
     title.TextSize = 11
     title.Font = Enum.Font.GothamBold
@@ -4856,14 +4856,14 @@ PLS:AddButton("All Spoof ON", function()
     for _, id in ipairs(_spfAllIds) do
         if Toggles[id] then pcall(function() Toggles[id]:SetValue(true) end) end
     end
-    Notification.new({ Title=" All Spoof ON",
+    Notification.new({ Title="All Spoof ON",
         Content=#_spfAllIds.." items enabled", Duration=3 })
 end)
 PLS:AddButton("All Spoof OFF", function()
     for _, id in ipairs(_spfAllIds) do
         if Toggles[id] then pcall(function() Toggles[id]:SetValue(false) end) end
     end
-    Notification.new({ Title=" All Spoof OFF",
+    Notification.new({ Title="All Spoof OFF",
         Content="All items disabled", Duration=2 })
 end)
 end -- Spoofer bulk toggle scope
@@ -5455,7 +5455,7 @@ KnrL:AddToggle("KnifeRageEnabled", {
                 _knrOrigSpeed = nil
             end)
 
-            Notification.new({ Title=" Knife Rage",
+            Notification.new({ Title="Knife Rage",
                 Content="Enabled — Range ".._knrCFG.range.."st", Duration=2 })
         else
             if _knrCon  then _knrCon:Disconnect();  _knrCon  = nil end
@@ -5853,7 +5853,7 @@ _ahL:AddToggle("AntiHitEnabled", { Text="Emergency TP", Default=false,
                             hrp.CFrame = hrp.CFrame + Vector3.new(rx, 8, rz)
                         end
                     end)
-                    Notification.new({ Title=" Emergency TP",
+                    Notification.new({ Title="Emergency TP",
                         Content="Critical HP → Escaped!", Duration=2 })
                 end
                 lastHP = hp
@@ -6217,6 +6217,110 @@ local HvHR3    = Tabs.HvH:AddRightGroupbox("Flickbot Config")
 
 -- _kSet is defined above (before Player Tab scope) — shared helper.
 
+-- ═══════════════════════════════════════════════════════════════
+-- Pure-Lua Camera Aimbot engine (fallback when Kicia is offline)
+-- ═══════════════════════════════════════════════════════════════
+local _abCFG2 = {
+    enabled     = false,
+    fov         = 120,   -- screen-pixel radius
+    bone        = "Head",
+    mode        = "Lock", -- "Lock" | "Linear" | "Spring"
+    speed       = 0.50,
+    visibleOnly = true,
+    targetLock  = false,
+}
+local _abLockedPlayer = nil
+
+local function _abFindTarget(lp, char, cam)
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil, nil end
+    local cx = cam.ViewportSize.X / 2
+    local cy = cam.ViewportSize.Y / 2
+    local bestDist, bestPos, bestP = math.huge, nil, nil
+    for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+        if p ~= lp and p.Character then
+            local phum = p.Character:FindFirstChildOfClass("Humanoid")
+            local bone = p.Character:FindFirstChild(_abCFG2.bone)
+                      or p.Character:FindFirstChild("Head")
+                      or p.Character:FindFirstChild("HumanoidRootPart")
+            if phum and phum.Health > 0 and bone then
+                local screenPos, onScreen = cam:WorldToViewportPoint(bone.Position)
+                if onScreen then
+                    local dx = screenPos.X - cx
+                    local dy = screenPos.Y - cy
+                    local sDist = math.sqrt(dx * dx + dy * dy)
+                    if sDist < _abCFG2.fov and sDist < bestDist then
+                        local visible = true
+                        if _abCFG2.visibleOnly then
+                            local rp = RaycastParams.new()
+                            rp.FilterDescendantsInstances = {char, p.Character}
+                            rp.FilterType = Enum.RaycastFilterType.Exclude
+                            local hit = workspace:Raycast(
+                                cam.CFrame.Position,
+                                (bone.Position - cam.CFrame.Position).Unit * 1200,
+                                rp
+                            )
+                            visible = (hit == nil)
+                        end
+                        if visible then
+                            bestDist = sDist
+                            bestPos  = bone.Position
+                            bestP    = p
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return bestPos, bestP
+end
+
+RunService.RenderStepped:Connect(function()
+    if not _abCFG2.enabled then return end
+    pcall(function()
+        local lp   = game:GetService("Players").LocalPlayer
+        local char = lp.Character
+        if not char then return end
+        local cam = workspace.CurrentCamera
+        local targetPos, targetP
+
+        -- Target-lock: prefer locked player while alive
+        if _abCFG2.targetLock and _abLockedPlayer then
+            if _abLockedPlayer.Character then
+                local phum = _abLockedPlayer.Character:FindFirstChildOfClass("Humanoid")
+                local bone = _abLockedPlayer.Character:FindFirstChild(_abCFG2.bone)
+                          or _abLockedPlayer.Character:FindFirstChild("Head")
+                          or _abLockedPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if phum and phum.Health > 0 and bone then
+                    targetPos = bone.Position
+                    targetP   = _abLockedPlayer
+                end
+            end
+            if not targetPos then _abLockedPlayer = nil end
+        end
+
+        if not targetPos then
+            targetPos, targetP = _abFindTarget(lp, char, cam)
+            if _abCFG2.targetLock and targetP then
+                _abLockedPlayer = targetP
+            end
+        end
+
+        if not targetPos then return end
+
+        local dir      = (targetPos - cam.CFrame.Position).Unit
+        local targetCF = CFrame.new(cam.CFrame.Position, cam.CFrame.Position + dir)
+
+        if _abCFG2.mode == "Lock" then
+            cam.CFrame = targetCF
+        elseif _abCFG2.mode == "Spring" then
+            cam.CFrame = cam.CFrame:Lerp(targetCF, math.clamp(_abCFG2.speed * 2, 0.02, 1.0))
+        else -- Linear
+            cam.CFrame = cam.CFrame:Lerp(targetCF, _abCFG2.speed)
+        end
+    end)
+end)
+
 -- ── SILENT AIM ────────────────────────────────────────────────
 HvHL1:AddToggle("SaEnabled", {
     Text = "Silent Aim",
@@ -6229,7 +6333,10 @@ HvHL1:AddSlider("SaFov", {
     Default = 120,
     Min = 1, Max = 500, Rounding = 0,
     Suffix = "px",
-    Callback = function(v) _kSet({"SilentAim","Fov","Radius"}, v) end
+    Callback = function(v)
+        _kSet({"SilentAim","Fov","Radius"}, v)
+        _abCFG2.fov = v
+    end
 })
 HvHL1:AddToggle("SaManipulate", {
     Text = "Manipulate",
@@ -6311,18 +6418,29 @@ HvHR1:AddToggle("AbEnabled", {
     Text = "Aimbot",
     Default = false,
     Tooltip = "Lock onto nearest enemy and control your aim.",
-    Callback = function(v) _kSet({"Aimbot","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Aimbot","Enabled"}, v)
+        _abCFG2.enabled = v
+        if not v then _abLockedPlayer = nil end
+    end
 })
 HvHR1:AddToggle("AbTargetLock", {
     Text = "Target Lock",
     Default = false,
     Tooltip = "Keep locked onto a single target until they die.",
-    Callback = function(v) _kSet({"Aimbot","TargetLock","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Aimbot","TargetLock","Enabled"}, v)
+        _abCFG2.targetLock = v
+        if not v then _abLockedPlayer = nil end
+    end
 })
 HvHR1:AddToggle("AbVisible", {
     Text = "Target: Visible Only",
     Default = true,
-    Callback = function(v) _kSet({"Aimbot","TargetConditions","Visible"}, v) end
+    Callback = function(v)
+        _kSet({"Aimbot","TargetConditions","Visible"}, v)
+        _abCFG2.visibleOnly = v
+    end
 })
 HvHR1:AddToggle("AbVulnerable", {
     Text = "Target: Vulnerable Only",
@@ -6373,7 +6491,10 @@ HvHR1:AddDropdown("AbAimMode", {
     Values = {"Lock", "Linear", "Spring"},
     Default = 1,
     Tooltip = "How the aimbot moves your camera toward the target.",
-    Callback = function(v) _kSet({"Aimbot","Mode","Type"}, v) end
+    Callback = function(v)
+        _kSet({"Aimbot","Mode","Type"}, v)
+        _abCFG2.mode = v
+    end
 })
 HvHR1:AddSlider("AbAimSpeed", {
     Text = "Aim Speed",
@@ -6381,7 +6502,10 @@ HvHR1:AddSlider("AbAimSpeed", {
     Min = 1, Max = 100, Rounding = 0,
     Suffix = "%",
     Tooltip = "Speed for Linear / Spring aim modes (ignored in Lock mode).",
-    Callback = function(v) _kSet({"Aimbot","Mode","Speed"}, v / 100) end
+    Callback = function(v)
+        _kSet({"Aimbot","Mode","Speed"}, v / 100)
+        _abCFG2.speed = v / 100
+    end
 })
 HvHR1:AddDropdown("AbLockMode", {
     Text = "Target Lock Mode",
@@ -6400,6 +6524,7 @@ HvHR1:AddDropdown("AbBonePriority", {
     Callback = function(v)
         _kSet({"Aimbot","BoneTarget"}, v)
         _kSet({"SilentAim","HitboxPoint"}, v)
+        _abCFG2.bone = v
     end
 })
 
@@ -6523,7 +6648,7 @@ TsL:AddToggle("TargetSwitchEnabled", { Text="Target Auto Switch", Default=false,
                         if next then
                             _kSet({"Aimbot","ForceTarget"}, next.Name)
                             if _tsCFG.notifOnSwitch then
-                                Notification.new({ Title=" Target Switched",
+                                Notification.new({ Title="Target Switched",
                                     Content="→ "..next.Name, Duration=2 })
                             end
                         end
@@ -74839,7 +74964,7 @@ QBR:AddButton(" Show Current Binds", function()
     table.sort(lines)
     local content = #lines > 0 and table.concat(lines, "\n") or "No binds set"
     Notification.new({
-        Title   = "⌨ Keybind List",
+        Title   = "Keybind List",
         Content = content,
         Duration = 6,
     })
@@ -75062,14 +75187,14 @@ FlagL:AddToggle("FakeLagEnabled", { Text="Fake Lag", Default=false,
     end })
 FlagL:AddButton("Lag Spike (1s)", function()
     if not _fLagCFG.enabled then
-        Notification.new({ Title=" Fake Lag",
+        Notification.new({ Title="Fake Lag",
             Content="Enable Fake Lag first", Duration=2 })
         return
     end
     local saved = _fLagCFG.delay
     _fLagCFG.delay = 1.0
     task.delay(1.1, function() _fLagCFG.delay = saved end)
-    Notification.new({ Title=" Lag Spike",
+    Notification.new({ Title="Lag Spike",
         Content="1s forced lag spike triggered", Duration=2 })
 end)
 FlagR:AddSlider("FakeLagDelay", { Text="Delay (sec)",
@@ -75754,10 +75879,10 @@ _cfgL:AddButton("Save Config", function()
         local json = game:GetService("HttpService"):JSONEncode(data)
         if writefile then
             writefile(_cfgPath, json)
-            Notification.new({ Title=" Saved",
+            Notification.new({ Title="Saved",
                 Content=_cfgPath.." written", Duration=3 })
         else
-            Notification.new({ Title=" Save Failed",
+            Notification.new({ Title="Save Failed",
                 Content="writefile not supported", Duration=3 })
         end
     end)
@@ -75766,13 +75891,13 @@ end)
 _cfgL:AddButton("Load Config", function()
     pcall(function()
         if not readfile then
-            Notification.new({ Title=" Load Failed",
+            Notification.new({ Title="Load Failed",
                 Content="readfile not supported", Duration=3 })
             return
         end
         local ok, json = pcall(readfile, _cfgPath)
         if not ok or not json then
-            Notification.new({ Title=" No File",
+            Notification.new({ Title="No File",
                 Content=_cfgPath.." not found", Duration=3 })
             return
         end
@@ -75787,7 +75912,7 @@ _cfgL:AddButton("Load Config", function()
                 pcall(function() Options[id]:SetValue(val) end); count = count + 1
             end
         end
-        Notification.new({ Title=" Loaded",
+        Notification.new({ Title="Loaded",
             Content=count.." settings restored", Duration=3 })
     end)
 end)
@@ -75819,15 +75944,15 @@ UpdL:AddButton("Check Now", function()
         if ok and body then
             local latest = body:match("^%s*(.-)%s*$")
             if latest == _updBuild then
-                Notification.new({ Title=" Up to date",
+                Notification.new({ Title="Up to date",
                     Content="Current build: ".._updBuild, Duration=4 })
             else
-                Notification.new({ Title=" Update Available",
+                Notification.new({ Title="Update Available",
                     Content="Latest: "..latest.." / "
                         .."Current: ".._updBuild, Duration=6 })
             end
         else
-            Notification.new({ Title=" Check Failed",
+            Notification.new({ Title="Check Failed",
                 Content="GitHub connection error", Duration=3 })
         end
     end)
@@ -75841,7 +75966,7 @@ task.delay(3, function()
             local body = HS:GetAsync(_updUrl, true)
             local latest = body:match("^%s*(.-)%s*$")
             if latest ~= _updBuild then
-                Notification.new({ Title=" Update Available",
+                Notification.new({ Title="Update Available",
                     Content="Latest: "..latest, Duration=6 })
             end
         end)
@@ -75879,7 +76004,7 @@ local function _applyTheme(name)
                 gui.Color = t.accent
             end
         end
-        Notification.new({ Title=" Theme Changed",
+        Notification.new({ Title="Theme Changed",
             Content=name, Duration=2 })
     end)
 end
