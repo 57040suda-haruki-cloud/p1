@@ -6607,7 +6607,7 @@ local _UAAL  = Tabs.AA:AddLeftGroupbox("Underground AA")
 local _UAAR  = Tabs.AA:AddRightGroupbox("AA Config")
 local _URVL  = Tabs.AA:AddLeftGroupbox("Resolver")
 local _URVR  = Tabs.AA:AddRightGroupbox("Resolver Config")
-local _UAPL  = Tabs.AA:AddLeftGroupbox("Auto Peek")
+local _UAPL  = Tabs.AA:AddRightGroupbox("Auto Peek")
 
 -- ── Underground AA ─────────────────────────────────────────────────────
 local _uaaCFG = {
