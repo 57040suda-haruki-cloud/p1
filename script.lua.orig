@@ -521,6 +521,7 @@ local window = _mlLib:window({
     suffix   = "v1",
     gameInfo = "Rivals · UNCODE v1",
 })
+window.Keybind = "LShift" -- Left Shift toggles Millenium UI
 warn("[UNCODE] window created OK")
 -- Unload helper: run getgenv()._UNC_UNLOAD() before re-executing the script
 getgenv()._UNC_UNLOAD = function()
@@ -76669,6 +76670,8 @@ local lastFPSSet = 0
 Bind(RunService.RenderStepped:Connect(function(dt)
 	if State.Destroyed then return end
 	local now = os.clock()
+	if now - (State.LastMainLoop or 0) < 0.033 then return end
+	State.LastMainLoop = now
 	-- fps override
 	if Config.Viewmodel.OverrideFPS and typeof(setfpscap) == "function" then
 		if now - lastFPSSet > 2 then lastFPSSet = now pcall(setfpscap, Config.Viewmodel.FPS) end
@@ -77314,6 +77317,7 @@ return API
     local _rv_fn, _rv_err = loadstring(_rv_src, 'RivalsVisuals')
     if _rv_fn then task.spawn(_rv_fn) else warn('[UNCODE] Visuals load err: '..tostring(_rv_err)) end
 end
+--    Must be AFTER j1()(boot) so all module observers are connected before we use it.
 getgenv()._UNC_KiciaStore = tbl17.bG()
 end)() end) -- closes Kicia IIFE + pcall wrapper
 if not _kiciaOk then warn("[UNCODE] Kicia engine failed (non-fatal): " .. tostring(_kiciaErr)) end
@@ -77448,8 +77452,8 @@ local UIGroup = Tabs.UI:AddLeftGroupbox("UI Settings")
 -- Menu keybind (RightShift default; stored in window.Keybind)
 UIGroup:AddDropdown("MenuKeybind", {
     Text    = "Menu Keybind",
-    Default = "RightShift",
-    Values  = {"RightShift","RightControl","F1","F2","F3","F4","Insert","Delete","Home","End"},
+    Default = "LShift",
+    Values  = {"LShift","RightShift","RightControl","F1","F2","F3","F4","Insert","Delete","Home","End"},
     Callback = function(v)
         window.Keybind = v
     end,
