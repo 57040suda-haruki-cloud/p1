@@ -75244,6 +75244,9 @@ function K.Unload()
 end
 
 tbl17.j1()(boot)
+-- UNCODE: export Kicia APIs for outer scope
+getgenv()._UNC_KiciaStore  = tbl17.bG()
+getgenv()._UNC_KiciaNotify = tbl17.aB()
 ]=]
     local _kicia_fn, _kicia_err = loadstring(_kicia_src, 'KiciaRebuild')
     if _kicia_fn then
@@ -77316,6 +77319,159 @@ return API
 ]=]
     local _rv_fn, _rv_err = loadstring(_rv_src, 'RivalsVisuals')
     if _rv_fn then task.spawn(_rv_fn) else warn('[UNCODE] Visuals load err: '..tostring(_rv_err)) end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- UNCODE Combat Feedback (Kicia PlayerHit / PlayerElimination)
+-- ═══════════════════════════════════════════════════════════════
+task.spawn(function()
+    -- Wait for KiciaStore to be exported by the loadstring block above
+    repeat task.wait(0.25) until getgenv()._UNC_KiciaStore
+    local _ks = getgenv()._UNC_KiciaStore
+    -- Kill feedback: enable sound (CoD) + flash + notification
+    _ks:Set({"PlayerElimination","Enabled"}, true)
+    _ks:Set({"PlayerElimination","Sound","Enabled"}, true)
+    _ks:Set({"PlayerElimination","Sound","Name"}, "CoD")
+    _ks:Set({"PlayerElimination","Sound","Volume"}, 0.7)
+    _ks:Set({"PlayerElimination","Sound","Pitch"}, 1.0)
+    _ks:Set({"PlayerElimination","KillFlash","Enabled"}, true)
+    _ks:Set({"PlayerElimination","KillFlash","Color"}, Color3.fromRGB(255, 60, 60))
+    _ks:Set({"PlayerElimination","KillFlash","Duration"}, 1.35)
+    _ks:Set({"PlayerElimination","Notification","Enabled"}, true)
+    _ks:Set({"PlayerElimination","Notification","Text"}, "Eliminated %DNAME% (%NAME%)")
+    -- Hit feedback: enable sound (TF2 head / Ding body) + flash
+    _ks:Set({"PlayerHit","Enabled"}, true)
+    _ks:Set({"PlayerHit","Sound","Enabled"}, true)
+    _ks:Set({"PlayerHit","Sound","HeadName"}, "TF2 HitSound")
+    _ks:Set({"PlayerHit","Sound","BodyName"}, "Ding")
+    _ks:Set({"PlayerHit","Sound","HeadVolume"}, 0.6)
+    _ks:Set({"PlayerHit","Sound","BodyVolume"}, 0.4)
+    _ks:Set({"PlayerHit","Sound","HeadPitch"}, 1.0)
+    _ks:Set({"PlayerHit","Sound","BodyPitch"}, 1.0)
+    _ks:Set({"PlayerHit","HitFlash","Enabled"}, true)
+    _ks:Set({"PlayerHit","HitFlash","Color"}, Color3.fromRGB(90, 170, 255))
+    _ks:Set({"PlayerHit","HitFlash","Duration"}, 1.35)
+    _ks:Set({"PlayerHit","Notification","Enabled"}, false)
+    -- Startup notification via Kicia NotificationCenter
+    local _nc = getgenv()._UNC_KiciaNotify
+    if _nc then
+        pcall(function()
+            _nc.get():Notify(
+                {{Text = "UNCODE", Accent = true}, {Text = " v1  ready"}},
+                {Color = Color3.fromRGB(0, 200, 255), Duration = 5}
+            )
+        end)
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════════
+-- Combat Feedback UI (Tabs.PlayerFight)
+-- ═══════════════════════════════════════════════════════════════
+do
+    -- ── Kill Feedback ──────────────────────────────────────────
+    local _gbKF  = Tabs.PlayerFight:AddLeftGroupbox("Kill Feedback")
+    local _gbKFS = Tabs.PlayerFight:AddRightGroupbox("Kill Sound")
+
+    _gbKF:AddToggle("KillFeedbackEnabled", {
+        Text    = "Enable Kill Feedback",
+        Default = true,
+        Callback = function(v) _kSet({"PlayerElimination","Enabled"}, v) end
+    })
+    _gbKF:AddToggle("KillFlashEnabled", {
+        Text    = "Kill Flash",
+        Default = true,
+        Callback = function(v) _kSet({"PlayerElimination","KillFlash","Enabled"}, v) end
+    })
+    _gbKF:AddSlider("KillFlashDuration", {
+        Text    = "Kill Flash Duration",
+        Default = 1.35, Min = 0.1, Max = 3.0, Rounding = 2,
+        Callback = function(v) _kSet({"PlayerElimination","KillFlash","Duration"}, v) end
+    })
+    _gbKF:AddToggle("KillNotifyEnabled", {
+        Text    = "Kill Notify",
+        Default = true,
+        Callback = function(v) _kSet({"PlayerElimination","Notification","Enabled"}, v) end
+    })
+
+    _gbKFS:AddToggle("KillSoundEnabled", {
+        Text    = "Kill Sound",
+        Default = true,
+        Callback = function(v) _kSet({"PlayerElimination","Sound","Enabled"}, v) end
+    })
+    _gbKFS:AddDropdown("KillSoundName", {
+        Text    = "Kill Sound",
+        Default = "CoD",
+        Values  = {"CoD","TF2 HitSound","Ding","Neverlose","Gamesense","Baimware","Headshot","Skeet","None"},
+        Callback = function(v) _kSet({"PlayerElimination","Sound","Name"}, v) end
+    })
+    _gbKFS:AddSlider("KillSoundVolume", {
+        Text    = "Volume",
+        Default = 0.7, Min = 0.0, Max = 1.0, Rounding = 2,
+        Callback = function(v) _kSet({"PlayerElimination","Sound","Volume"}, v) end
+    })
+    _gbKFS:AddSlider("KillSoundPitch", {
+        Text    = "Pitch",
+        Default = 1.0, Min = 0.5, Max = 2.0, Rounding = 2,
+        Callback = function(v) _kSet({"PlayerElimination","Sound","Pitch"}, v) end
+    })
+
+    -- ── Hit Feedback ────────────────────────────────────────────
+    local _gbHF  = Tabs.PlayerFight:AddLeftGroupbox("Hit Feedback")
+    local _gbHFS = Tabs.PlayerFight:AddRightGroupbox("Hit Sound")
+
+    _gbHF:AddToggle("HitFeedbackEnabled", {
+        Text    = "Enable Hit Feedback",
+        Default = true,
+        Callback = function(v) _kSet({"PlayerHit","Enabled"}, v) end
+    })
+    _gbHF:AddToggle("HitFlashEnabled", {
+        Text    = "Hit Flash",
+        Default = true,
+        Callback = function(v) _kSet({"PlayerHit","HitFlash","Enabled"}, v) end
+    })
+    _gbHF:AddSlider("HitFlashDuration", {
+        Text    = "Hit Flash Duration",
+        Default = 1.35, Min = 0.1, Max = 3.0, Rounding = 2,
+        Callback = function(v) _kSet({"PlayerHit","HitFlash","Duration"}, v) end
+    })
+    _gbHF:AddToggle("HitNotifyEnabled", {
+        Text    = "Hit Notify",
+        Default = false,
+        Callback = function(v) _kSet({"PlayerHit","Notification","Enabled"}, v) end
+    })
+
+    _gbHFS:AddToggle("HitSoundEnabled", {
+        Text    = "Hit Sound",
+        Default = true,
+        Callback = function(v) _kSet({"PlayerHit","Sound","Enabled"}, v) end
+    })
+    _gbHFS:AddDropdown("HitSoundHead", {
+        Text    = "Head Sound",
+        Default = "TF2 HitSound",
+        Values  = {"TF2 HitSound","Ding","CoD","Neverlose","Gamesense","Baimware","Headshot","Skeet","None"},
+        Callback = function(v) _kSet({"PlayerHit","Sound","HeadName"}, v) end
+    })
+    _gbHFS:AddDropdown("HitSoundBody", {
+        Text    = "Body Sound",
+        Default = "Ding",
+        Values  = {"Ding","TF2 HitSound","CoD","Neverlose","Gamesense","Baimware","None"},
+        Callback = function(v) _kSet({"PlayerHit","Sound","BodyName"}, v) end
+    })
+    _gbHFS:AddSlider("HitSoundHeadVolume", {
+        Text    = "Head Volume",
+        Default = 0.6, Min = 0.0, Max = 1.0, Rounding = 2,
+        Callback = function(v) _kSet({"PlayerHit","Sound","HeadVolume"}, v) end
+    })
+    _gbHFS:AddSlider("HitSoundBodyVolume", {
+        Text    = "Body Volume",
+        Default = 0.4, Min = 0.0, Max = 1.0, Rounding = 2,
+        Callback = function(v) _kSet({"PlayerHit","Sound","BodyVolume"}, v) end
+    })
+    _gbHFS:AddSlider("HitSoundPitch", {
+        Text    = "Head Pitch",
+        Default = 1.0, Min = 0.5, Max = 2.0, Rounding = 2,
+        Callback = function(v) _kSet({"PlayerHit","Sound","HeadPitch"}, v) end
+    })
 end
 end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
 if not _uiSec1Ok then warn("[UNCODE] UI-section-1 failed (non-fatal): " .. tostring(_uiSec1Err)) end
