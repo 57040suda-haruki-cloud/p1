@@ -7044,7 +7044,19 @@ local function _rtTeleport(plr)
         local pos = root.Position
         local ox  = math.random(-rng, rng)
         local oz  = math.random(-rng, rng)
-        root.CFrame = CFrame.new(pos.X + ox, _rtCFG.y, pos.Z + oz)
+        local targetCF = CFrame.new(pos.X + ox, _rtCFG.y, pos.Z + oz)
+        -- Claim network ownership so the CFrame change replicates to server
+        pcall(function() root:SetNetworkOwner(LocalPlayer) end)
+        -- Bypass __newindex metamethod protection (same pattern as slingshot NoTP mode)
+        local _mt = getrawmetatable and getrawmetatable(root)
+        local _ni = _mt and rawget(_mt, "__newindex")
+        if _ni then
+            pcall(_ni, root, "CFrame", targetCF)
+            pcall(_ni, root, "AssemblyLinearVelocity", Vector3.zero)
+        else
+            root.CFrame = targetCF
+            pcall(function() root.AssemblyLinearVelocity = Vector3.zero end)
+        end
         Notification.new({
             Title   = "Rage Trap",
             Content = _t(plr.Name.." → Y="..tostring(_rtCFG.y).." にTP 💀", "Teleported "..plr.Name.." → Y="..tostring(_rtCFG.y).." 💀"),
@@ -7085,6 +7097,11 @@ _RTL:AddToggle("RtEnabled", {
         Notification.new({ Title="UNCODE v1", Content="Rage Trap "..(v and "ON 🪤" or "OFF"), Duration=1.5 })
     end,
 })
+-- Wire _FlagCb so QB keybind (_T/"_O") can also toggle Rage Trap
+_regFlag("RtEnabled", function(v)
+    _rtCFG.enabled = v
+    if v then _rtStart() else _rtStop() end
+end)
 _RTL:AddToggle("RtDetectRage", {
     Text    = _t("Rage検知フィルタ","Rage-Only Filter"),
     Default = true,
