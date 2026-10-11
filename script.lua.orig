@@ -934,29 +934,14 @@ do
     local _playPlayer, _playWorld, _playAuto
     local _skinsChanger
     local _cfgKeybinds, _cfgUI, _cfgTools, _cfgHUD, _cfgSave
-    -- Each feature is its own top-level tab with a single sub-tab entry.
-    -- Millenium hides the sub-tab selector bar when only 1 entry is present,
-    -- so there is no secondary tab row below the main bar.
-    _hvhCombat    = window:tab({ name = "Combat", tabs = {"Combat"}  })
-    _hvhAimbot    = window:tab({ name = "Aimbot", tabs = {"Aimbot"}  })
-    _hvhAA        = window:tab({ name = "AA",     tabs = {"AA"}      })
-    _hvhTrap      = window:tab({ name = "Trap",   tabs = {"Trap"}    })
-    _hvhPred      = window:tab({ name = "Pred",   tabs = {"Pred"}    })
-    _utilVS       = window:tab({ name = "Void",   tabs = {"Void"}    })
-    _utilOrbit    = window:tab({ name = "Orbit",  tabs = {"Orbit"}   })
-    _utilDef      = window:tab({ name = "Def",    tabs = {"Def"}     })
-    _miscTrans    = window:tab({ name = "Trans",  tabs = {"Trans"}   })
-    _miscSling    = window:tab({ name = "Sling",  tabs = {"Sling"}   })
-    _miscRiot     = window:tab({ name = "Riot",   tabs = {"Riot"}    })
-    _playPlayer   = window:tab({ name = "Camera", tabs = {"Camera"}  })
-    _playWorld    = window:tab({ name = "World",  tabs = {"World"}   })
-    _playAuto     = window:tab({ name = "Auto",   tabs = {"Auto"}    })
-    _skinsChanger = window:tab({ name = "Skins",  tabs = {"Skins"}   })
-    _cfgKeybinds  = window:tab({ name = "Binds",  tabs = {"Binds"}   })
-    _cfgUI        = window:tab({ name = "UI",     tabs = {"UI"}      })
-    _cfgTools     = window:tab({ name = "Tools",  tabs = {"Tools"}   })
-    _cfgHUD       = window:tab({ name = "HUD",    tabs = {"HUD"}     })
-    _cfgSave      = window:tab({ name = "Save",   tabs = {"Save"}    })
+    -- 6 grouped top-level tabs; window:tab() returns one page per sub-tab entry.
+    -- Sub-tab selector row appears below the main tab bar (expected behaviour).
+    _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred = window:tab({ name = "HvH",     tabs = {"Combat","Aimbot","AA","Trap","Pred"}   })
+    _utilVS,    _utilOrbit,  _utilDef                  = window:tab({ name = "Utility",  tabs = {"Void","Orbit","Def"}                  })
+    _miscTrans, _miscSling,  _miscRiot                 = window:tab({ name = "Misc",     tabs = {"Trans","Sling","Riot"}                })
+    _playPlayer,_playWorld,  _playAuto                 = window:tab({ name = "Player",   tabs = {"Camera","World","Auto"}               })
+    _skinsChanger                                      = window:tab({ name = "Skins",    tabs = {"Skins"}                              })
+    _cfgKeybinds,_cfgUI,_cfgTools,_cfgHUD,_cfgSave    = window:tab({ name = "Config",   tabs = {"Binds","UI","Tools","HUD","Save"}     })
     _mlTabMap["Combat"]        = _hvhCombat
     _mlTabMap["HvH"]           = _hvhAimbot
     _mlTabMap["Prediction"]    = _hvhPred
