@@ -881,52 +881,63 @@ local function wrapTab(mlSubTab)
 end
 
 -- ── Millenium tab groups ─────────────────────────────────────────────────
--- 14 logical tabs → 6 Millenium parent tabs (with sub-tabs).
+-- 20 logical tabs → 7 Millenium parent tabs, each with ≤3 sub-tabs.
+-- (>3 sub-tabs per group causes the sub-tab row to overflow / drop down.)
 -- Real Millenium API: window:tab({name, tabs={"Sub1","Sub2",...}})
 --   returns sub-tab page objects (one per entry, via unpack).
 --
---   ┌─ HvH ──────────┐  Combat | Aimbot | Prediction
---   ├─ Utility ───────┤  VoidSpam | Orbit | Defense
---   ├─ Misc ──────────┤  Transloc. | Sling | Riot
---   ├─ Player ────────┤  Camera | World | Auto
---   ├─ Skins ─────────┤  SkinChanger
---   └─ Config ────────┘  Settings
+--   ┌─ HvH ───────┐  Aim | Rage | AA
+--   ├─ Rivals ────┤  Trap | Pred | VS
+--   ├─ World ─────┤  Orbit | Def | Skin
+--   ├─ Misc ──────┤  Trans | Sling | Riot
+--   ├─ Player ────┤  Cam | World | Auto
+--   ├─ Config ────┤  Keys | UI | Tools
+--   └─ Setup ─────┘  HUD | Save
 --
 -- ── Window compat ────────────────────────────────────────────────────────
 -- Sub-tab vars declared+used inside do..end so all 20 registers are freed
 -- before the gameplay section; _mlTabMap persists as the single outer local.
 local _mlTabMap = {}
 do
-    local _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred
-    local _utilVS, _utilOrbit, _utilDef
+    -- HvH cluster: Aim (Combat/SilentAim) | Rage (Ragebot/Triggerbot) | AA
+    local _hvhAim,    _hvhRage,  _hvhAA
+    -- Rivals cluster: Trap | Pred | VoidSpam
+    local _rvsTrap,   _rvsPred,  _rvsVS
+    -- World cluster: Orbit | Defense | SkinChanger
+    local _wldOrbit,  _wldDef,   _wldSkin
+    -- Misc cluster: Translocation | Sling Bypass | Riot
     local _miscTrans, _miscSling, _miscRiot
-    local _playPlayer, _playWorld, _playAuto
-    local _skinsChanger
-    local _cfgKeybinds, _cfgUI, _cfgTools, _cfgHUD, _cfgSave
-    -- 6 grouped top-level tabs; window:tab() returns one page per sub-tab entry.
-    -- Sub-tab selector row appears below the main tab bar (expected behaviour).
-    _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred = window:tab({ name = "HvH",     tabs = {"Combat","Aimbot","AA","Trap","Pred"}   })
-    _utilVS,    _utilOrbit,  _utilDef                  = window:tab({ name = "Utility",  tabs = {"Void","Orbit","Def"}                  })
-    _miscTrans, _miscSling,  _miscRiot                 = window:tab({ name = "Misc",     tabs = {"Trans","Sling","Riot"}                })
-    _playPlayer,_playWorld,  _playAuto                 = window:tab({ name = "Player",   tabs = {"Camera","World","Auto"}               })
-    _skinsChanger                                      = window:tab({ name = "Skins",    tabs = {"Skins"}                              })
-    _cfgKeybinds,_cfgUI,_cfgTools,_cfgHUD,_cfgSave    = window:tab({ name = "Config",   tabs = {"Binds","UI","Tools","HUD","Save"}     })
-    _mlTabMap["Combat"]        = _hvhCombat
-    _mlTabMap["HvH"]           = _hvhAimbot
-    _mlTabMap["Prediction"]    = _hvhPred
+    -- Player cluster: Camera/Player | World | Automation
+    local _playPlayer,_playWorld, _playAuto
+    -- Config cluster: Keybinds | UI | Tools
+    local _cfgKeys,   _cfgUI,    _cfgTools
+    -- Setup cluster: HUD | Save
+    local _cfgHUD,    _cfgSave
+
+    _hvhAim,    _hvhRage,   _hvhAA    = window:tab({ name = "HvH",    tabs = {"Aim","Rage","AA"}      })
+    _rvsTrap,   _rvsPred,   _rvsVS    = window:tab({ name = "Rivals", tabs = {"Trap","Pred","VS"}     })
+    _wldOrbit,  _wldDef,    _wldSkin  = window:tab({ name = "World",  tabs = {"Orbit","Def","Skin"}   })
+    _miscTrans, _miscSling, _miscRiot = window:tab({ name = "Misc",   tabs = {"Trans","Sling","Riot"} })
+    _playPlayer,_playWorld, _playAuto = window:tab({ name = "Player", tabs = {"Cam","World","Auto"}   })
+    _cfgKeys,   _cfgUI,     _cfgTools = window:tab({ name = "Config", tabs = {"Keys","UI","Tools"}    })
+    _cfgHUD,    _cfgSave              = window:tab({ name = "Setup",  tabs = {"HUD","Save"}           })
+
+    _mlTabMap["Combat"]        = _hvhAim
+    _mlTabMap["HvH"]           = _hvhRage
     _mlTabMap["AA"]            = _hvhAA
-    _mlTabMap["Trap"]          = _hvhTrap
-    _mlTabMap["VoidSpam"]      = _utilVS
-    _mlTabMap["Orbit"]         = _utilOrbit
-    _mlTabMap["Defense"]       = _utilDef
+    _mlTabMap["Trap"]          = _rvsTrap
+    _mlTabMap["Prediction"]    = _rvsPred
+    _mlTabMap["VoidSpam"]      = _rvsVS
+    _mlTabMap["Orbit"]         = _wldOrbit
+    _mlTabMap["Defense"]       = _wldDef
+    _mlTabMap["SkinChanger"]   = _wldSkin
     _mlTabMap["Translocation"] = _miscTrans
     _mlTabMap["Sling Bypass"]  = _miscSling
     _mlTabMap["Riot"]          = _miscRiot
     _mlTabMap["Player"]        = _playPlayer
     _mlTabMap["World"]         = _playWorld
     _mlTabMap["Automation"]    = _playAuto
-    _mlTabMap["SkinChanger"]   = _skinsChanger
-    _mlTabMap["Keybinds"]      = _cfgKeybinds
+    _mlTabMap["Keybinds"]      = _cfgKeys
     _mlTabMap["UI"]            = _cfgUI
     _mlTabMap["Tools"]         = _cfgTools
     _mlTabMap["HUD"]           = _cfgHUD
