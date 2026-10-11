@@ -4311,14 +4311,32 @@ end)()
 -- ============================================================
 --  UNCODE v1 · Kicia ReactiveStore helper  (shared across all tabs)
 -- ============================================================
--- Defined here so Player Tab callbacks can call it immediately on AddToggle init.
+-- Deferred queue: if Kicia hasn't booted yet, calls are held and flushed
+-- once getgenv()._UNC_KiciaStore becomes available.
+local _kSetPending = {}
+local function _pathKey(path)
+    if type(path) == "table" then return table.concat(path, "\0") end
+    return tostring(path)
+end
 local function _kSet(path, value)
     local s = getgenv()._UNC_KiciaStore
     if s then
         local ok, err = pcall(function() s:Set(path, value) end)
         if not ok then warn("[UNCODE] kSet failed: " .. tostring(err)) end
+    else
+        -- Store latest value per path; later calls win (last-write-wins).
+        _kSetPending[_pathKey(path)] = {path = path, value = value}
     end
 end
+-- Flush loop: runs in background, replays queued calls once store is ready.
+task.spawn(function()
+    repeat task.wait(0.25) until getgenv()._UNC_KiciaStore
+    local s = getgenv()._UNC_KiciaStore
+    for _, entry in pairs(_kSetPending) do
+        pcall(function() s:Set(entry.path, entry.value) end)
+    end
+    _kSetPending = {}
+end)
 
 -- ============================================================
 --  UNCODE v1 · Player Tab  (Movement & PlayerSpoofer)
@@ -74823,9 +74841,9 @@ end)
 -- HvH tab: Aimbot/Triggerbot/Flickbot binds
 local HvHKbL = Tabs.HvH:AddLeftGroupbox("Keybinds")
 local HvHKbR = Tabs.HvH:AddRightGroupbox("Keybind Mode")
-_addQbEntry(HvHKbL, "QbHvHTrigger",  "Triggerbot",  "TriggerEnabled",  "None")
-_addQbEntry(HvHKbL, "QbHvHFlick",    "Flickbot",    "FlickEnabled",    "None")
-_addQbEntry(HvHKbR, "QbHvHSmooth",   "Smooth Aim",  "SmAimEnabled",    "None")
+_addQbEntry(HvHKbL, "QbHvHTrigger",  "Triggerbot",  "TbEnabled",         "None")
+_addQbEntry(HvHKbL, "QbHvHFlick",    "Flickbot",    "FbEnabled",         "None")
+_addQbEntry(HvHKbR, "QbHvHSmooth",   "Smooth Aim",  "SmoothAimEnabled",  "None")
 _addQbEntry(HvHKbR, "QbHvHEspToggle","Player ESP",  "EspEnabled",      "None")
 
 -- Trap tab: Rage Trap bind
