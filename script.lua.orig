@@ -1660,11 +1660,20 @@ function startOrbit()
     killConn("orbit")
     orbitAngle = 0; orbitLocalElapsed = 0; orbitCurrentRadius = cfg.orbitDist; orbitLastShot = 0; orbitSnapTimer = 0
     if hum then pcall(function() hum:ChangeState(Enum.HumanoidStateType.Physics) end) end
+    -- Apply once at start (NOT every frame) to avoid 60x/sec server calls & GetDescendants scans
+    if cfg.orbitNetworkOwn and root then pcall(function() root:SetNetworkOwner(LocalPlayer) end) end
+    if cfg.orbitNoClip and LocalPlayer.Character then applyNoClip(LocalPlayer.Character) end
+    local _orbitThrottleTick = 0  -- re-apply setup props every 5s in case game reverts
     conns.orbit = RunService.Heartbeat:Connect(function(dt)
         if not cfg.orbitEnabled then killConn("orbit"); return end
         if not root then return end
-        if cfg.orbitNetworkOwn then pcall(function() root:SetNetworkOwner(LocalPlayer) end) end
-        if cfg.orbitNoClip and LocalPlayer.Character then applyNoClip(LocalPlayer.Character) end
+        -- Throttled re-application: every 5 seconds instead of every frame
+        _orbitThrottleTick = _orbitThrottleTick + dt
+        if _orbitThrottleTick >= 5 then
+            _orbitThrottleTick = 0
+            if cfg.orbitNetworkOwn then pcall(function() root:SetNetworkOwner(LocalPlayer) end) end
+            if cfg.orbitNoClip and LocalPlayer.Character then applyNoClip(LocalPlayer.Character) end
+        end
         if hum then pcall(function() if hum:GetState() ~= Enum.HumanoidStateType.Physics then hum:ChangeState(Enum.HumanoidStateType.Physics) end end) end
         local target = getTarget(cfg.orbitTarget)
         local targetPos = root.Position
@@ -74657,6 +74666,7 @@ end)()
 -- ╚══════════════════════════════════════════════════════════════════╝
 end)()  -- close L4222 UI section 1 self-executing function scope
 ;(function()  -- fresh 200-register pool: Quick Binds section isolated from outer fn's 201 locals
+warn("[UNCODE P3] Config-IIFE reached — Tabs.Keybinds=" .. tostring(Tabs.Keybinds ~= nil))
 local QBL = Tabs.Keybinds:AddLeftGroupbox("Quick Binds")
 local QBR = Tabs.Keybinds:AddRightGroupbox("Quick Binds (2)")
 
