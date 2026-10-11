@@ -3116,8 +3116,6 @@ VG:AddSlider("VoidYMin", { Text = "Y Min", Default = -1e15, Min = -1e15, Max = 1
 VG:AddSlider("VoidYMax", { Text = "Y Max", Default = 1e15, Min = -1e15, Max = 1e15, Rounding = 0, Callback = function(v) CFG.VOID_Y_MAX = v end })
 VG:AddSlider("Radius", { Text = "Radius (B)", Default = 200, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) CFG.RADIUS = v * 1e9 end })
 
-end
-do
 local VG1b = Tabs.VoidSpam:AddRightGroupbox("Void Helpers")
 AddBindableToggle(VG1b, "VoidPredictive", "Predictive Void", false, function(v) CFG.VOID_PREDICTIVE = v end)
 VG1b:AddSlider("VoidPredictLead", { Text = "Predict Lead (x0.01s)", Default = 15, Min = 1, Max = 100, Rounding = 0, Callback = function(v) CFG.VOID_PREDICT_LEAD = v * 0.01 end })
@@ -3132,8 +3130,6 @@ AddBindableToggle(VG1b, "VoidLogPositions", "Log Positions to Console", false, f
 VG1b:AddSlider("VoidSafeRadius", { Text = "Safe Radius (studs)", Default = 0, Min = 0, Max = 200, Rounding = 0, Callback = function(v) CFG.VOID_SAFE_RADIUS = v end })
 AddBindableToggle(VG1b, "VoidPreserveY", "Preserve Y Position", false, function(v) CFG.TP_PRESERVE_Y = v end)
 
-end
-do
 local VG1c = Tabs.VoidSpam:AddLeftGroupbox("Void Duration / Region")
 AddBindableToggle(VG1c, "VoidDurationEnabled", "Enable Duration Limit", false, function(v) CFG.VOID_DURATION_ENABLED = v end)
 VG1c:AddSlider("VoidDuration", { Text = "Duration (s)", Default = 10, Min = 1, Max = 300, Rounding = 0, Callback = function(v) CFG.VOID_DURATION = v end })
@@ -3155,8 +3151,6 @@ VG1c:AddSlider("VoidRegionCollapseSpd", { Text = "Collapse Speed (studs/s)", Def
 AddBindableToggle(VG1c, "VoidRegionNotifyOnExit", "Notify On Region Exit", false, function(v) CFG.VOID_REGION_NOTIFY_EXIT = v end)
 AddBindableToggle(VG1c, "VoidRegionSnapToEdge", "Snap Back To Edge", true, function(v) CFG.VOID_REGION_SNAP_EDGE = v end)
 
-end
-do
 local VG2 = Tabs.VoidSpam:AddRightGroupbox("TP Everywhere")
 AddBindableToggle(VG2, "TpRandToggle", "Randomize Studs", true, function(v) CFG.TP_RAND_ENABLED = v end)
 VG2:AddSlider("TpRandMin", { Text = "Random Min Studs", Default = -1e15, Min = -1e15, Max = 0, Rounding = 0, Callback = function(v) CFG.TP_RAND_MIN = v end })
@@ -3174,8 +3168,6 @@ VG2:AddSlider("TpCornerW", { Text = "Corner Weight (%)", Default = 55, Min = 0, 
 VG2:AddSlider("TpEdgeW", { Text = "Edge Weight (%)", Default = 35, Min = 0, Max = 100, Rounding = 0, Callback = function(v) CFG.TP_EDGE_WEIGHT = v * 0.01 end })
 VG2:AddSlider("TpScreenJitter", { Text = "Screen Jitter (%)", Default = 12, Min = 0, Max = 100, Rounding = 0, Callback = function(v) CFG.TP_SCREEN_JITTER = v * 0.01 end })
 
-end
-do
 local VG3 = Tabs.VoidSpam:AddLeftGroupbox("Smart Evasion V2")
 AddBindableToggle(VG3, "SmartEvasionToggle", "Enable Smart Evasion V2", false, function(v) CFG.SMART_EVASION = v end)
 VG3:AddSlider("EvasionRange", { Text = "Detection Range", Default = 80, Min = 10, Max = 500, Rounding = 0, Callback = function(v) CFG.EVASION_RANGE = v end })
@@ -3189,8 +3181,6 @@ AddBindableToggle(VG3, "EvasionLayered", "Layered Cumulative", true, function(v)
 AddBindableToggle(VG3, "EvasionThreatScale", "Threat-Scaled Cooldown", true, function(v) CFG.EVASION_THREAT_SCALE = v end)
 AddBindableToggle(VG3, "EvasionInfiniteRange", "Infinite Range Evasion", true, function(v) CFG.SMART_EVASION_INF = v end)
 
-end
-do
 local VK = Tabs.VoidSpam:AddRightGroupbox("Void Killer")
 AddBindableToggle(VK, "VoidKillerToggle", "Enable Void Killer", true, function(v) CFG.VOID_KILLER_ENABLED = v end)
 AddBindableToggle(VK, "VoidKillerDesync", "Desync Target", true, function(v) CFG.VOID_KILLER_DESYNC = v end)
@@ -3205,8 +3195,6 @@ VK:AddSlider("VoidKillerHitboxSize", { Text = "Hitbox Size", Default = 500, Min 
 VK:AddSlider("VoidKillerRange", { Text = "Detection Range", Default = 1e15, Min = 100, Max = 1e15, Rounding = 0, Callback = function(v) CFG.VOID_KILLER_RANGE = v end })
 VK:AddSlider("VoidKillerAimStrength", { Text = "Aim Strength", Default = 1, Min = 0.1, Max = 3, Rounding = 1, Callback = function(v) CFG.VOID_KILLER_AIM_STRENGTH = v end })
 
-end
-do
 local OG = Tabs.Orbit:AddLeftGroupbox("Orbit")
 AddBindableToggle(OG, "OrbitToggle", "Enable Orbit", false, function(v) cfg.orbitEnabled = v; if v then startOrbit() else stopOrbit() end end)
 OG:AddDropdown("OrbitMode", { Text = "Mode", Default = "Circle", Values = {"Circle","Figure 8","Ellipse","Spiral In","Spiral Out","Bounce","Lemniscate","Infinity","RandomOrbit"}, Callback = function(v) cfg.orbitMode = v; orbitCurrentRadius = cfg.orbitDist end })
@@ -3223,8 +3211,6 @@ AddBindableToggle(OG, "OrbitRandRad", "Random Radius", false, function(v) cfg.or
 OG:AddSlider("OrbitRandMin", { Text = "Min Rand Radius", Default = 5, Min = 1, Max = 50, Rounding = 0, Callback = function(v) cfg.orbitRandMin = v end })
 OG:AddSlider("OrbitRandMax", { Text = "Max Rand Radius", Default = 20, Min = 1, Max = 50, Rounding = 0, Callback = function(v) cfg.orbitRandMax = v end })
 
-end
-do
 local OG2 = Tabs.Orbit:AddRightGroupbox("Helpful Options")
 AddBindableToggle(OG2, "OrbitFace", "Face Target", true, function(v) cfg.orbitFace = v end)
 AddBindableToggle(OG2, "OrbitPredict", "Predict Target Movement", true, function(v) cfg.orbitPredict = v end)
@@ -3270,8 +3256,6 @@ AddBindableToggle(OG2, "OrbitInfiniteRange", "Infinite Range", true, function(v)
 AddBindableToggle(OG2, "OrbitExpandedHitbox", "Expanded Hitbox", true, function(v) cfg.orbitExpandedHitbox = v end)
 OG2:AddSlider("OrbitHitboxSize", { Text = "Hitbox Size", Default = 500, Min = 10, Max = 5000, Rounding = 0, Callback = function(v) cfg.orbitHitboxSize = v end })
 
-end
-do
 local PG = Tabs.Prediction:AddLeftGroupbox("Prediction V2")
 AddBindableToggle(PG, "PredToggle", "Enable Prediction V2", false, function(v) cfgDodge.predEnabled = v; if v then startPredictionV2() else stopPredictionV2() end end)
 PG:AddSlider("PredRadius", { Text = "Danger Radius", Default = 120, Min = 5, Max = 5000, Rounding = 0, Callback = function(v) cfgDodge.predRadius = v end })
@@ -3315,8 +3299,6 @@ PG:AddSlider("PredStickOffset", { Text = "Stick Offset", Default = 2, Min = 0, M
 AddBindableToggle(PG, "PredPhaseThrough", "Phase Through Walls", true, function(v) cfgDodge.predPhaseThrough = v end)
 AddBindableToggle(PG, "PredIgnoreCollide", "Ignore Collisions", true, function(v) cfgDodge.predIgnoreCollide = v end)
 
-end
-do
 local PG2 = Tabs.Prediction:AddRightGroupbox("Anti Bait V2")
 AddBindableToggle(PG2, "AntiBaitToggle", "Enable Anti Bait V2", false, function(v) antiBaitCFG.enabled = v; if v then startAntiBaitV2() else stopAntiBait() end end)
 PG2:AddDropdown("AntiBaitDodgeMode", { Text = "Dodge Mode", Default = "Perpendicular", Values = {"Perpendicular","Away","Random"}, Callback = function(v) antiBaitCFG.dodgeMode = v end })
@@ -3367,8 +3349,6 @@ PG2:AddSlider("AntiBaitWindow", { Text = "Flicker Window (x0.1s)", Default = 3, 
 PG2:AddSlider("AntiBaitTpDist", { Text = "TP Delta (studs)", Default = 10, Min = 5, Max = 100, Rounding = 0, Callback = function(v) antiBaitCFG.flickerTpDist = v end })
 PG2:AddSlider("AntiBaitRescan", { Text = "Rescan Interval (s)", Default = 2, Min = 1, Max = 60, Rounding = 0, Callback = function(v) antiBaitCFG.reScanInterval = v end })
 
-end
-do
 local AG = Tabs.Defense:AddLeftGroupbox("Anti-Aim")
 AddBindableToggle(AG, "AaToggle", "Enable Anti-Aim", false, function(v) aaSettings.enabled = v; if v then startAntiAim() else stopAntiAim() end end)
 AG:AddDropdown("AaMode", { Text = "Mode", Default = "RandomSpin", Values = {"Spin","Jitter","Static","Up","Down","Side","RandomSpin","Custom"}, Callback = function(v) aaSettings.mode = v end })
@@ -3398,8 +3378,6 @@ AG:AddSlider("AaBreatheSpeed", { Text = "Breathe Speed", Default = 1, Min = 0.1,
 AddBindableToggle(AG, "AaRandomFlip", "Random Flip", false, function(v) aaSettings.randomFlip = v end)
 AG:AddSlider("AaFlipChance", { Text = "Flip Chance (%)", Default = 5, Min = 1, Max = 50, Rounding = 0, Callback = function(v) aaSettings.flipChance = v * 0.01 end })
 
-end
-do
 local AG2 = Tabs.Defense:AddRightGroupbox("Anti-Aim Helpful Options")
 AddBindableToggle(AG2, "AaEnhancedMode", "Enhanced Mode", true, function(v) aaSettings.enhancedMode = v end)
 AddBindableToggle(AG2, "AaMultiAxisSpin", "Multi Axis Spin", true, function(v) aaSettings.multiAxisSpin = v end)
@@ -3434,8 +3412,6 @@ AddBindableToggle(AG2, "AaAutoShoot", "Auto Shoot", true, function(v) aaSettings
 AG2:AddSlider("AaAutoShootRange", { Text = "Auto Shoot Range", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) aaSettings.aaAutoShootRange = v end })
 AddBindableToggle(AG2, "AaInfiniteRange", "Infinite Range", true, function(v) aaSettings.aaInfiniteRange = v end)
 
-end
-do
 local AG3 = Tabs.Defense:AddLeftGroupbox("Range Extender")
 AddBindableToggle(AG3, "RangeExtToggle", "Enable Range Extender", false, function(v) if v then startRangeExt() else stopRangeExt() end end)
 AG3:AddSlider("RangeExtRange", { Text = "Range (studs)", Default = 5e12, Min = 100, Max = 5e12, Rounding = 0, Callback = function(v) rangeExtCFG.range = v end })
@@ -3454,8 +3430,6 @@ AddBindableToggle(AG3, "RangeExtSafeDistance", "Safe Distance", false, function(
 AG3:AddSlider("RangeExtSafeDist", { Text = "Safe Distance (studs)", Default = 5, Min = 1, Max = 50, Rounding = 0, Callback = function(v) rangeExtCFG.safeDist = v end })
 AG3:AddSlider("RangeExtMaxEnemies", { Text = "Max Enemies To Expand", Default = 50, Min = 1, Max = 50, Rounding = 0, Callback = function(v) rangeExtCFG.maxEnemies = v end })
 
-end
-do
 local AG4 = Tabs.Defense:AddRightGroupbox("Range Extender Helpful Options")
 AddBindableToggle(AG4, "RangeExtRivalsMode", "Rivals Mode", true, function(v) rangeExtCFG.rivalsMode = v end)
 AddBindableToggle(AG4, "RangeExtSelf", "Include Self", true, function(v) rangeExtCFG.includeSelf = v end)
@@ -3486,8 +3460,6 @@ AG4:AddSlider("RangeExtAutoShootRange", { Text = "Auto Shoot Range", Default = 1
 AddBindableToggle(AG4, "RangeExtInfiniteRange", "Infinite Range", true, function(v) rangeExtCFG.rangeExtInfiniteRange = v end)
 AddBindableToggle(AG4, "RangeExtRestore", "Restore On Disable", true, function(v) rangeExtCFG.restoreOnDisable = v end)
 
-end
-do
 local AG5 = Tabs.Defense:AddLeftGroupbox("Anti Translocation")
 AddBindableToggle(AG5, "AntiTranslocToggle", "Enable Anti Translocation", false, function(v) antiTranslocCFG.enabled = v; if v then startAntiTransloc() else stopAntiTransloc() end end)
 AG5:AddDropdown("AntiTranslocMode", { Text = "Mode", Default = "Evade", Values = {"Evade","Freeze","Predict"}, Callback = function(v) antiTranslocCFG.mode = v end })
@@ -3502,8 +3474,6 @@ AddBindableToggle(AG5, "ATNotify", "Notify", true, function(v) antiTranslocCFG.n
 AddBindableToggle(AG5, "ATCounterTp", "Counter Teleport", false, function(v) antiTranslocCFG.counterTeleport = v end)
 AG5:AddSlider("ATCounterOffset", { Text = "Counter TP Offset", Default = 50, Min = 5, Max = 200, Rounding = 0, Callback = function(v) antiTranslocCFG.counterTpOffset = v end })
 
-end
-do
 local AG6 = Tabs.Defense:AddRightGroupbox("Anti Translocation Helpful Options")
 AddBindableToggle(AG6, "ATAutoEvadeAll", "Auto Evade All", false, function(v) antiTranslocCFG.autoEvadeAll = v end)
 AG6:AddSlider("ATEvadeAllRadius", { Text = "Evade All Radius", Default = 200, Min = 10, Max = 1000, Rounding = 0, Callback = function(v) antiTranslocCFG.evadeAllRadius = v end })
@@ -3535,8 +3505,6 @@ AddBindableToggle(AG6, "ATAutoShoot", "Auto Shoot", true, function(v) antiTransl
 AG6:AddSlider("ATAutoShootRange", { Text = "Auto Shoot Range", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) antiTranslocCFG.atAutoShootRange = v end })
 AddBindableToggle(AG6, "ATInfiniteRange", "Infinite Range", true, function(v) antiTranslocCFG.atInfiniteRange = v end)
 
-end
-do
 local AG7 = Tabs.Defense:AddLeftGroupbox("Velocity Desync")
 AddBindableToggle(AG7, "VelDesyncToggle", "Enable Velocity Desync", false, function(v) velDesyncCFG.enabled = v; if v then startVelDesync() else stopVelDesync() end end)
 AG7:AddSlider("VDIntensity", { Text = "Intensity (%)", Default = 50, Min = 1, Max = 100, Rounding = 0, Callback = function(v) velDesyncCFG.intensity = v end })
@@ -3558,8 +3526,6 @@ AddBindableToggle(AG7, "VDOscillate", "Oscillate Velocity", true, function(v) ve
 AG7:AddSlider("VDOscFreq", { Text = "Oscillate Freq", Default = 5, Min = 0.5, Max = 50, Rounding = 1, Callback = function(v) velDesyncCFG.oscillateFreq = v end })
 AG7:AddSlider("VDOscAmp", { Text = "Oscillate Amp", Default = 30, Min = 0, Max = 180, Rounding = 0, Callback = function(v) velDesyncCFG.oscillateAmp = v end })
 
-end
-do
 local AG8 = Tabs.Defense:AddRightGroupbox("Velocity Desync Helpful Options")
 AddBindableToggle(AG8, "VDNoiseVel", "Noise Velocity", true, function(v) velDesyncCFG.noiseVel = v end)
 AG8:AddSlider("VDNoiseScale", { Text = "Noise Scale", Default = 1, Min = 0.1, Max = 10, Rounding = 1, Callback = function(v) velDesyncCFG.noiseScale = v end })
@@ -3589,8 +3555,6 @@ AddBindableToggle(AG8, "VDAutoShoot", "Auto Shoot", true, function(v) velDesyncC
 AG8:AddSlider("VDAutoShootRange", { Text = "Auto Shoot Range", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) velDesyncCFG.vdAutoShootRange = v end })
 AddBindableToggle(AG8, "VDInfiniteRange", "Infinite Range", true, function(v) velDesyncCFG.vdInfiniteRange = v end)
 
-end
-do
 local TL = Tabs.Translocation:AddLeftGroupbox("Translocation")
 AddBindableToggle(TL, "TranslocToggle", "Enable Translocation", false, function(v) translocCFG.enabled = v; if v then startTransloc() else stopTransloc() end end)
 TL:AddDropdown("TranslocMode", { Text = "Offset Mode", Default = "Ahead", Values = {"Ahead","Behind","Perpendicular","Above","Below","AboveBelow","MirrorX","MirrorZ","Diagonal","ScreenEdge","Orbit","ZoneEscape"}, Callback = function(v) translocCFG.offsetMode = v end })
@@ -3606,8 +3570,6 @@ TL:AddSlider("TranslocBurstCount", { Text = "Burst Count", Default = 10, Min = 2
 TL:AddSlider("TranslocBurstInterval", { Text = "Burst Interval (ms)", Default = 1, Min = 1, Max = 100, Rounding = 0, Callback = function(v) translocCFG.burstInterval = v * 0.001 end })
 AddBindableToggle(TL, "TranslocRivalsMode", "Rivals Mode", true, function(v) translocCFG.rivalsMode = v end)
 
-end
-do
 local TL2 = Tabs.Translocation:AddRightGroupbox("Helpful Options")
 AddBindableToggle(TL2, "TranslocFakeVel", "Fake Velocity", true, function(v) translocCFG.fakeVel = v end)
 AddBindableToggle(TL2, "TranslocSnapBack", "Snap Back", true, function(v) translocCFG.snapBack = v end)
@@ -3666,8 +3628,6 @@ AddBindableToggle(TL2, "TranslocAutoShoot", "Auto Shoot", true, function(v) tran
 TL2:AddSlider("TranslocAutoShootRange", { Text = "Auto Shoot Range", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.translocAutoShootRange = v end })
 AddBindableToggle(TL2, "TranslocInfiniteRange", "Infinite Range", true, function(v) translocCFG.translocInfiniteRange = v end)
 
-end
-do
 local SBL = Tabs.SlingBypass:AddLeftGroupbox("Sling Bypass V2")
 AddBindableToggle(SBL, "SlingToggle", "Enable Sling Bypass V2", false, function(v) slingCFG.enabled = v; if v then startSlingBypassV2() else stopSlingBypassV2() end end)
 SBL:AddDropdown("SlingMode", { Text = "Mode", Default = "Follow", Values = {"Follow","Stalk","Hover","FastTp","TargetStick","OrbitTarget","RandomAroundTarget"}, Callback = function(v) slingCFG.mode = v end })
@@ -3729,8 +3689,6 @@ AddBindableToggle(SBL, "SlingFastTpPen", "Penetrate (Snap Back)", true, function
 AddBindableToggle(SBL, "SlingFastTpRandAng", "Random Angle Offset", true, function(v) slingCFG.fastTpRandAng = v end)
 SBL:AddSlider("SlingRushCD", { Text = "Rush Cooldown (ms)", Default = 10, Min = 1, Max = 200, Rounding = 0, Callback = function(v) slingCFG.rushCooldown = v * 0.001 end })
 
-end
-do
 local SBR = Tabs.SlingBypass:AddRightGroupbox("Helpful Options")
 AddBindableToggle(SBR, "SlingRivalsMode", "Rivals Mode", true, function(v) slingCFG.rivalsMode = v end)
 AddBindableToggle(SBR, "SlingRivalsInfiniteRange", "Rivals Infinite Range", true, function(v) slingCFG.rivalsInfiniteRange = v end)
@@ -3762,8 +3720,6 @@ AddBindableToggle(SBR, "SlingStickToTarget", "Stick to Target", true, function(v
 SBR:AddSlider("SlingStickOffset", { Text = "Stick Offset", Default = 2, Min = 0, Max = 20, Rounding = 1, Callback = function(v) slingCFG.slingStickOffset = v end })
 AddBindableToggle(SBR, "SlingInfiniteRange", "Infinite Range", true, function(v) slingCFG.slingInfiniteRange = v end)
 
-end
-do
 local RG = Tabs.Riot:AddLeftGroupbox("Riot Godmode")
 AddBindableToggle(RG, "RiotGodmodeToggle", "Enable Riot Godmode", false, function(v) riotGodmodeCFG.enabled = v; if v then startRiotGodmode() else stopRiotGodmode() end end)
 RG:AddSlider("RGSpeed", { Text = "Teleport Delay (s)", Default = 0.03, Min = 0.01, Max = 0.5, Rounding = 2, Callback = function(v) riotGodmodeCFG.speed = v end })
@@ -3804,8 +3760,6 @@ AddBindableToggle(RG, "RGAutoAim", "Auto Aim at Target", true, function(v) riotG
 RG:AddSlider("RGAimStrength", { Text = "Aim Strength", Default = 1, Min = 0.1, Max = 3, Rounding = 1, Callback = function(v) riotGodmodeCFG.rgAimStrength = v end })
 AddBindableToggle(RG, "RGInfiniteRange", "Infinite Range", true, function(v) riotGodmodeCFG.rgInfiniteRange = v end)
 
-end
-do
 local RA = Tabs.Riot:AddRightGroupbox("Riot Abuser")
 AddBindableToggle(RA, "RiotAbuserToggle", "Enable Riot Abuser", false, function(v) riotAbuserCFG.enabled = v; if v then startRiotAbuser() else stopRiotAbuser() end end)
 RA:AddDropdown("RAMode", { Text = "Mode", Default = "Stick", Values = {"Stick","Bounce","Orbit","Phase"}, Callback = function(v) riotAbuserCFG.mode = v end })
@@ -4260,8 +4214,6 @@ end
 --  Wired to Kicia ReactiveStore via _kSet / getgenv()._UNC_KiciaStore
 -- ============================================================
 do -- Player Tab scope
-end
-do
 local PLM  = Tabs.Player:AddLeftGroupbox("Movement")
 local PLM2 = Tabs.Player:AddRightGroupbox("Movement Config")
 local PLS  = Tabs.Player:AddLeftGroupbox("Player Spoofer")
@@ -4704,8 +4656,6 @@ end)
 end -- Spoofer bulk toggle scope
 
 -- ── World / Removables (Kicia) ─────────────────────────────────
-end
-do
 local PLW = Tabs.Player:AddLeftGroupbox("World")
 
 AddBindableToggle(PLW, "WrNoFlashbang", "No Flashbang", false, function(v)
@@ -4734,8 +4684,6 @@ AddBindableToggle(PLW, "WrNoHitmarker", "No Hitmarker", false, function(v)
 end)
 
 -- ── Camera & Visual (Kicia) ────────────────────────────────────
-end
-do
 local PLV  = Tabs.Player:AddLeftGroupbox("Camera & Visual")
 local PLV2 = Tabs.Player:AddRightGroupbox("Camera Config")
 
@@ -4820,8 +4768,6 @@ PLV2:AddSlider("PlStretchResY", {
 })
 
 -- ── Item Modifiers (Kicia) ─────────────────────────────────────
-end
-do
 local PLI  = Tabs.Player:AddLeftGroupbox("Item Modifiers")
 local PLI2 = Tabs.Player:AddRightGroupbox("Modifier Config")
 
@@ -4928,8 +4874,6 @@ PLI2:AddSlider("ImExtendMeleeRange", {
 })
 
 -- ── AUTO PICKUP (FFA 回復・弾拾い) ───────────────────────────────────
-end
-do
 local PLPick  = Tabs.Player:AddLeftGroupbox("Auto Pickup")
 local PLPick2 = Tabs.Player:AddRightGroupbox("Pickup Config")
 
@@ -4953,8 +4897,6 @@ PLPick2:AddToggle("PickupAmmo", {
     Callback = function(v) _kSet({"AutoPickupDrops","Types","Ammo"}, v) end
 })
 
-end
-do
 local PLAuto = Tabs.Player:AddLeftGroupbox("Auto Actions")
 PLAuto:AddToggle("AutoRespawn", {
     Text    = "Auto Respawn",
@@ -4975,8 +4917,6 @@ PLAuto:AddToggle("AntiKatana", {
 -- ╚══════════════════════════════════════════════════════════════════╝
 do
 local BhopL = Tabs.Player:AddLeftGroupbox("Bhop / Movement Utils")
-end
-do
 local BhopR = Tabs.Player:AddRightGroupbox("Bhop Config")
 
 local _bhopCFG = { enabled=false, mode="Auto", holdDelay=0.01 }
@@ -5031,8 +4971,6 @@ end -- Bhop scope
 -- ╚══════════════════════════════════════════════════════════════════╝
 do
 local AfkL = Tabs.Player:AddLeftGroupbox("Anti-AFK")
-end
-do
 local AfkR = Tabs.Player:AddRightGroupbox("AFK Config")
 
 local _afkCFG  = { enabled=false, interval=25, jitter=true }
@@ -5098,8 +5036,6 @@ local _kauraCFG = { enabled=false, range=30 }
 local _kauraCon = nil
 local _kauraRS  = game:GetService("RunService")
 local _kauraP   = game:GetService("Players")
-end
-do
 local KauraL = Tabs.Player:AddLeftGroupbox("Kill Aura")
 local KauraR = Tabs.Player:AddRightGroupbox("Kill Aura Config")
 
@@ -5171,8 +5107,6 @@ pcall(function() _knrVIM = game:GetService("VirtualInputManager") end)
 
 local _knrOrigSpeed = nil
 
-end
-do
 local KnrL = Tabs.Player:AddLeftGroupbox("Knife Rage")
 local KnrR = Tabs.Player:AddRightGroupbox("Knife Rage Config")
 
@@ -5391,8 +5325,6 @@ local _hbxCFG = { enabled=false, scale=2.0 }
 local _hbxCon = nil
 local _hbxRS  = game:GetService("RunService")
 local _hbxP   = game:GetService("Players")
-end
-do
 local HbxL = Tabs.Player:AddLeftGroupbox("Hitbox Expander")
 local HbxR = Tabs.Player:AddRightGroupbox("Hitbox Config")
 
@@ -5448,8 +5380,6 @@ end -- Hitbox Expander scope
 do -- No Fall Damage scope
 local _nfdCFG = { enabled=false }
 local _nfdCon = nil
-end
-do
 local _nfdL = Tabs.Player:AddLeftGroupbox("Fall Protection")
 
 _nfdL:AddToggle("NoFallDamageEnabled", { Text=_t("落下ダメージ無効","No Fall Damage"), Default=false,
@@ -5493,8 +5423,6 @@ end -- No Fall Damage scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Damage Multiplier scope
 local _dmgCFG = { enabled=false, mult=2.0 }
-end
-do
 local _dmgL = Tabs.Player:AddLeftGroupbox("Damage Modifier")
 local _dmgR = Tabs.Player:AddRightGroupbox("Damage Config")
 
@@ -5535,8 +5463,6 @@ local _adsCFG = { enabled=false, range=50 }
 local _adsCon = nil
 local _adsRS  = game:GetService("RunService")
 local _adsP   = game:GetService("Players")
-end
-do
 local AdsL = Tabs.Player:AddLeftGroupbox("Auto ADS")
 local AdsR = Tabs.Player:AddRightGroupbox("ADS Config")
 
@@ -5584,8 +5510,6 @@ end -- Auto Scope scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Size Modifier scope
 local _szCFG = { enabled=false, scale=1.0 }
-end
-do
 local _szL = Tabs.Player:AddLeftGroupbox("Size Modifier")
 local _szR = Tabs.Player:AddRightGroupbox("Size Config")
 
@@ -5627,8 +5551,6 @@ end -- Size Modifier scope
 do -- Auto Block scope
 local _ablkCFG = { enabled=false, hpThreshold=80 }
 local _ablkCon = nil
-end
-do
 local _ablkL = Tabs.Player:AddLeftGroupbox("Auto Block")
 local _ablkR = Tabs.Player:AddRightGroupbox("Block Config")
 
@@ -5681,8 +5603,6 @@ end -- Auto Block scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Silent Walk scope
 local _swCFG = { enabled=false }
-end
-do
 local _swL = Tabs.Player:AddLeftGroupbox("Silent Walk")
 
 _swL:AddToggle("SilentWalkEnabled", { Text=_t("無音歩行","Silent Walk"), Default=false,
@@ -5713,8 +5633,6 @@ end -- Silent Walk scope
 do -- Anti-Hit Emergency TP scope
 local _ahCFG = { enabled=false, hpThreshold=30, range=60 }
 local _ahCon  = nil
-end
-do
 local _ahL = Tabs.Player:AddLeftGroupbox("Emergency TP")
 local _ahR = Tabs.Player:AddRightGroupbox("Emergency Config")
 
@@ -6649,8 +6567,6 @@ HvHR3:AddSlider("FbHumanness", {
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 do
 local _UAAL  = Tabs.HvH:AddLeftGroupbox("Underground AA")
-end
-do
 local _UAAR  = Tabs.HvH:AddRightGroupbox("AA Config")
 local _URVL  = Tabs.HvH:AddLeftGroupbox("Resolver")
 local _URVR  = Tabs.HvH:AddRightGroupbox("Resolver Config")
@@ -6952,8 +6868,6 @@ end -- Underground AA / Resolver / Auto Peek scope
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 do
 local _RTL  = Tabs.HvH:AddLeftGroupbox("Rage Trap")
-end
-do
 local _RTR  = Tabs.HvH:AddRightGroupbox("Trap Config")
 
 local _rtCFG = {
@@ -7985,8 +7899,6 @@ HvHL6:AddSlider("SvMinVol", {
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 do
 local THL = Tabs.Combat:AddLeftGroupbox("Enemy Info")
-end
-do
 local THR = Tabs.Combat:AddRightGroupbox("Info Settings")
 
 -- ── Config ───────────────────────────────────────────────────────────────
@@ -8758,11 +8670,9 @@ do
         make(dir .. "/configs")
     end
     tbl17.w = function() return W end
-end
 
 --  P: two-way link between a control and a settings path. Sliders ask for
 --  Debounce so dragging writes once per short burst instead of every frame.
-do
     local P = {}
     function P.bind(trove, config, control, path, opts)
         local debounce = opts ~= nil and opts.Debounce == true
@@ -8785,10 +8695,8 @@ do
         end)
     end
     tbl17.P = function() return P end
-end
 
 --  c5: the critically damped Spring (Position, Velocity, Target, Speed, Damper).
-do
     local Spring = {}
     local function posVel(self, now)
         local p0, v0, p1, d, s = self._p0, self._v0, self._target, self._damper, self._speed
@@ -74554,11 +74462,9 @@ tbl17.w().ensureStorageDirectories("kiciarebuild/fonts")
 tbl17.w().ensureStorageDirectories("kiciarebuild/cache")
 for _, sub in ipairs({ "cosmetics/states", "crosshair_textures", "esp_images", "movement_recorder" }) do
     tbl17.w().ensureStorageDirectories("kiciarebuild/rivals/" .. sub)
-end
 
 --  Lithium logo: written to disk once per load and turned into an asset id
 --  for the menu rail and the watermark.
-do
     local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local map = {}
     for i = 1, 64 do map[alphabet:byte(i)] = i - 1 end
@@ -74882,8 +74788,6 @@ end -- Panic Key scope
 -- ╚══════════════════════════════════════════════════════════════════╝
 do
 local KdaG  = Tabs.Settings:AddLeftGroupbox("Session KDA")
-end
-do
 local KdaGR = Tabs.Settings:AddRightGroupbox("KDA Config")
 
 local _kda = { kills=0, deaths=0, assists=0, enabled=false }
@@ -74972,8 +74876,6 @@ end -- Session KDA scope
 do -- Fake Lag scope
 local _fLagCFG = { enabled=false, delay=0.2 }
 local _fLagCon = nil
-end
-do
 local FlagL = Tabs.Settings:AddLeftGroupbox("Fake Lag / Lag Switch")
 local FlagR = Tabs.Settings:AddRightGroupbox("Lag Config")
 
@@ -75022,8 +74924,6 @@ local _dlogCFG  = { enabled=false, maxEntries=10 }
 local _dlogGui  = nil
 local _dlogCon  = nil
 local _dlogList = {}
-end
-do
 local DlogL = Tabs.Settings:AddLeftGroupbox("Damage Log HUD")
 local DlogR = Tabs.Settings:AddRightGroupbox("Damage Log Config")
 
@@ -75132,8 +75032,6 @@ local _hrCFG   = { enabled=false, shots=0, hits=0 }
 local _spdGui  = nil
 local _spdCon  = nil
 local _spdRS   = game:GetService("RunService")
-end
-do
 local SpdL = Tabs.Settings:AddLeftGroupbox("Speedometer / Hit Rate")
 local SpdR = Tabs.Settings:AddRightGroupbox("Speed & Hit Config")
 
@@ -75239,8 +75137,6 @@ local _sndCFG  = { enabled=false, gunOnly=false }
 local _sndGui  = nil
 local _sndConRS = nil
 local _sndEvents = {}
-end
-do
 local SndL = Tabs.Settings:AddLeftGroupbox("Sound ESP+")
 local SndR = Tabs.Settings:AddRightGroupbox("Sound ESP Config")
 
@@ -75333,8 +75229,6 @@ SndL:AddToggle("SoundEspGunOnly", { Text=_t("銃声のみ","Gun Sounds Only"), D
 end -- Sound ESP Plus scope
 
 do -- FPS Boost scope
-end
-do
 local FpsG = Tabs.Settings:AddLeftGroupbox("FPS Boost")
 
 -- ── state ─────────────────────────────────────────────────────
@@ -75685,8 +75579,6 @@ end -- FPS Boost scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Config Save scope
 local _cfgPath  = "uncode_config.json"
-end
-do
 local _cfgL = Tabs.Settings:AddLeftGroupbox("Config Save / Load")
 local _cfgR = Tabs.Settings:AddRightGroupbox("Config Info")
 
@@ -75760,8 +75652,6 @@ do -- Auto Update scope
 local _updCFG   = { enabled=false, checkedOnce=false }
 local _updBuild = "20261009-h"
 local _updUrl   = "https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/version.txt"
-end
-do
 local UpdL = Tabs.Settings:AddLeftGroupbox("Auto Update Checker")
 
 UpdL:AddToggle("AutoUpdateEnabled", { Text=_t("起動時にアップデート確認","Check Update on Load"), Default=false,
@@ -75822,8 +75712,6 @@ local _themes   = {
     Neon     = { accent=Color3.fromRGB(0,255,220),   bg=Color3.fromRGB(5,20,25)  },
     Midnight = { accent=Color3.fromRGB(160,90,255),  bg=Color3.fromRGB(15,5,30)  },
 }
-end
-do
 local ThemeL = Tabs.Settings:AddLeftGroupbox("UI Color Theme")
 local ThemeR = Tabs.Settings:AddRightGroupbox("Theme Config")
 
