@@ -6670,12 +6670,197 @@ TsR:AddDropdown("TargetSwitchMode", { Text="Priority Mode",
     Callback = function(v) _tsCFG.mode = v end })
 end -- Target Auto Switch scope
 
+-- ═══════════════════════════════════════════════════════════════
+-- Pure-Lua Ragebot + Triggerbot + Flickbot engine
+-- ═══════════════════════════════════════════════════════════════
+local _rbCFG2 = {
+    enabled      = false,
+    fov          = 300,   -- screen-pixel FOV radius
+    maxRange     = 1000,  -- max stud range to consider targets
+    fireInterval = 0.10,  -- minimum seconds between shots (wired to RbStability)
+    visibleOnly  = false, -- rage = wallbang by default
+}
+local _tbCFG2 = {
+    enabled       = false,
+    fovRadius     = 35,   -- crosshair pixel tolerance for on-target check
+    visibleOnly   = true,
+    reactionDelay = 0,    -- wired to TbReactionTime (seconds)
+    releaseDelay  = 0,    -- wired to TbReleaseTime  (seconds)
+}
+local _fbCFG2 = {
+    enabled   = false,
+    shoot     = true,
+    cooldown  = 0.25,   -- wired to FbCooldown
+    shotDelay = 0,      -- wired to FbShotDelay
+}
+local _rbLastShot = 0
+local _tbOnSince  = nil   -- tick() when crosshair first landed on target
+local _tbOffSince = nil   -- tick() when crosshair left target (release delay)
+local _tbFiring   = false
+local _fbLastFlick = 0
+
+-- Fire: mouse1click() primary; Tool:Activate() executor-agnostic fallback
+local function _rbFire()
+    pcall(function()
+        if mouse1click then
+            mouse1click()
+        else
+            local ch = game:GetService("Players").LocalPlayer.Character
+            if ch then
+                local tool = ch:FindFirstChildOfClass("Tool")
+                if tool and tool.Activate then tool:Activate() end
+            end
+        end
+    end)
+end
+
+-- Target finder for Ragebot (own settings, wallbang-capable)
+local function _rbFindNearest(lp, char, cam)
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local cx, cy = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
+    local best, bestPos = math.huge, nil
+    for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+        if p ~= lp and p.Character then
+            local phum = p.Character:FindFirstChildOfClass("Humanoid")
+            local phrp = p.Character:FindFirstChild("HumanoidRootPart")
+            local phead = p.Character:FindFirstChild("Head") or phrp
+            if phum and phum.Health > 0 and phead and phrp then
+                local inRange = not hrp or
+                    (hrp.Position - phrp.Position).Magnitude <= _rbCFG2.maxRange
+                if inRange then
+                    local sp, onScreen = cam:WorldToViewportPoint(phead.Position)
+                    if onScreen then
+                        local dx, dy = sp.X - cx, sp.Y - cy
+                        local sd = math.sqrt(dx * dx + dy * dy)
+                        if sd < _rbCFG2.fov and sd < best then
+                            local visible = true
+                            if _rbCFG2.visibleOnly then
+                                local rp = RaycastParams.new()
+                                rp.FilterDescendantsInstances = {char, p.Character}
+                                rp.FilterType = Enum.RaycastFilterType.Exclude
+                                local hit = workspace:Raycast(
+                                    cam.CFrame.Position,
+                                    (phead.Position - cam.CFrame.Position).Unit * 1200, rp)
+                                visible = (hit == nil)
+                            end
+                            if visible then best = sd; bestPos = phead.Position end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return bestPos
+end
+
+-- On-target check for Triggerbot (tight screen-space FOV)
+local function _tbCheckOnTarget(lp, char, cam)
+    local cx, cy = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
+    for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+        if p ~= lp and p.Character then
+            local phum = p.Character:FindFirstChildOfClass("Humanoid")
+            local phrp = p.Character:FindFirstChild("HumanoidRootPart")
+            local phead = p.Character:FindFirstChild("Head") or phrp
+            if phum and phum.Health > 0 and phead then
+                local sp, onScreen = cam:WorldToViewportPoint(phead.Position)
+                if onScreen then
+                    local dx, dy = sp.X - cx, sp.Y - cy
+                    if math.sqrt(dx * dx + dy * dy) <= _tbCFG2.fovRadius then
+                        if _tbCFG2.visibleOnly then
+                            local rp = RaycastParams.new()
+                            rp.FilterDescendantsInstances = {char, p.Character}
+                            rp.FilterType = Enum.RaycastFilterType.Exclude
+                            local hit = workspace:Raycast(
+                                cam.CFrame.Position,
+                                (phead.Position - cam.CFrame.Position).Unit * 1200, rp)
+                            if hit then continue end
+                        end
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
+RunService.Heartbeat:Connect(function()
+    if not (_rbCFG2.enabled or _tbCFG2.enabled or _fbCFG2.enabled) then return end
+    local now = tick()
+    pcall(function()
+        local lp   = game:GetService("Players").LocalPlayer
+        local char = lp.Character
+        if not char then return end
+        local cam = workspace.CurrentCamera
+
+        -- ── RAGEBOT ──────────────────────────────────────────────
+        if _rbCFG2.enabled then
+            local pos = _rbFindNearest(lp, char, cam)
+            if pos then
+                -- Hard snap camera to target (mandatory for Ragebot)
+                local dir = (pos - cam.CFrame.Position).Unit
+                cam.CFrame = CFrame.new(cam.CFrame.Position, cam.CFrame.Position + dir)
+                -- Auto-fire at configured rate
+                if now - _rbLastShot >= _rbCFG2.fireInterval then
+                    _rbLastShot = now
+                    _rbFire()
+                end
+            end
+        end
+
+        -- ── TRIGGERBOT ───────────────────────────────────────────
+        if _tbCFG2.enabled then
+            local onTarget = _tbCheckOnTarget(lp, char, cam)
+            if onTarget then
+                if not _tbOnSince then _tbOnSince = now end
+                _tbOffSince = nil
+                if now - _tbOnSince >= _tbCFG2.reactionDelay then
+                    _tbFiring = true
+                end
+            else
+                _tbOnSince = nil
+                if _tbFiring then
+                    if not _tbOffSince then _tbOffSince = now end
+                    if now - _tbOffSince >= _tbCFG2.releaseDelay then
+                        _tbFiring   = false
+                        _tbOffSince = nil
+                    end
+                end
+            end
+            if _tbFiring and now - _rbLastShot >= 0.05 then
+                _rbLastShot = now
+                _rbFire()
+            end
+        end
+
+        -- ── FLICKBOT ─────────────────────────────────────────────
+        if _fbCFG2.enabled then
+            local pos = _rbFindNearest(lp, char, cam)
+            if pos and now - _fbLastFlick >= _fbCFG2.cooldown then
+                -- Lerp camera toward target (Flick speed driven by aimbot speed)
+                local dir = (pos - cam.CFrame.Position).Unit
+                cam.CFrame = cam.CFrame:Lerp(
+                    CFrame.new(cam.CFrame.Position, cam.CFrame.Position + dir),
+                    math.clamp(_abCFG2.speed * 3, 0.05, 1.0))
+                if _fbCFG2.shoot and now - _rbLastShot >= _fbCFG2.shotDelay + 0.06 then
+                    _rbLastShot  = now
+                    _fbLastFlick = now
+                    _rbFire()
+                end
+            end
+        end
+    end)
+end)
+
 -- ── RAGEBOT ───────────────────────────────────────────────────
 HvHL2:AddToggle("RbEnabled", {
     Text = "Ragebot",
     Default = false,
     Tooltip = "Automated combat AI for HvH.",
-    Callback = function(v) _kSet({"Ragebot","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Ragebot","Enabled"}, v)
+        _rbCFG2.enabled = v
+    end
 })
 HvHL2:AddToggle("RbHackers", {
     Text = "Prioritize Hackers",
@@ -6711,7 +6896,10 @@ HvHR2:AddSlider("RbStability", {
     Min = 0, Max = 100, Rounding = 0,
     Suffix = "%",
     Tooltip = "How stable the Ragebot's shots are (0=instant, 100=very stable).",
-    Callback = function(v) _kSet({"Ragebot","Stability"}, v / 100) end
+    Callback = function(v)
+        _kSet({"Ragebot","Stability"}, v / 100)
+        _rbCFG2.fireInterval = 0.05 + (v / 100) * 0.25
+    end
 })
 HvHR2:AddSlider("RbShootFrames", {
     Text = "Shoot Frames",
@@ -6786,12 +6974,19 @@ HvHL3:AddToggle("TbEnabled", {
     Text = "Triggerbot",
     Default = false,
     Tooltip = "Auto-fire when crosshair is on a valid target.",
-    Callback = function(v) _kSet({"Triggerbot","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Triggerbot","Enabled"}, v)
+        _tbCFG2.enabled = v
+        if not v then _tbFiring = false; _tbOnSince = nil; _tbOffSince = nil end
+    end
 })
 HvHL3:AddToggle("TbVisible", {
     Text = "Target: Visible Only",
     Default = true,
-    Callback = function(v) _kSet({"Triggerbot","TargetConditions","Visible"}, v) end
+    Callback = function(v)
+        _kSet({"Triggerbot","TargetConditions","Visible"}, v)
+        _tbCFG2.visibleOnly = v
+    end
 })
 HvHL3:AddToggle("TbVulnerable", {
     Text = "Target: Vulnerable Only",
@@ -6813,7 +7008,10 @@ HvHL3:AddSlider("TbReactionTime", {
     Default = 0,
     Min = 0, Max = 500, Rounding = 0,
     Suffix = "ms",
-    Callback = function(v) _kSet({"Triggerbot","ReactionTime"}, v / 1000) end
+    Callback = function(v)
+        _kSet({"Triggerbot","ReactionTime"}, v / 1000)
+        _tbCFG2.reactionDelay = v / 1000
+    end
 })
 HvHL3:AddSlider("TbReleaseTime", {
     Text = "Release Delay",
@@ -6821,7 +7019,10 @@ HvHL3:AddSlider("TbReleaseTime", {
     Min = 0, Max = 500, Rounding = 0,
     Suffix = "ms",
     Tooltip = "Delay before releasing fire after target leaves crosshair.",
-    Callback = function(v) _kSet({"Triggerbot","ReleaseTime"}, v / 1000) end
+    Callback = function(v)
+        _kSet({"Triggerbot","ReleaseTime"}, v / 1000)
+        _tbCFG2.releaseDelay = v / 1000
+    end
 })
 
 -- ── FLICKBOT ──────────────────────────────────────────────────
@@ -6829,12 +7030,18 @@ HvHL3:AddToggle("FbEnabled", {
     Text = "Flickbot",
     Default = false,
     Tooltip = "Auto-flick aim to target with configurable speed.",
-    Callback = function(v) _kSet({"Flickbot","Enabled"}, v) end
+    Callback = function(v)
+        _kSet({"Flickbot","Enabled"}, v)
+        _fbCFG2.enabled = v
+    end
 })
 HvHL3:AddToggle("FbShoot", {
     Text = "Auto-Shoot on Flick",
     Default = false,
-    Callback = function(v) _kSet({"Flickbot","Shoot"}, v) end
+    Callback = function(v)
+        _kSet({"Flickbot","Shoot"}, v)
+        _fbCFG2.shoot = v
+    end
 })
 
 -- ── FLICKBOT CONFIG (right side) ──────────────────────────────
@@ -6842,13 +7049,19 @@ HvHR3:AddSlider("FbCooldown", {
     Text = "Cooldown (ms)",
     Default = 250,
     Min = 0, Max = 2000, Rounding = 0,
-    Callback = function(v) _kSet({"Flickbot","Cooldown"}, v) end
+    Callback = function(v)
+        _kSet({"Flickbot","Cooldown"}, v)
+        _fbCFG2.cooldown = v / 1000
+    end
 })
 HvHR3:AddSlider("FbShotDelay", {
     Text = "Shot Delay (ms)",
     Default = 0,
     Min = 0, Max = 500, Rounding = 0,
-    Callback = function(v) _kSet({"Flickbot","ShotDelay"}, v) end
+    Callback = function(v)
+        _kSet({"Flickbot","ShotDelay"}, v)
+        _fbCFG2.shotDelay = v / 1000
+    end
 })
 HvHR3:AddSlider("FbDuration", {
     Text = "Flick Duration (ms)",
