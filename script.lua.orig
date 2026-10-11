@@ -75883,10 +75883,10 @@ ThemeR:AddColorpicker("UIThemeAccent", { Text=_t("アクセントカラー","Acc
             if _mlLib and _mlLib.SetAccent then _mlLib:SetAccent(v) end
         end)
     end })
-end -- UI Color Theme scope
+end)()  -- close L74802 UI Settings + Settings sections wrapper (theme boundary)
 
 -- ── Community Configs ──────────────────────────────────────────────────────
-do
+;(function()  -- fresh 200-register pool: Community Configs
 local CfgG = Tabs.Settings:AddLeftGroupbox("Community Configs")
 
 -- NeverLose build: _T / _O use _FlagCb registry (defined at top scope)
@@ -76051,7 +76051,7 @@ CfgG:AddButton("Load Rage Config", function()
     _T("PickupEnabled", true)   _T("PickupHealth", true)   _T("PickupAmmo", true)
     Library:Notify({ Title = "UNCODE", Description = "Rage Config Loaded", Time = 3 })
 end)
-end)()  -- close UI Settings + all remaining Settings sections wrapper
+end)()  -- close Community Configs wrapper
 -- ── End Community Configs ──────────────────────────────────────────────────
 
 -- (No watermark loop — Millenium has no watermark API)
