@@ -74694,8 +74694,8 @@ end)()
 -- ║  ▶ ドロップダウン: リストから選ぶ                              ║
 -- ║  ▶ 「🎯 バインド変更」ボタン: 次に押したキーを自動登録         ║
 -- ╚══════════════════════════════════════════════════════════════════╝
-end
-do
+end)()  -- close L4222 UI section 1 self-executing function scope
+;(function()  -- fresh 200-register pool: Quick Binds section isolated from outer fn's 201 locals
 local QBL = Tabs.Settings:AddLeftGroupbox("Quick Binds")
 local QBR = Tabs.Settings:AddRightGroupbox("Quick Binds (2)")
 
@@ -76051,7 +76051,7 @@ CfgG:AddButton("Load Rage Config", function()
     _T("PickupEnabled", true)   _T("PickupHealth", true)   _T("PickupAmmo", true)
     Library:Notify({ Title = "UNCODE", Description = "Rage Config Loaded", Time = 3 })
 end)
-end)()  -- close L4222 UI self-executing function scope
+end)()  -- close L74698 Quick Binds self-executing function scope
 -- ── End Community Configs ──────────────────────────────────────────────────
 
 -- (No watermark loop — Millenium has no watermark API)
