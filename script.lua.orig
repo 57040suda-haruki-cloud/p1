@@ -862,37 +862,38 @@ end
 --   ├─ Skins ─────────┤  SkinChanger
 --   └─ Config ────────┘  Settings
 --
--- HvH parent tab + sub-tabs
-local _parentHvH  = window:AddTab({ Label = "HvH" })
-local _hvhCombat  = _parentHvH:AddTab({ Label = "Combat" })
-local _hvhAimbot  = _parentHvH:AddTab({ Label = "Aimbot" })
-local _hvhPred    = _parentHvH:AddTab({ Label = "Prediction" })
+-- Sub-tab variables (outer scope — accessed as upvalues by the content function)
+local _hvhCombat, _hvhAimbot, _hvhPred
+local _utilVS, _utilOrbit, _utilDef
+local _miscTrans, _miscSling, _miscRiot
+local _playPlayer, _playWorld, _playAuto
+local _skinsChanger
+local _cfgSettings
 
--- Utility parent tab + sub-tabs
-local _parentUtil = window:AddTab({ Label = "Utility" })
-local _utilVS     = _parentUtil:AddTab({ Label = "VoidSpam" })
-local _utilOrbit  = _parentUtil:AddTab({ Label = "Orbit" })
-local _utilDef    = _parentUtil:AddTab({ Label = "Defense" })
-
--- Misc parent tab + sub-tabs
-local _parentMisc = window:AddTab({ Label = "Misc" })
-local _miscTrans  = _parentMisc:AddTab({ Label = "Transloc." })
-local _miscSling  = _parentMisc:AddTab({ Label = "Sling" })
-local _miscRiot   = _parentMisc:AddTab({ Label = "Riot" })
-
--- Player parent tab + sub-tabs
-local _parentPlay = window:AddTab({ Label = "Player" })
-local _playPlayer = _parentPlay:AddTab({ Label = "Camera" })
-local _playWorld  = _parentPlay:AddTab({ Label = "World" })
-local _playAuto   = _parentPlay:AddTab({ Label = "Auto" })
-
--- Skins parent tab + sub-tab
-local _parentSkins  = window:AddTab({ Label = "Skins" })
-local _skinsChanger = _parentSkins:AddTab({ Label = "SkinChanger" })
-
--- Config parent tab + sub-tab
-local _parentCfg  = window:AddTab({ Label = "Config" })
-local _cfgSettings = _parentCfg:AddTab({ Label = "Settings" })
+-- Parent tabs created inside do..end so _p doesn't burn an outer register slot
+-- (saves 6 registers vs keeping _parentHvH/_parentUtil/… as outer locals)
+do
+    local _p = window:AddTab({ Label = "HvH" })
+    _hvhCombat = _p:AddTab({ Label = "Combat" })
+    _hvhAimbot = _p:AddTab({ Label = "Aimbot" })
+    _hvhPred   = _p:AddTab({ Label = "Prediction" })
+    _p = window:AddTab({ Label = "Utility" })
+    _utilVS    = _p:AddTab({ Label = "VoidSpam" })
+    _utilOrbit = _p:AddTab({ Label = "Orbit" })
+    _utilDef   = _p:AddTab({ Label = "Defense" })
+    _p = window:AddTab({ Label = "Misc" })
+    _miscTrans = _p:AddTab({ Label = "Transloc." })
+    _miscSling = _p:AddTab({ Label = "Sling" })
+    _miscRiot  = _p:AddTab({ Label = "Riot" })
+    _p = window:AddTab({ Label = "Player" })
+    _playPlayer = _p:AddTab({ Label = "Camera" })
+    _playWorld  = _p:AddTab({ Label = "World" })
+    _playAuto   = _p:AddTab({ Label = "Auto" })
+    _p = window:AddTab({ Label = "Skins" })
+    _skinsChanger = _p:AddTab({ Label = "SkinChanger" })
+    _p = window:AddTab({ Label = "Config" })
+    _cfgSettings  = _p:AddTab({ Label = "Settings" })
+end
 
 -- ── Window compat ────────────────────────────────────────────────────────
 -- Window:AddTab(name) looks up the pre-created sub-tab and returns a wrapTab.
