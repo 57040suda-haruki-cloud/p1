@@ -1609,11 +1609,12 @@ local function lockToVoid(dt)
     intendedVoidPos = targetPos
     local hrp = getLocalRoot()
     if not hrp then return end
-    pcall(function()
+    local _cfOk, _cfErr = pcall(function()
         hrp.CFrame = CFrame.new(intendedVoidPos)
         hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
     end)
+    if not _cfOk and math.random(1,60)==1 then warn("[UNCODE P4] CFrame SET FAILED: " .. tostring(_cfErr)) end
     if CFG.VOID_LOG_POSITIONS and math.random(1, 30) == 1 then print("[VOID] " .. tostring(intendedVoidPos)) end
     if math.random(1, 10) == 1 and not CFG.VOID_ANTIFLING then
         pcall(function()
@@ -3113,6 +3114,7 @@ end
 
 local function bindChar(c)
     char = c; root = c:WaitForChild("HumanoidRootPart", 5); hum = c:WaitForChild("Humanoid", 5)
+    warn("[UNCODE P4] bindChar — root=" .. tostring(root ~= nil) .. " hum=" .. tostring(hum ~= nil) .. " char=" .. tostring(c ~= nil))
     if CFG.VOID_ENABLED then startVoid() end
     if cfg.orbitEnabled then startOrbit() end
     if cfgDodge.predEnabled then startPredictionV2() end
@@ -3127,6 +3129,7 @@ local function bindChar(c)
     if rangeExtCFG.enabled then startRangeExt() end
 end
 
+warn("[UNCODE P4] init — LocalPlayer.Character=" .. tostring(LocalPlayer.Character ~= nil))
 if LocalPlayer.Character then bindChar(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(function(c) task.wait(0.3); bindChar(c) end)
 LocalPlayer.CharacterRemoving:Connect(function()
