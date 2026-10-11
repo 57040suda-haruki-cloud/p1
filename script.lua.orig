@@ -709,120 +709,129 @@ end
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 
 -- ── wrapSection ─────────────────────────────────────────────────────────
+-- Real Millenium element API: section:toggle/slider/dropdown/label/button/
+--   keybind/colorpicker({name, flag, default, callback, ...})
 local function wrapSection(mlSec)
     local ws = {}
-    local _lt = nil  -- last toggle element, used for AddColorPicker chaining
 
-    -- Helper: convert Obsidian Rounding → Millenium Step
-    -- Rounding=0 → Step=1, Rounding=1 → Step=0.1, Rounding=2 → Step=0.01
-    local function _toStep(rounding)
+    -- Helper: convert Obsidian Rounding → Millenium interval
+    -- Rounding=0 → 1, Rounding=1 → 0.1, Rounding=2 → 0.01
+    local function _toInterval(rounding)
         if not rounding or rounding <= 0 then return 1 end
         return 10 ^ (-rounding)
     end
 
     function ws:AddToggle(id, opts)
         _regFlag(id, opts.Callback)
-        local ok, el = pcall(function() return mlSec:AddToggle({ Label = opts.Text or id }) end)
-        if not ok then el = nil end
-        _lt = el  -- may be nil if AddToggle failed
-        if el and opts.Callback then
-            pcall(function()
-                el:Connect(el.ValueChanged, function(v)
-                    pcall(opts.Callback, v)
-                end)
-            end)
-        end
+        pcall(function()
+            mlSec:toggle({
+                name     = opts.Text or id,
+                flag     = id,
+                default  = opts.Default or false,
+                callback = function(v)
+                    if opts.Callback then pcall(opts.Callback, v) end
+                end,
+            })
+        end)
         -- Return proxy so callers (AddKeyPicker, sub-settings) don't error
-        return setmetatable({ _t = el }, {
-            __index = function(tbl, k)
-                local v = rawget(tbl, k); if v ~= nil then return v end
-                return function() end
-            end,
+        return setmetatable({}, {
+            __index = function(t, k) return function() end end,
         })
     end
 
     function ws:AddSlider(id, opts)
         _regFlag(id, opts.Callback)
-        local ok, el = pcall(function()
-            return mlSec:AddSlider({
-                Label = opts.Text or id,
-                Min   = opts.Min or 0,
-                Max   = opts.Max or 100,
-                Step  = _toStep(opts.Rounding),
+        pcall(function()
+            mlSec:slider({
+                name     = opts.Text or id,
+                flag     = id,
+                default  = opts.Default or 0,
+                min      = opts.Min or 0,
+                max      = opts.Max or 100,
+                interval = _toInterval(opts.Rounding),
+                suffix   = opts.Suffix or "",
+                callback = function(v)
+                    if opts.Callback then pcall(opts.Callback, v) end
+                end,
             })
         end)
-        if ok and el and opts.Callback then
-            pcall(function()
-                el:Connect(el.ValueChanged, function(v)
-                    pcall(opts.Callback, v)
-                end)
-            end)
-        end
-        _lt = nil
     end
 
     function ws:AddDropdown(id, opts)
         _regFlag(id, opts.Callback)
-        local ok, el = pcall(function()
-            return mlSec:AddDropdown({
-                Label   = opts.Text or id,
-                Options = opts.Values or opts.Items or {},
-                Default = opts.Default,
-                Multi   = opts.Multi or false,
+        pcall(function()
+            mlSec:dropdown({
+                name     = opts.Text or id,
+                flag     = id,
+                default  = opts.Default,
+                items    = opts.Values or opts.Items or {},
+                multi    = opts.Multi or false,
+                callback = function(v)
+                    if opts.Callback then pcall(opts.Callback, v) end
+                end,
             })
         end)
-        if ok and el and opts.Callback then
-            pcall(function()
-                el:Connect(el.ValueChanged, function(v)
-                    pcall(opts.Callback, v)
-                end)
-            end)
-        end
-        _lt = nil
     end
 
     function ws:AddLabel(text)
-        pcall(function() mlSec:AddLabel({ Label = text or "" }) end)
+        pcall(function() mlSec:label({ name = text or "" }) end)
     end
 
     function ws:AddButton(text, cb)
-        local ok, el = pcall(function()
-            return mlSec:AddButton({
-                Label   = text or "Button",
-                OnClick = function() if cb then pcall(cb) end end,
+        pcall(function()
+            mlSec:button({
+                name     = text or "Button",
+                callback = function()
+                    if cb then pcall(cb) end
+                end,
             })
         end)
-        _lt = nil
     end
 
-    -- Colorpicker: chains from the last toggle's Row
+    -- Colorpicker: inline color swatch attached to this section
     function ws:AddColorPicker(id, opts)
-        if _lt and _lt.Row then
-            pcall(function()
-                mlSec:AddColor({ Row = _lt.Row, Label = opts.Text or id })
-            end)
-        end
+        pcall(function()
+            mlSec:colorpicker({
+                name     = opts.Title or opts.Text or id,
+                flag     = id,
+                color    = (opts.Default and typeof(opts.Default) == "Color3")
+                            and opts.Default or Color3.new(1, 1, 1),
+                alpha    = opts.Transparency or 0,
+                callback = function(v)
+                    if opts.Callback then pcall(opts.Callback, v) end
+                end,
+            })
+        end)
     end
 
-    -- KeyPicker: no direct Millenium equivalent; register flag so configs work
+    -- KeyPicker: maps to a Millenium keybind element
     function ws:AddKeyPicker(id, opts)
         _regFlag(id, opts and opts.Callback)
+        pcall(function()
+            mlSec:keybind({
+                name     = (opts and (opts.Text or opts.Label)) or id,
+                flag     = id,
+                key      = opts and opts.Default or nil,
+                mode     = "Toggle",
+                callback = function(v)
+                    if opts and opts.Callback then pcall(opts.Callback, v) end
+                end,
+            })
+        end)
     end
 
-    -- AddKeybind: Millenium keybind element.
-    -- Users click it in the menu, press a key, and that key becomes the bind.
+    -- AddKeybind: fires _quickToggle for the bound flag when pressed
     function ws:AddKeybind(flagId, opts)
         pcall(function()
-            local el = mlSec:AddKeybind({
-                Label         = opts.Text or opts.Label or flagId,
-                InKeybindList = true,
-                ListLabel     = opts.Text or opts.Label or flagId,
-            })
-            if el and el.ValueChanged then
-                el:Connect(el.ValueChanged, function()
+            mlSec:keybind({
+                name     = (opts and (opts.Text or opts.Label)) or flagId,
+                flag     = flagId,
+                key      = opts and opts.Default or nil,
+                mode     = "Toggle",
+                callback = function(v)
                     pcall(_quickToggle, flagId)
-                end)
-            end
+                end,
+            })
         end)
     end
 
@@ -830,30 +839,31 @@ local function wrapSection(mlSec)
 end
 
 -- ── wrapTab ──────────────────────────────────────────────────────────────
--- Wraps a Millenium sub-tab object to expose Obsidian-style groupbox API.
--- Millenium API: subTab:Grid({Columns=2}) → grid; grid:AddSection({Title,Side}) → section
+-- Wraps a Millenium sub-tab page to expose Obsidian-style groupbox API.
+-- Real Millenium API: page:column({size}) → column; column:section({name}) → section
 local function wrapTab(mlSubTab)
     local wt = {}
-    -- Create a 2-column grid for left/right groupboxes
-    local _grid = mlSubTab:Grid({ Columns = 2 })
+    -- Two side-by-side columns; HorizontalFlex.Fill in the tab splits them equally
+    local _leftCol  = mlSubTab:column({ size = 1 })
+    local _rightCol = mlSubTab:column({ size = 1 })
 
     function wt:AddLeftGroupbox(name)
-        return wrapSection(_grid:AddSection({ Title = name or "", Side = "left" }))
+        return wrapSection(_leftCol:section({ name = name or "" }))
     end
     function wt:AddRightGroupbox(name)
-        return wrapSection(_grid:AddSection({ Title = name or "", Side = "right" }))
+        return wrapSection(_rightCol:section({ name = name or "" }))
     end
     function wt:AddSection(opts)
-        -- opts may be a string or table; always use left side
         local nm = type(opts) == "string" and opts or (opts.Name or opts.name or "")
-        return wrapSection(_grid:AddSection({ Title = nm, Side = "left" }))
+        return wrapSection(_leftCol:section({ name = nm }))
     end
     return wt
 end
 
 -- ── Millenium tab groups ─────────────────────────────────────────────────
 -- 14 logical tabs → 6 Millenium parent tabs (with sub-tabs).
--- Layout visible at a glance:
+-- Real Millenium API: window:tab({name, tabs={"Sub1","Sub2",...}})
+--   returns sub-tab page objects (one per entry, via unpack).
 --
 --   ┌─ HvH ──────────┐  Combat | Aimbot | Prediction
 --   ├─ Utility ───────┤  VoidSpam | Orbit | Defense
@@ -870,33 +880,18 @@ local _playPlayer, _playWorld, _playAuto
 local _skinsChanger
 local _cfgSettings
 
--- Parent tabs created inside do..end so _p doesn't burn an outer register slot
--- (saves 6 registers vs keeping _parentHvH/_parentUtil/… as outer locals)
+-- do..end keeps no extra locals in the outer register file
 do
-    local _p = window:AddTab({ Label = "HvH" })
-    _hvhCombat = _p:AddTab({ Label = "Combat" })
-    _hvhAimbot = _p:AddTab({ Label = "Aimbot" })
-    _hvhPred   = _p:AddTab({ Label = "Prediction" })
-    _p = window:AddTab({ Label = "Utility" })
-    _utilVS    = _p:AddTab({ Label = "VoidSpam" })
-    _utilOrbit = _p:AddTab({ Label = "Orbit" })
-    _utilDef   = _p:AddTab({ Label = "Defense" })
-    _p = window:AddTab({ Label = "Misc" })
-    _miscTrans = _p:AddTab({ Label = "Transloc." })
-    _miscSling = _p:AddTab({ Label = "Sling" })
-    _miscRiot  = _p:AddTab({ Label = "Riot" })
-    _p = window:AddTab({ Label = "Player" })
-    _playPlayer = _p:AddTab({ Label = "Camera" })
-    _playWorld  = _p:AddTab({ Label = "World" })
-    _playAuto   = _p:AddTab({ Label = "Auto" })
-    _p = window:AddTab({ Label = "Skins" })
-    _skinsChanger = _p:AddTab({ Label = "SkinChanger" })
-    _p = window:AddTab({ Label = "Config" })
-    _cfgSettings  = _p:AddTab({ Label = "Settings" })
+    _hvhCombat,  _hvhAimbot,  _hvhPred    = window:tab({ name = "HvH",     tabs = {"Combat","Aimbot","Prediction"} })
+    _utilVS,     _utilOrbit,  _utilDef    = window:tab({ name = "Utility",  tabs = {"VoidSpam","Orbit","Defense"}   })
+    _miscTrans,  _miscSling,  _miscRiot   = window:tab({ name = "Misc",     tabs = {"Transloc.","Sling","Riot"}     })
+    _playPlayer, _playWorld,  _playAuto   = window:tab({ name = "Player",   tabs = {"Camera","World","Auto"}        })
+    _skinsChanger                         = window:tab({ name = "Skins",    tabs = {"SkinChanger"}                 })
+    _cfgSettings                          = window:tab({ name = "Config",   tabs = {"Settings"}                    })
 end
 
 -- ── Window compat ────────────────────────────────────────────────────────
--- Window:AddTab(name) looks up the pre-created sub-tab and returns a wrapTab.
+-- Window:AddTab(name) looks up the pre-created sub-tab page and wraps it.
 local _mlTabMap = {
     ["Combat"]        = _hvhCombat,
     ["HvH"]           = _hvhAimbot,
@@ -914,24 +909,27 @@ local _mlTabMap = {
     ["Settings"]      = _cfgSettings,
 }
 
--- Fallback no-op sub-tab for safety (matches Grid/AddSection/AddToggle API)
+-- Fallback no-op tab (returns Obsidian-style API directly; never reaches wrapTab)
 local function _noopTab()
     local function _noopSec()
-        return {
-            AddToggle      = function() return {} end,
-            AddSlider      = function() return {} end,
-            AddDropdown    = function() return {} end,
-            AddMultiDropdown = function() return {} end,
-            AddLabel       = function() return {} end,
-            AddButton      = function() return {} end,
-            AddKeybind     = function() return {} end,
-            AddColor       = function() return {} end,
-        }
+        local ns = {}
+        local function _noop() return setmetatable({}, {__index=function() return _noop end}) end
+        ns.AddToggle        = _noop
+        ns.AddSlider        = _noop
+        ns.AddDropdown      = _noop
+        ns.AddMultiDropdown = _noop
+        ns.AddLabel         = _noop
+        ns.AddButton        = _noop
+        ns.AddKeybind       = _noop
+        ns.AddColorPicker   = _noop
+        ns.AddKeyPicker     = _noop
+        return ns
     end
-    local function _noopGrid()
-        return { AddSection = function() return _noopSec() end }
-    end
-    return { Grid = function() return _noopGrid() end }
+    return {
+        AddLeftGroupbox  = function(self, name) return _noopSec() end,
+        AddRightGroupbox = function(self, name) return _noopSec() end,
+        AddSection       = function(self, opts) return _noopSec() end,
+    }
 end
 
 local Window = {}
@@ -939,10 +937,11 @@ function Window:AddTab(name, _icon)
     local t = _mlTabMap[name]
     if not t then
         warn("[UNCODE] Window:AddTab — unknown tab name: " .. tostring(name))
-        t = _noopTab()
+        return _noopTab()
     end
     return wrapTab(t)
 end
+
 
 local function Notify(text, duration)
     Notification.new({ Title = "UNCODE v1", Content = text, Duration = duration or 3 })
