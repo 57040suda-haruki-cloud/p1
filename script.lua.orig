@@ -872,48 +872,45 @@ end
 --   ├─ Skins ─────────┤  SkinChanger
 --   └─ Config ────────┘  Settings
 --
--- Sub-tab variables (outer scope — accessed as upvalues by the content function)
-local _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred
-local _utilVS, _utilOrbit, _utilDef
-local _miscTrans, _miscSling, _miscRiot
-local _playPlayer, _playWorld, _playAuto
-local _skinsChanger
-local _cfgKeybinds, _cfgUI, _cfgTools, _cfgHUD, _cfgSave
-
--- do..end keeps no extra locals in the outer register file
-do
-    _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred = window:tab({ name = "HvH",    tabs = {"Combat","Aimbot","AA","Trap","Prediction"} })
-    _utilVS,     _utilOrbit,  _utilDef    = window:tab({ name = "Utility",  tabs = {"VoidSpam","Orbit","Defense"}   })
-    _miscTrans,  _miscSling,  _miscRiot   = window:tab({ name = "Misc",     tabs = {"Transloc.","Sling","Riot"}     })
-    _playPlayer, _playWorld,  _playAuto   = window:tab({ name = "Player",   tabs = {"Camera","World","Auto"}        })
-    _skinsChanger                         = window:tab({ name = "Skins",    tabs = {"SkinChanger"}                 })
-    _cfgKeybinds, _cfgUI, _cfgTools, _cfgHUD, _cfgSave = window:tab({ name = "Config", tabs = {"Keybinds","UI","Tools","HUD","Save"}           })
-end
-
 -- ── Window compat ────────────────────────────────────────────────────────
--- Window:AddTab(name) looks up the pre-created sub-tab page and wraps it.
-local _mlTabMap = {
-    ["Combat"]        = _hvhCombat,
-    ["HvH"]           = _hvhAimbot,
-    ["Prediction"]    = _hvhPred,
-    ["AA"]            = _hvhAA,
-    ["Trap"]          = _hvhTrap,
-    ["VoidSpam"]      = _utilVS,
-    ["Orbit"]         = _utilOrbit,
-    ["Defense"]       = _utilDef,
-    ["Translocation"] = _miscTrans,
-    ["Sling Bypass"]  = _miscSling,
-    ["Riot"]          = _miscRiot,
-    ["Player"]        = _playPlayer,
-    ["World"]         = _playWorld,
-    ["Automation"]    = _playAuto,
-    ["SkinChanger"]   = _skinsChanger,
-    ["Keybinds"]      = _cfgKeybinds,
-    ["UI"]            = _cfgUI,
-    ["Tools"]         = _cfgTools,
-    ["HUD"]           = _cfgHUD,
-    ["Save"]          = _cfgSave,
-}
+-- Sub-tab vars declared+used inside do..end so all 20 registers are freed
+-- before the gameplay section; _mlTabMap persists as the single outer local.
+local _mlTabMap = {}
+do
+    local _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred
+    local _utilVS, _utilOrbit, _utilDef
+    local _miscTrans, _miscSling, _miscRiot
+    local _playPlayer, _playWorld, _playAuto
+    local _skinsChanger
+    local _cfgKeybinds, _cfgUI, _cfgTools, _cfgHUD, _cfgSave
+    _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred = window:tab({ name = "HvH",     tabs = {"Combat","Aimbot","AA","Trap","Prediction"} })
+    _utilVS,    _utilOrbit,  _utilDef                  = window:tab({ name = "Utility",  tabs = {"VoidSpam","Orbit","Defense"}              })
+    _miscTrans, _miscSling,  _miscRiot                 = window:tab({ name = "Misc",     tabs = {"Transloc.","Sling","Riot"}                })
+    _playPlayer,_playWorld,  _playAuto                 = window:tab({ name = "Player",   tabs = {"Camera","World","Auto"}                   })
+    _skinsChanger                                      = window:tab({ name = "Skins",    tabs = {"SkinChanger"}                            })
+    _cfgKeybinds,_cfgUI,_cfgTools,_cfgHUD,_cfgSave    = window:tab({ name = "Config",   tabs = {"Keybinds","UI","Tools","HUD","Save"}      })
+    _mlTabMap["Combat"]        = _hvhCombat
+    _mlTabMap["HvH"]           = _hvhAimbot
+    _mlTabMap["Prediction"]    = _hvhPred
+    _mlTabMap["AA"]            = _hvhAA
+    _mlTabMap["Trap"]          = _hvhTrap
+    _mlTabMap["VoidSpam"]      = _utilVS
+    _mlTabMap["Orbit"]         = _utilOrbit
+    _mlTabMap["Defense"]       = _utilDef
+    _mlTabMap["Translocation"] = _miscTrans
+    _mlTabMap["Sling Bypass"]  = _miscSling
+    _mlTabMap["Riot"]          = _miscRiot
+    _mlTabMap["Player"]        = _playPlayer
+    _mlTabMap["World"]         = _playWorld
+    _mlTabMap["Automation"]    = _playAuto
+    _mlTabMap["SkinChanger"]   = _skinsChanger
+    _mlTabMap["Keybinds"]      = _cfgKeybinds
+    _mlTabMap["UI"]            = _cfgUI
+    _mlTabMap["Tools"]         = _cfgTools
+    _mlTabMap["HUD"]           = _cfgHUD
+    _mlTabMap["Save"]          = _cfgSave
+end
+-- All 20 sub-tab locals freed here; _mlTabMap persists with all values
 
 -- Fallback no-op tab (returns Obsidian-style API directly; never reaches wrapTab)
 local function _noopTab()
