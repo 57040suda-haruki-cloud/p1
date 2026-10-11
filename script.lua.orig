@@ -8820,7 +8820,7 @@ end -- HvH UI scope
 
 task.spawn(function()
     local _kiciaOk, _kiciaErr = pcall(function()
-        (function() -- Kicia engine: isolated register scope
+        ;(function() -- Kicia engine: isolated register scope
 
 -- ═══════════════════════════════════════════════════════════════
 -- Kicia Rebuild (updated)
