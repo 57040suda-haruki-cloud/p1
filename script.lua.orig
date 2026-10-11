@@ -3129,7 +3129,7 @@ Tabs.World        = Window:AddTab("World",          "sun")
 Tabs.Automation   = Window:AddTab("Automation",    "zap")
 Tabs.Settings     = Window:AddTab("Settings",      "settings")
 
-end)()  -- close outer fn L388 (tab declarations done; 200-register limit)
+--[[ inner IIFE nested inside outer fn — upvalues share Tabs/Window/CFG/AddBindableToggle ]]
 ;(function()  -- fresh 200-register pool: VoidSpam + all remaining UI tabs
 do
 local VG = Tabs.VoidSpam:AddLeftGroupbox("Void Control")
@@ -75968,3 +75968,4 @@ _mlLib:init_config(window)
 Notification.new({ Title = "UNCODE v1  [build 20261009-h]", Content = "Rivals HvH | Millenium UI ✓ loaded", Duration = 6 })
 warn("[UNCODE] build 20261009-h — Millenium UI active")
 end)()
+end)()  -- close outer fn L388
