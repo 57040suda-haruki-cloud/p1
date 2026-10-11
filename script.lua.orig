@@ -77317,14 +77317,6 @@ return API
     local _rv_fn, _rv_err = loadstring(_rv_src, 'RivalsVisuals')
     if _rv_fn then task.spawn(_rv_fn) else warn('[UNCODE] Visuals load err: '..tostring(_rv_err)) end
 end
---    Must be AFTER j1()(boot) so all module observers are connected before we use it.
-getgenv()._UNC_KiciaStore = tbl17.bG()
-end)() end) -- closes Kicia IIFE + pcall wrapper
-if not _kiciaOk then warn("[UNCODE] Kicia engine failed (non-fatal): " .. tostring(_kiciaErr)) end
-end) -- closes task.spawn: Kicia runs in background, main thread continues
--- ── Quick Binds UI ────────────────────────────────────────────────────────
--- ╔══════════════════════════════════════════════════════════════════╗
--- ╚══════════════════════════════════════════════════════════════════╝
 end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
 if not _uiSec1Ok then warn("[UNCODE] UI-section-1 failed (non-fatal): " .. tostring(_uiSec1Err)) end
 ;(function()  -- fresh 200-register pool: Quick Binds section isolated from outer fn's 201 locals
