@@ -3103,6 +3103,8 @@ Tabs.World        = Window:AddTab("World",          "sun")
 Tabs.Automation   = Window:AddTab("Automation",    "zap")
 Tabs.Settings     = Window:AddTab("Settings",      "settings")
 
+end)()  -- close outer fn L388 (tab declarations done; 200-register limit)
+;(function()  -- fresh 200-register pool: VoidSpam + all remaining UI tabs
 do
 local VG = Tabs.VoidSpam:AddLeftGroupbox("Void Control")
 AddBindableToggle(VG, "VoidToggle", "Enable Void", false, function(v) CFG.VOID_ENABLED = v; if v then startVoid() else stopVoid() end end)
