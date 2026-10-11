@@ -1024,8 +1024,10 @@ do
     local _wldOrbit,  _wldDef,   _wldSkin
     -- Misc cluster: Translocation | Sling Bypass | Riot
     local _miscTrans, _miscSling, _miscRiot
-    -- Player cluster: Camera/Player | World | Automation
-    local _playPlayer,_playWorld, _playAuto
+    -- Player cluster: Move | Fight | Util
+    local _playMove,  _playFight, _playUtil
+    -- Extend cluster: World | Automation (moved from Player)
+    local _extWorld,  _extAuto
     -- Config cluster: Keybinds | UI | Tools
     local _cfgKeys,   _cfgUI,    _cfgTools
     -- Setup cluster: HUD | Save
@@ -1035,7 +1037,8 @@ do
     _rvsTrap,   _rvsPred,   _rvsVS    = window:tab({ name = "Rivals", tabs = {"Trap","Pred","VS"}     })
     _wldOrbit,  _wldDef,    _wldSkin  = window:tab({ name = "World",  tabs = {"Orbit","Def","Skin"}   })
     _miscTrans, _miscSling, _miscRiot = window:tab({ name = "Misc",   tabs = {"Trans","Sling","Riot"} })
-    _playPlayer,_playWorld, _playAuto = window:tab({ name = "Player", tabs = {"Cam","World","Auto"}   })
+    _playMove,  _playFight, _playUtil = window:tab({ name = "Player", tabs = {"Move","Fight","Util"}  })
+    _extWorld,  _extAuto             = window:tab({ name = "Extend", tabs = {"World","Auto"}          })
     _cfgKeys,   _cfgUI,     _cfgTools = window:tab({ name = "Config", tabs = {"Keys","UI","Tools"}    })
     _cfgHUD,    _cfgSave              = window:tab({ name = "Setup",  tabs = {"HUD","Save"}           })
 
@@ -1051,9 +1054,11 @@ do
     _mlTabMap["Translocation"] = _miscTrans
     _mlTabMap["Sling Bypass"]  = _miscSling
     _mlTabMap["Riot"]          = _miscRiot
-    _mlTabMap["Player"]        = _playPlayer
-    _mlTabMap["World"]         = _playWorld
-    _mlTabMap["Automation"]    = _playAuto
+    _mlTabMap["Player"]        = _playMove
+    _mlTabMap["PlayerFight"]   = _playFight
+    _mlTabMap["PlayerUtil"]    = _playUtil
+    _mlTabMap["World"]         = _extWorld
+    _mlTabMap["Automation"]    = _extAuto
     _mlTabMap["Keybinds"]      = _cfgKeys
     _mlTabMap["UI"]            = _cfgUI
     _mlTabMap["Tools"]         = _cfgTools
@@ -3295,6 +3300,8 @@ Tabs.SlingBypass  = Window:AddTab("Sling Bypass",  "target")
 Tabs.Riot         = Window:AddTab("Riot",          "flame")
 Tabs.SkinChanger  = Window:AddTab("SkinChanger",   "shirt")
 Tabs.Player       = Window:AddTab("Player",         "user")
+Tabs.PlayerFight  = Window:AddTab("PlayerFight",    "swords")
+Tabs.PlayerUtil   = Window:AddTab("PlayerUtil",     "settings")
 Tabs.World        = Window:AddTab("World",          "sun")
 Tabs.Automation   = Window:AddTab("Automation",    "zap")
 Tabs.AA           = Window:AddTab("AA",       "aa")
@@ -5109,8 +5116,8 @@ PLV2:AddSlider("PlStretchResY", {
 })
 
 -- ── Item Modifiers (Kicia) ─────────────────────────────────────
-local PLI  = Tabs.Player:AddLeftGroupbox("Item Modifiers")
-local PLI2 = Tabs.Player:AddRightGroupbox("Modifier Config")
+local PLI  = Tabs.PlayerUtil:AddLeftGroupbox("Item Modifiers")
+local PLI2 = Tabs.PlayerUtil:AddRightGroupbox("Modifier Config")
 
 AddBindableToggle(PLI, "ImNoMotion", "No Motion Blur", false, function(v)
     _kSet({"ItemModifiers","NoMotion"}, v)
@@ -5214,8 +5221,8 @@ PLI2:AddSlider("ImExtendMeleeRange", {
     Callback = function(v) _kSet({"ItemModifiers","ExtendMeleeRange","Range"}, v) end
 })
 
-local PLPick  = Tabs.Player:AddLeftGroupbox("Auto Pickup")
-local PLPick2 = Tabs.Player:AddRightGroupbox("Pickup Config")
+local PLPick  = Tabs.PlayerUtil:AddLeftGroupbox("Auto Pickup")
+local PLPick2 = Tabs.PlayerUtil:AddRightGroupbox("Pickup Config")
 
 PLPick:AddToggle("PickupEnabled", {
     Text    = "Auto Pickup",
@@ -5237,7 +5244,7 @@ PLPick2:AddToggle("PickupAmmo", {
     Callback = function(v) _kSet({"AutoPickupDrops","Types","Ammo"}, v) end
 })
 
-local PLAuto = Tabs.Player:AddLeftGroupbox("Auto Actions")
+local PLAuto = Tabs.PlayerUtil:AddLeftGroupbox("Auto Actions")
 PLAuto:AddToggle("AutoRespawn", {
     Text    = "Auto Respawn",
     Default = false,
@@ -5370,8 +5377,8 @@ local _kauraCFG = { enabled=false, range=30 }
 local _kauraCon = nil
 local _kauraRS  = game:GetService("RunService")
 local _kauraP   = game:GetService("Players")
-local KauraL = Tabs.Player:AddLeftGroupbox("Kill Aura")
-local KauraR = Tabs.Player:AddRightGroupbox("Kill Aura Config")
+local KauraL = Tabs.PlayerFight:AddLeftGroupbox("Kill Aura")
+local KauraR = Tabs.PlayerFight:AddRightGroupbox("Kill Aura Config")
 
 KauraL:AddToggle("KillAuraEnabled", { Text="Kill Aura", Default=false,
     Tooltip="Auto-damage enemies in range",
@@ -5441,8 +5448,8 @@ pcall(function() _knrVIM = game:GetService("VirtualInputManager") end)
 
 local _knrOrigSpeed = nil
 
-local KnrL = Tabs.Player:AddLeftGroupbox("Knife Rage")
-local KnrR = Tabs.Player:AddRightGroupbox("Knife Rage Config")
+local KnrL = Tabs.PlayerFight:AddLeftGroupbox("Knife Rage")
+local KnrR = Tabs.PlayerFight:AddRightGroupbox("Knife Rage Config")
 
 local _knrKnifeNames = {
     "Knife", "knife", "Katana", "Blade", "blade",
@@ -5645,8 +5652,8 @@ local _hbxCFG = { enabled=false, scale=2.0 }
 local _hbxCon = nil
 local _hbxRS  = game:GetService("RunService")
 local _hbxP   = game:GetService("Players")
-local HbxL = Tabs.Player:AddLeftGroupbox("Hitbox Expander")
-local HbxR = Tabs.Player:AddRightGroupbox("Hitbox Config")
+local HbxL = Tabs.PlayerFight:AddLeftGroupbox("Hitbox Expander")
+local HbxR = Tabs.PlayerFight:AddRightGroupbox("Hitbox Config")
 
 local function _hbxApply(char, s)
     pcall(function()
@@ -5700,7 +5707,7 @@ end -- Hitbox Expander scope
 do -- No Fall Damage scope
 local _nfdCFG = { enabled=false }
 local _nfdCon = nil
-local _nfdL = Tabs.Player:AddLeftGroupbox("Fall Protection")
+local _nfdL = Tabs.PlayerFight:AddLeftGroupbox("Fall Protection")
 
 _nfdL:AddToggle("NoFallDamageEnabled", { Text="No Fall Damage", Default=false,
     Tooltip="Prevents fall damage",
@@ -5742,8 +5749,8 @@ end -- No Fall Damage scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Damage Multiplier scope
 local _dmgCFG = { enabled=false, mult=2.0 }
-local _dmgL = Tabs.Player:AddLeftGroupbox("Damage Modifier")
-local _dmgR = Tabs.Player:AddRightGroupbox("Damage Config")
+local _dmgL = Tabs.PlayerFight:AddLeftGroupbox("Damage Modifier")
+local _dmgR = Tabs.PlayerFight:AddRightGroupbox("Damage Config")
 
 _dmgL:AddToggle("DmgMultEnabled", { Text="Damage Multiplier", Default=false,
     Tooltip="Amplify outgoing damage (executor-dependent)",
@@ -5782,8 +5789,8 @@ local _adsCFG = { enabled=false, range=50 }
 local _adsCon = nil
 local _adsRS  = game:GetService("RunService")
 local _adsP   = game:GetService("Players")
-local AdsL = Tabs.Player:AddLeftGroupbox("Auto ADS")
-local AdsR = Tabs.Player:AddRightGroupbox("ADS Config")
+local AdsL = Tabs.PlayerUtil:AddLeftGroupbox("Auto ADS")
+local AdsR = Tabs.PlayerUtil:AddRightGroupbox("ADS Config")
 
 AdsL:AddToggle("AutoAdsEnabled", { Text="Auto Scope / ADS", Default=false,
     Tooltip="Auto-ADS when enemy is in range",
@@ -5829,8 +5836,8 @@ end -- Auto Scope scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Size Modifier scope
 local _szCFG = { enabled=false, scale=1.0 }
-local _szL = Tabs.Player:AddLeftGroupbox("Size Modifier")
-local _szR = Tabs.Player:AddRightGroupbox("Size Config")
+local _szL = Tabs.PlayerUtil:AddLeftGroupbox("Size Modifier")
+local _szR = Tabs.PlayerUtil:AddRightGroupbox("Size Config")
 
 local function _applySize(scale)
     pcall(function()
@@ -5870,8 +5877,8 @@ end -- Size Modifier scope
 do -- Auto Block scope
 local _ablkCFG = { enabled=false, hpThreshold=80 }
 local _ablkCon = nil
-local _ablkL = Tabs.Player:AddLeftGroupbox("Auto Block")
-local _ablkR = Tabs.Player:AddRightGroupbox("Block Config")
+local _ablkL = Tabs.PlayerUtil:AddLeftGroupbox("Auto Block")
+local _ablkR = Tabs.PlayerUtil:AddRightGroupbox("Block Config")
 
 _ablkL:AddToggle("AutoBlockEnabled", { Text="Auto Block", Default=false,
     Tooltip="Auto block on HP loss",
@@ -77307,6 +77314,13 @@ return API
     local _rv_fn, _rv_err = loadstring(_rv_src, 'RivalsVisuals')
     if _rv_fn then task.spawn(_rv_fn) else warn('[UNCODE] Visuals load err: '..tostring(_rv_err)) end
 end
+getgenv()._UNC_KiciaStore = tbl17.bG()
+end)() end) -- closes Kicia IIFE + pcall wrapper
+if not _kiciaOk then warn("[UNCODE] Kicia engine failed (non-fatal): " .. tostring(_kiciaErr)) end
+end) -- closes task.spawn: Kicia runs in background, main thread continues
+-- ── Quick Binds UI ────────────────────────────────────────────────────────
+-- ╔══════════════════════════════════════════════════════════════════╗
+-- ╚══════════════════════════════════════════════════════════════════╝
 end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
 if not _uiSec1Ok then warn("[UNCODE] UI-section-1 failed (non-fatal): " .. tostring(_uiSec1Err)) end
 ;(function()  -- fresh 200-register pool: Quick Binds section isolated from outer fn's 201 locals
