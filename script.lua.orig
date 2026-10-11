@@ -74896,7 +74896,6 @@ QBL:AddToggle("QbMasterToggle", {
         Notification.new({
             Title   = "Quick Binds",
             Content = (v and "Keybinds Enabled" or "Keybinds Disabled"),
-                         v and "Keybinds Active " or "Keybinds Disabled"),
             Duration = 2,
         })
     end,
