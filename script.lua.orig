@@ -873,21 +873,21 @@ end
 --   └─ Config ────────┘  Settings
 --
 -- Sub-tab variables (outer scope — accessed as upvalues by the content function)
-local _hvhCombat, _hvhAimbot, _hvhPred
+local _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred
 local _utilVS, _utilOrbit, _utilDef
 local _miscTrans, _miscSling, _miscRiot
 local _playPlayer, _playWorld, _playAuto
 local _skinsChanger
-local _cfgSettings
+local _cfgKeybinds, _cfgUI, _cfgTools, _cfgHUD, _cfgSave
 
 -- do..end keeps no extra locals in the outer register file
 do
-    _hvhCombat,  _hvhAimbot,  _hvhPred    = window:tab({ name = "HvH",     tabs = {"Combat","Aimbot","Prediction"} })
+    _hvhCombat, _hvhAimbot, _hvhAA, _hvhTrap, _hvhPred = window:tab({ name = "HvH",    tabs = {"Combat","Aimbot","AA","Trap","Prediction"} })
     _utilVS,     _utilOrbit,  _utilDef    = window:tab({ name = "Utility",  tabs = {"VoidSpam","Orbit","Defense"}   })
     _miscTrans,  _miscSling,  _miscRiot   = window:tab({ name = "Misc",     tabs = {"Transloc.","Sling","Riot"}     })
     _playPlayer, _playWorld,  _playAuto   = window:tab({ name = "Player",   tabs = {"Camera","World","Auto"}        })
     _skinsChanger                         = window:tab({ name = "Skins",    tabs = {"SkinChanger"}                 })
-    _cfgSettings                          = window:tab({ name = "Config",   tabs = {"Settings"}                    })
+    _cfgKeybinds, _cfgUI, _cfgTools, _cfgHUD, _cfgSave = window:tab({ name = "Config", tabs = {"Keybinds","UI","Tools","HUD","Save"}           })
 end
 
 -- ── Window compat ────────────────────────────────────────────────────────
@@ -896,6 +896,8 @@ local _mlTabMap = {
     ["Combat"]        = _hvhCombat,
     ["HvH"]           = _hvhAimbot,
     ["Prediction"]    = _hvhPred,
+    ["AA"]            = _hvhAA,
+    ["Trap"]          = _hvhTrap,
     ["VoidSpam"]      = _utilVS,
     ["Orbit"]         = _utilOrbit,
     ["Defense"]       = _utilDef,
@@ -906,7 +908,11 @@ local _mlTabMap = {
     ["World"]         = _playWorld,
     ["Automation"]    = _playAuto,
     ["SkinChanger"]   = _skinsChanger,
-    ["Settings"]      = _cfgSettings,
+    ["Keybinds"]      = _cfgKeybinds,
+    ["UI"]            = _cfgUI,
+    ["Tools"]         = _cfgTools,
+    ["HUD"]           = _cfgHUD,
+    ["Save"]          = _cfgSave,
 }
 
 -- Fallback no-op tab (returns Obsidian-style API directly; never reaches wrapTab)
@@ -3127,7 +3133,13 @@ Tabs.SkinChanger  = Window:AddTab("SkinChanger",   "shirt")
 Tabs.Player       = Window:AddTab("Player",         "user")
 Tabs.World        = Window:AddTab("World",          "sun")
 Tabs.Automation   = Window:AddTab("Automation",    "zap")
-Tabs.Settings     = Window:AddTab("Settings",      "settings")
+Tabs.AA           = Window:AddTab("AA",       "aa")
+Tabs.Trap         = Window:AddTab("Trap",     "trap")
+Tabs.Keybinds     = Window:AddTab("Keybinds", "keybinds")
+Tabs.UI           = Window:AddTab("UI",       "ui")
+Tabs.Tools        = Window:AddTab("Tools",    "tools")
+Tabs.HUD          = Window:AddTab("HUD",      "hud")
+Tabs.Save         = Window:AddTab("Save",     "save")
 
 --[[ inner IIFE nested inside outer fn — upvalues share Tabs/Window/CFG/AddBindableToggle ]]
 ;(function()  -- fresh 200-register pool: VoidSpam + all remaining UI tabs
@@ -6594,11 +6606,11 @@ HvHR3:AddSlider("FbHumanness", {
 -- ║  Jitter・Spin・Side・Back・Fake180 / Resolver / Auto Peek            ║
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 do
-local _UAAL  = Tabs.HvH:AddLeftGroupbox("Underground AA")
-local _UAAR  = Tabs.HvH:AddRightGroupbox("AA Config")
-local _URVL  = Tabs.HvH:AddLeftGroupbox("Resolver")
-local _URVR  = Tabs.HvH:AddRightGroupbox("Resolver Config")
-local _UAPL  = Tabs.HvH:AddLeftGroupbox("Auto Peek")
+local _UAAL  = Tabs.AA:AddLeftGroupbox("Underground AA")
+local _UAAR  = Tabs.AA:AddRightGroupbox("AA Config")
+local _URVL  = Tabs.AA:AddLeftGroupbox("Resolver")
+local _URVR  = Tabs.AA:AddRightGroupbox("Resolver Config")
+local _UAPL  = Tabs.AA:AddLeftGroupbox("Auto Peek")
 
 -- ── Underground AA ─────────────────────────────────────────────────────
 local _uaaCFG = {
@@ -6895,8 +6907,8 @@ end -- Underground AA / Resolver / Auto Peek scope
 -- ║  Y≈1300 にTP → アリーナ外落下 → 即死                               ║
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 do
-local _RTL  = Tabs.HvH:AddLeftGroupbox("Rage Trap")
-local _RTR  = Tabs.HvH:AddRightGroupbox("Trap Config")
+local _RTL  = Tabs.Trap:AddLeftGroupbox("Rage Trap")
+local _RTR  = Tabs.Trap:AddRightGroupbox("Trap Config")
 
 local _rtCFG = {
     enabled     = false,
@@ -74621,8 +74633,8 @@ end)()
 -- ╚══════════════════════════════════════════════════════════════════╝
 end)()  -- close L4222 UI section 1 self-executing function scope
 ;(function()  -- fresh 200-register pool: Quick Binds section isolated from outer fn's 201 locals
-local QBL = Tabs.Settings:AddLeftGroupbox("Quick Binds")
-local QBR = Tabs.Settings:AddRightGroupbox("Quick Binds (2)")
+local QBL = Tabs.Keybinds:AddLeftGroupbox("Quick Binds")
+local QBR = Tabs.Keybinds:AddRightGroupbox("Quick Binds (2)")
 
 -- ── マスタースイッチ & HUD ────────────────────────────────────────────────
 QBL:AddToggle("QbMasterToggle", {
@@ -74706,7 +74718,7 @@ end)
 
 end)()  -- close Quick Binds section
 ;(function()  -- fresh 200-register pool: Server Tools
-local MenuG = Tabs.Settings:AddRightGroupbox("Server Tools")
+local MenuG = Tabs.Tools:AddRightGroupbox("Server Tools")
 MenuG:AddButton("Rejoin Server", function()
     pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer) end)
 end)
@@ -74725,7 +74737,7 @@ end)
 
 end)()  -- close Server Tools section
 ;(function()  -- fresh 200-register pool: UI Settings + all remaining Settings sections
-local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
+local UIGroup = Tabs.UI:AddLeftGroupbox("UI Settings")
 -- Menu keybind via NeverLose UserSettings
 window.UserSettings:AddLabel("Menu Keybind"):AddKeybind({
     Default = "RightShift",
@@ -74768,7 +74780,7 @@ UIGroup:AddDropdown("LangSelect", {
 -- ║  1キーで全トグルをOFFにする緊急停止ボタン                       ║
 -- ╚══════════════════════════════════════════════════════════════════╝
 do
-local PanicG = Tabs.Settings:AddRightGroupbox("Panic / Emergency")
+local PanicG = Tabs.Tools:AddRightGroupbox("Panic / Emergency")
 
 local _panicKey = "Delete"
 
@@ -74815,8 +74827,8 @@ end -- Panic Key scope
 -- ║  キル・デス・アシストをカウントしてHUD表示＋通知               ║
 -- ╚══════════════════════════════════════════════════════════════════╝
 do
-local KdaG  = Tabs.Settings:AddLeftGroupbox("Session KDA")
-local KdaGR = Tabs.Settings:AddRightGroupbox("KDA Config")
+local KdaG  = Tabs.HUD:AddLeftGroupbox("Session KDA")
+local KdaGR = Tabs.HUD:AddRightGroupbox("KDA Config")
 
 local _kda = { kills=0, deaths=0, assists=0, enabled=false }
 local _kdaLP = game:GetService("Players").LocalPlayer
@@ -74904,8 +74916,8 @@ end -- Session KDA scope
 do -- Fake Lag scope
 local _fLagCFG = { enabled=false, delay=0.2 }
 local _fLagCon = nil
-local FlagL = Tabs.Settings:AddLeftGroupbox("Fake Lag / Lag Switch")
-local FlagR = Tabs.Settings:AddRightGroupbox("Lag Config")
+local FlagL = Tabs.Tools:AddLeftGroupbox("Fake Lag / Lag Switch")
+local FlagR = Tabs.Tools:AddRightGroupbox("Lag Config")
 
 FlagL:AddToggle("FakeLagEnabled", { Text=_t("フェイクラグ有効","Fake Lag"), Default=false,
     Tooltip=_t("ネットワーク遅延を人工的に発生させる","Artificially introduce network delay"),
@@ -74952,8 +74964,8 @@ local _dlogCFG  = { enabled=false, maxEntries=10 }
 local _dlogGui  = nil
 local _dlogCon  = nil
 local _dlogList = {}
-local DlogL = Tabs.Settings:AddLeftGroupbox("Damage Log HUD")
-local DlogR = Tabs.Settings:AddRightGroupbox("Damage Log Config")
+local DlogL = Tabs.HUD:AddLeftGroupbox("Damage Log HUD")
+local DlogR = Tabs.HUD:AddRightGroupbox("Damage Log Config")
 
 local function _dlogRebuild()
     if not _dlogGui then return end
@@ -75060,8 +75072,8 @@ local _hrCFG   = { enabled=false, shots=0, hits=0 }
 local _spdGui  = nil
 local _spdCon  = nil
 local _spdRS   = game:GetService("RunService")
-local SpdL = Tabs.Settings:AddLeftGroupbox("Speedometer / Hit Rate")
-local SpdR = Tabs.Settings:AddRightGroupbox("Speed & Hit Config")
+local SpdL = Tabs.HUD:AddLeftGroupbox("Speedometer / Hit Rate")
+local SpdR = Tabs.HUD:AddRightGroupbox("Speed & Hit Config")
 
 local function _spdBuild()
     if _spdGui then _spdGui:Destroy() end
@@ -75165,8 +75177,8 @@ local _sndCFG  = { enabled=false, gunOnly=false }
 local _sndGui  = nil
 local _sndConRS = nil
 local _sndEvents = {}
-local SndL = Tabs.Settings:AddLeftGroupbox("Sound ESP+")
-local SndR = Tabs.Settings:AddRightGroupbox("Sound ESP Config")
+local SndL = Tabs.HUD:AddLeftGroupbox("Sound ESP+")
+local SndR = Tabs.HUD:AddRightGroupbox("Sound ESP Config")
 
 local function _sndDirArrow(angle, label, duration)
     pcall(function()
@@ -75257,7 +75269,7 @@ SndL:AddToggle("SoundEspGunOnly", { Text=_t("銃声のみ","Gun Sounds Only"), D
 end -- Sound ESP Plus scope
 
 do -- FPS Boost scope
-local FpsG = Tabs.Settings:AddLeftGroupbox("FPS Boost")
+local FpsG = Tabs.UI:AddLeftGroupbox("FPS Boost")
 
 -- ── state ─────────────────────────────────────────────────────
 local _fpsOrigShadows    = nil
@@ -75607,8 +75619,8 @@ end -- FPS Boost scope
 -- ═══════════════════════════════════════════════════════════════
 do -- Config Save scope
 local _cfgPath  = "uncode_config.json"
-local _cfgL = Tabs.Settings:AddLeftGroupbox("Config Save / Load")
-local _cfgR = Tabs.Settings:AddRightGroupbox("Config Info")
+local _cfgL = Tabs.Save:AddLeftGroupbox("Config Save / Load")
+local _cfgR = Tabs.Save:AddRightGroupbox("Config Info")
 
 local function _cfgCollect()
     local data = {}
@@ -75680,7 +75692,7 @@ do -- Auto Update scope
 local _updCFG   = { enabled=false, checkedOnce=false }
 local _updBuild = "20261009-h"
 local _updUrl   = "https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/version.txt"
-local UpdL = Tabs.Settings:AddLeftGroupbox("Auto Update Checker")
+local UpdL = Tabs.Save:AddLeftGroupbox("Auto Update Checker")
 
 UpdL:AddToggle("AutoUpdateEnabled", { Text=_t("起動時にアップデート確認","Check Update on Load"), Default=false,
     Tooltip=_t("GitHubの最新バージョンと比較","Compare with latest version on GitHub"),
@@ -75740,8 +75752,8 @@ local _themes   = {
     Neon     = { accent=Color3.fromRGB(0,255,220),   bg=Color3.fromRGB(5,20,25)  },
     Midnight = { accent=Color3.fromRGB(160,90,255),  bg=Color3.fromRGB(15,5,30)  },
 }
-local ThemeL = Tabs.Settings:AddLeftGroupbox("UI Color Theme")
-local ThemeR = Tabs.Settings:AddRightGroupbox("Theme Config")
+local ThemeL = Tabs.UI:AddLeftGroupbox("UI Color Theme")
+local ThemeR = Tabs.UI:AddRightGroupbox("Theme Config")
 
 end
 local function _applyTheme(name)
@@ -75794,7 +75806,7 @@ end)()  -- close L74802 UI Settings + Settings sections wrapper (theme boundary)
 
 -- ── Community Configs ──────────────────────────────────────────────────────
 ;(function()  -- fresh 200-register pool: Community Configs
-local CfgG = Tabs.Settings:AddLeftGroupbox("Community Configs")
+local CfgG = Tabs.Save:AddLeftGroupbox("Community Configs")
 
 -- NeverLose build: _T / _O use _FlagCb registry (defined at top scope)
 local function _T(id, v) if _FlagCb[id] then pcall(_FlagCb[id], v) end end
