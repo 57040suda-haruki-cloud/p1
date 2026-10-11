@@ -8225,7 +8225,7 @@ end -- Enemy Info scope
 end -- HvH UI scope
 
 
-local _kiciaOk, _kiciaErr = pcall(function() ;(function() -- Kicia engine: isolated register scope
+task.spawn(function() local _kiciaOk, _kiciaErr = pcall(function() ;(function() -- Kicia engine: isolated register scope
 --==========================================================================
 --  Kicia Rebuild  -  Rivals
 --  Kiciahook v3, rebuilt from a decompiled build.
@@ -74662,6 +74662,7 @@ tbl17.j1()(boot)
 getgenv()._UNC_KiciaStore = tbl17.bG()
 end)() end) -- closes Kicia IIFE + pcall wrapper
 if not _kiciaOk then warn("[UNCODE] Kicia engine failed (non-fatal): " .. tostring(_kiciaErr)) end
+end) -- closes task.spawn: Kicia runs in background, main thread continues
 -- ── Quick Binds UI ────────────────────────────────────────────────────────
 -- ╔══════════════════════════════════════════════════════════════════╗
 -- ║  QUICK BINDS — ドロップダウン選択 OR 「バインド変更」で自由設定 ║
