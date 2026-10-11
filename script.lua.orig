@@ -8818,12 +8818,11 @@ end -- Enemy Info scope
 end -- HvH UI scope
 
 
-task.spawn(function()
-    local _kiciaOk, _kiciaErr = pcall(function()
-
 -- ═══════════════════════════════════════════════════════════════
--- Kicia Rebuild (updated)
+-- Kicia Rebuild (updated, via loadstring isolation)
 -- ═══════════════════════════════════════════════════════════════
+do
+    local _kicia_src = [=[
 --==========================================================================
 --  Kicia Rebuild  -  Rivals
 --  Kiciahook v3, rebuilt from a decompiled build.
@@ -75237,8 +75236,15 @@ function K.Unload()
 end
 
 tbl17.j1()(boot)
-end)  -- close pcall wrapper
-end)  -- close task.spawn wrapper
+]=]
+    local _kicia_fn, _kicia_err = loadstring(_kicia_src, 'KiciaRebuild')
+    if _kicia_fn then
+        local _kiciaOk, _kiciaErr2 = pcall(_kicia_fn)
+        if not _kiciaOk then warn('[UNCODE] Kicia err: '..tostring(_kiciaErr2)) end
+    else
+        warn('[UNCODE] Kicia parse err: '..tostring(_kicia_err))
+    end
+end
 
 -- ═══════════════════════════════════════════════════════════════
 -- Rivals Visuals V2 (Rivals_Visuals.lua)
