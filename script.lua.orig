@@ -74778,20 +74778,13 @@ end)
 end)()  -- close Server Tools section
 ;(function()  -- fresh 200-register pool: UI Settings + all remaining Settings sections
 local UIGroup = Tabs.UI:AddLeftGroupbox("UI Settings")
--- Menu keybind via NeverLose UserSettings
-window.UserSettings:AddLabel("Menu Keybind"):AddKeybind({
+-- Menu keybind (RightShift default; stored in window.Keybind)
+UIGroup:AddDropdown("MenuKeybind", {
+    Text    = "Menu Keybind",
     Default = "RightShift",
+    Values  = {"RightShift","RightControl","F1","F2","F3","F4","Insert","Delete","Home","End"},
     Callback = function(v)
         window.Keybind = v
-        Logging.new("ps4-touchpad", "UI keybind → " .. tostring(v), 4)
-    end,
-})
-window.UserSettings:AddLabel("Menu Scale"):AddDropdown({
-    Default = "Default",
-    Values  = { "Default", "Large", "Mobile", "Small" },
-    Callback = function(v)
-        pcall(function() window:SetSize(NeverLose.Scales[v]) end)
-        Logging.new("crop", "UI scale → " .. tostring(v), 4)
     end,
 })
 UIGroup:AddToggle("ShowCoords", { Text = "Show Live HUD", Default = true, Callback = function(v)
