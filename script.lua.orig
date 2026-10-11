@@ -74779,8 +74779,8 @@ QBR:AddButton(_t("📋 現在のバインド一覧を通知表示","📋 Show Cu
     })
 end)
 
-end
-do
+end)()  -- close Quick Binds section
+;(function()  -- fresh 200-register pool: Server Tools
 local MenuG = Tabs.Settings:AddRightGroupbox("Server Tools")
 MenuG:AddButton("Rejoin Server", function()
     pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer) end)
@@ -74798,8 +74798,8 @@ MenuG:AddButton("Server Hop", function()
     end)
 end)
 
-end
-do
+end)()  -- close Server Tools section
+;(function()  -- fresh 200-register pool: UI Settings + all remaining Settings sections
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 -- Menu keybind via NeverLose UserSettings
 window.UserSettings:AddLabel("Menu Keybind"):AddKeybind({
@@ -76051,7 +76051,7 @@ CfgG:AddButton("Load Rage Config", function()
     _T("PickupEnabled", true)   _T("PickupHealth", true)   _T("PickupAmmo", true)
     Library:Notify({ Title = "UNCODE", Description = "Rage Config Loaded", Time = 3 })
 end)
-end)()  -- close L74698 Quick Binds self-executing function scope
+end)()  -- close UI Settings + all remaining Settings sections wrapper
 -- ── End Community Configs ──────────────────────────────────────────────────
 
 -- (No watermark loop — Millenium has no watermark API)
