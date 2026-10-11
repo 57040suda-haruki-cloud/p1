@@ -4320,35 +4320,152 @@ local PLS  = Tabs.Player:AddLeftGroupbox("Player Spoofer")
 local PLS2 = Tabs.Player:AddRightGroupbox("Spoofer Config")
 
 -- ── Movement ─────────────────────────────────────────────────
+-- NoClip: pure-Lua (CanCollide=false every Stepped) + Kicia bridge
+local _ncConn
 AddBindableToggle(PLM, "PlNoclip", "NoClip", false, function(v)
     _kSet({"Movement","Noclip","Enabled"}, v)
+    if v then
+        _ncConn = RunService.Stepped:Connect(function()
+            pcall(function()
+                local c = LocalPlayer.Character
+                if not c then return end
+                for _, p in ipairs(c:GetDescendants()) do
+                    if p:IsA("BasePart") then p.CanCollide = false end
+                end
+            end)
+        end)
+    else
+        if _ncConn then _ncConn:Disconnect(); _ncConn = nil end
+        pcall(function()
+            local c = LocalPlayer.Character
+            if c then
+                for _, p in ipairs(c:GetDescendants()) do
+                    if p:IsA("BasePart") then p.CanCollide = true end
+                end
+            end
+        end)
+    end
 end)
 
+-- WalkSpeed: pure-Lua (enforced every Heartbeat) + Kicia bridge
+local _wsEnabled = false
+local _wsVal = 32
+RunService.Heartbeat:Connect(function()
+    if not _wsEnabled then return end
+    pcall(function()
+        local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if h then h.WalkSpeed = _wsVal end
+    end)
+end)
 AddBindableToggle(PLM, "PlWalkSpeed", "Speed Hack", false, function(v)
+    _wsEnabled = v
     _kSet({"Movement","WalkSpeed","Enabled"}, v)
+    pcall(function()
+        local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if h then h.WalkSpeed = v and _wsVal or 16 end
+    end)
 end)
 PLM2:AddSlider("PlWalkSpeedVal", {
-    Text = "Speed Multiplier",
-    Default = 2, Min = 1, Max = 10, Rounding = 1,
-    Callback = function(v) _kSet({"Movement","WalkSpeed","Speed"}, v) end
+    Text = "Walk Speed",
+    Default = 32, Min = 8, Max = 500, Rounding = 0,
+    Callback = function(v)
+        _wsVal = v
+        _kSet({"Movement","WalkSpeed","Speed"}, v / 16)
+        if _wsEnabled then
+            pcall(function()
+                local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if h then h.WalkSpeed = v end
+            end)
+        end
+    end,
 })
 
+-- Flight: pure-Lua (BodyVelocity on Heartbeat, WASD+Space+Shift) + Kicia bridge
+local _flightEnabled = false
+local _flightSpeed = 100
+local _flightBV = nil
+local _flightConn
+RunService.Heartbeat:Connect(function()
+    if not _flightEnabled then return end
+    pcall(function()
+        local c = LocalPlayer.Character
+        if not c then return end
+        local hrp = c:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        local hum = c:FindFirstChildOfClass("Humanoid")
+        if hum then hum.PlatformStand = true end
+        if not _flightBV or not _flightBV.Parent then
+            _flightBV = Instance.new("BodyVelocity")
+            _flightBV.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+            _flightBV.Velocity = Vector3.zero
+            _flightBV.Parent = hrp
+        end
+        local dir = Vector3.zero
+        local cam = workspace.CurrentCamera
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0,1,0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0,1,0) end
+        _flightBV.Velocity = dir.Magnitude > 0 and (dir.Unit * _flightSpeed) or Vector3.zero
+    end)
+end)
 AddBindableToggle(PLM, "PlFlight", "Flight", false, function(v)
+    _flightEnabled = v
     _kSet({"Movement","Flight","Enabled"}, v)
+    if not v then
+        pcall(function()
+            if _flightBV and _flightBV.Parent then _flightBV:Destroy() end
+            _flightBV = nil
+            local c = LocalPlayer.Character
+            if c then
+                local hum = c:FindFirstChildOfClass("Humanoid")
+                if hum then hum.PlatformStand = false end
+            end
+        end)
+    end
 end)
 PLM2:AddSlider("PlFlightSpeed", {
     Text = "Flight Speed",
     Default = 100, Min = 25, Max = 500, Rounding = 0,
-    Callback = function(v) _kSet({"Movement","Flight","Speed"}, v) end
+    Callback = function(v)
+        _flightSpeed = v
+        _kSet({"Movement","Flight","Speed"}, v)
+    end,
 })
 
+-- JumpPower: pure-Lua (enforced every Heartbeat) + Kicia bridge
+local _jpEnabled = false
+local _jpVal = 100
+RunService.Heartbeat:Connect(function()
+    if not _jpEnabled then return end
+    pcall(function()
+        local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if h then h.JumpPower = _jpVal end
+    end)
+end)
 AddBindableToggle(PLM, "PlJumpPower", "Jump Power", false, function(v)
+    _jpEnabled = v
     _kSet({"Movement","JumpPower","Enabled"}, v)
+    pcall(function()
+        local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if h then h.JumpPower = v and _jpVal or 50 end
+    end)
 end)
 PLM2:AddSlider("PlJumpPowerVal", {
-    Text = "Jump Multiplier",
-    Default = 2, Min = 1, Max = 10, Rounding = 1,
-    Callback = function(v) _kSet({"Movement","JumpPower","Speed"}, v) end
+    Text = "Jump Power",
+    Default = 100, Min = 10, Max = 500, Rounding = 0,
+    Callback = function(v)
+        _jpVal = v
+        _kSet({"Movement","JumpPower","Speed"}, v / 50)
+        if _jpEnabled then
+            pcall(function()
+                local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if h then h.JumpPower = v end
+            end)
+        end
+    end,
 })
 
 AddBindableToggle(PLM, "PlInfJump", "Infinite Double Jumps", false, function(v)
@@ -5094,7 +5211,7 @@ AfkL:AddToggle("AfkEnabled", {
         _afkCFG.enabled = v
         if v then
             _afkConn = game:GetService("RunService").Heartbeat:Connect(_afkTick)
-            Notification.new({ Title="Anti-AFK", Content="Anti-AFK ON ⏱", Duration=1.5 })
+            Notification.new({ Title="Anti-AFK", Content="Anti-AFK ON", Duration=1.5 })
         else
             if _afkConn then _afkConn:Disconnect(); _afkConn = nil end
             Notification.new({ Title="Anti-AFK", Content="Anti-AFK OFF", Duration=1.5 })
