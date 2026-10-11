@@ -4246,7 +4246,7 @@ local _skSaveConfig, _skLoadConfig
 end)()  -- end skinchanger function scope
 
 -- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
-;(function()  -- fresh 200-register pool: isolates all UI locals from outer fn's 201
+local _uiSec1Ok, _uiSec1Err = pcall(function() ;(function()  -- fresh 200-register pool: isolates all UI locals from outer fn's 201
 (function()  -- own 200-register pool: SK/SKR won't overflow outer fn's 201 locals
 local SK  = Tabs.SkinChanger:AddLeftGroupbox("SkinChanger")
 SK:AddLabel("Status: " .. (_skLoadConfig and "Active ✓" or "Unavailable"))
@@ -8222,7 +8222,7 @@ end -- Enemy Info scope
 end -- HvH UI scope
 
 
-;(function() -- Kicia engine: isolated register scope
+local _kiciaOk, _kiciaErr = pcall(function() ;(function() -- Kicia engine: isolated register scope
 --==========================================================================
 --  Kicia Rebuild  -  Rivals
 --  Kiciahook v3, rebuilt from a decompiled build.
@@ -74657,14 +74657,16 @@ tbl17.j1()(boot)
 -- 3. Expose the fully-initialised ReactiveStore globally.
 --    Must be AFTER j1()(boot) so all module observers are connected before we use it.
 getgenv()._UNC_KiciaStore = tbl17.bG()
-end)()
+end)() end) -- closes Kicia IIFE + pcall wrapper
+if not _kiciaOk then warn("[UNCODE] Kicia engine failed (non-fatal): " .. tostring(_kiciaErr)) end
 -- ── Quick Binds UI ────────────────────────────────────────────────────────
 -- ╔══════════════════════════════════════════════════════════════════╗
 -- ║  QUICK BINDS — ドロップダウン選択 OR 「バインド変更」で自由設定 ║
 -- ║  ▶ ドロップダウン: リストから選ぶ                              ║
 -- ║  ▶ 「🎯 バインド変更」ボタン: 次に押したキーを自動登録         ║
 -- ╚══════════════════════════════════════════════════════════════════╝
-end)()  -- close L4222 UI section 1 self-executing function scope
+end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
+if not _uiSec1Ok then warn("[UNCODE] UI-section-1 failed (non-fatal): " .. tostring(_uiSec1Err)) end
 ;(function()  -- fresh 200-register pool: Quick Binds section isolated from outer fn's 201 locals
 warn("[UNCODE P3] Config-IIFE reached — Tabs.Keybinds=" .. tostring(Tabs.Keybinds ~= nil))
 local QBL = Tabs.Keybinds:AddLeftGroupbox("Quick Binds")
