@@ -1623,12 +1623,17 @@ local function lockToVoid(dt)
 end
 
 function startVoid()
+    warn("[UNCODE P2] startVoid() called — root=" .. tostring(root ~= nil) .. " char=" .. tostring(char ~= nil))
     killConn("void")
     voidElapsed = 0; voidStartTime = tick()
     voidRegionCurrentRadius = nil; voidRegionLastIn = true
     local hrp = getLocalRoot()
     if hrp then voidPos = hrp.Position; intendedVoidPos = voidPos end
+    warn("[UNCODE P2] startVoid: hrp=" .. tostring(hrp ~= nil) .. " connecting Heartbeat...")
+    local _diagTick = 0
     conns.void = RunService.Heartbeat:Connect(function(dt)
+        _diagTick = _diagTick + 1
+        if _diagTick <= 3 then warn("[UNCODE P2] void HB tick#" .. _diagTick .. " VOID_EN=" .. tostring(CFG.VOID_ENABLED)) end
         if not CFG.VOID_ENABLED then
             if CFG.VOID_AUTO_REENABLE and tick() > voidAutoReenableTime then
                 voidAutoReenableTime = tick() + 0.5; CFG.VOID_ENABLED = true
@@ -3157,8 +3162,14 @@ Tabs.Save         = Window:AddTab("Save",     "save")
 --[[ inner IIFE nested inside outer fn — upvalues share Tabs/Window/CFG/AddBindableToggle ]]
 ;(function()  -- fresh 200-register pool: VoidSpam + all remaining UI tabs
 do
-local VG = Tabs.VoidSpam:AddLeftGroupbox("Void Control")
-AddBindableToggle(VG, "VoidToggle", "Enable Void", false, function(v) CFG.VOID_ENABLED = v; if v then startVoid() else stopVoid() end end)
+warn("[UNCODE P2] inner-IIFE START — Tabs.VoidSpam=" .. tostring(Tabs.VoidSpam ~= nil))
+local _vgOk, _vgErr, VG
+_vgOk, _vgErr = pcall(function() VG = Tabs.VoidSpam:AddLeftGroupbox("Void Control") end)
+if not _vgOk then warn("[UNCODE P2] VG FAILED: " .. tostring(_vgErr)) else warn("[UNCODE P2] VG created ok") end
+AddBindableToggle(VG, "VoidToggle", "Enable Void", false, function(v)
+    warn("[UNCODE P2] VoidToggle FIRED v=" .. tostring(v) .. " root=" .. tostring(root ~= nil))
+    CFG.VOID_ENABLED = v; if v then startVoid() else stopVoid() end
+end)
 VG:AddDropdown("VoidMethod", { Text = "Method", Default = "Quantum", Values = {"Drift","Chaos","Loop","Spiral","Quantum","TP Everywhere","OrbitTarget"}, Callback = function(v) CFG.VOID_METHOD = v end })
 VG:AddSlider("Speed", { Text = "Speed (B/s)", Default = 1, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) CFG.SPEED = v * 1e9 end })
 VG:AddSlider("Chaos", { Text = "Chaos (%)", Default = 98, Min = 1, Max = 100, Rounding = 0, Callback = function(v) CFG.CHAOS = v * 0.01 end })
