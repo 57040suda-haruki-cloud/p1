@@ -424,7 +424,7 @@ local _WmBuild = { Input  = function() end }
 local _FlagCb = {}
 local function _regFlag(id, cb) if cb then _FlagCb[id] = cb end end
 -- _T / _O are also declared at file scope here so community configs can reach them
-local function _T(id, v) if _FlagCb[id] then pcall(_FlagCb[id], v) end end
+local function _T(id, v) if _FlagCb[id] then local ok, err = pcall(_FlagCb[id], v); if not ok then warn("[UNCODE _T] " .. tostring(id) .. ": " .. tostring(err)) end end end
 local function _O(id, v) _T(id, v) end
 
 -- Backward-compat stubs so existing code that refs Library / Options / Toggles doesn't error
@@ -723,16 +723,20 @@ local function wrapSection(mlSec)
 
     function ws:AddToggle(id, opts)
         _regFlag(id, opts.Callback)
-        pcall(function()
+        local _ok, _err = pcall(function()
             mlSec:toggle({
                 name     = opts.Text or id,
                 flag     = id,
                 default  = opts.Default or false,
                 callback = function(v)
-                    if opts.Callback then pcall(opts.Callback, v) end
+                    if opts.Callback then
+                        local ok2, err2 = pcall(opts.Callback, v)
+                        if not ok2 then warn("[UNCODE CB] " .. tostring(id) .. ": " .. tostring(err2)) end
+                    end
                 end,
             })
         end)
+        if not _ok then warn("[UNCODE UI] toggle '" .. tostring(id) .. "': " .. tostring(_err)) end
         -- Return proxy so callers (AddKeyPicker, sub-settings) don't error
         return setmetatable({}, {
             __index = function(t, k) return function() end end,
@@ -741,7 +745,7 @@ local function wrapSection(mlSec)
 
     function ws:AddSlider(id, opts)
         _regFlag(id, opts.Callback)
-        pcall(function()
+        local _ok, _err = pcall(function()
             mlSec:slider({
                 name     = opts.Text or id,
                 flag     = id,
@@ -751,15 +755,19 @@ local function wrapSection(mlSec)
                 interval = _toInterval(opts.Rounding),
                 suffix   = opts.Suffix or "",
                 callback = function(v)
-                    if opts.Callback then pcall(opts.Callback, v) end
+                    if opts.Callback then
+                        local ok2, err2 = pcall(opts.Callback, v)
+                        if not ok2 then warn("[UNCODE CB] " .. tostring(id) .. ": " .. tostring(err2)) end
+                    end
                 end,
             })
         end)
+        if not _ok then warn("[UNCODE UI] slider '" .. tostring(id) .. "': " .. tostring(_err)) end
     end
 
     function ws:AddDropdown(id, opts)
         _regFlag(id, opts.Callback)
-        pcall(function()
+        local _ok, _err = pcall(function()
             mlSec:dropdown({
                 name     = opts.Text or id,
                 flag     = id,
@@ -767,10 +775,14 @@ local function wrapSection(mlSec)
                 items    = opts.Values or opts.Items or {},
                 multi    = opts.Multi or false,
                 callback = function(v)
-                    if opts.Callback then pcall(opts.Callback, v) end
+                    if opts.Callback then
+                        local ok2, err2 = pcall(opts.Callback, v)
+                        if not ok2 then warn("[UNCODE CB] " .. tostring(id) .. ": " .. tostring(err2)) end
+                    end
                 end,
             })
         end)
+        if not _ok then warn("[UNCODE UI] dropdown '" .. tostring(id) .. "': " .. tostring(_err)) end
     end
 
     function ws:AddLabel(text)
@@ -778,14 +790,18 @@ local function wrapSection(mlSec)
     end
 
     function ws:AddButton(text, cb)
-        pcall(function()
+        local _ok, _err = pcall(function()
             mlSec:button({
                 name     = text or "Button",
                 callback = function()
-                    if cb then pcall(cb) end
+                    if cb then
+                        local ok2, err2 = pcall(cb)
+                        if not ok2 then warn("[UNCODE CB] button '" .. tostring(text) .. "': " .. tostring(err2)) end
+                    end
                 end,
             })
         end)
+        if not _ok then warn("[UNCODE UI] button '" .. tostring(text) .. "': " .. tostring(_err)) end
     end
 
     -- Colorpicker: inline color swatch attached to this section
