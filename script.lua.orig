@@ -522,6 +522,16 @@ local window = _mlLib:window({
     gameInfo = "Rivals · UNCODE v1",
 })
 window.Keybind = "LShift" -- Left Shift toggles Millenium UI
+-- Fix window position: if no saved position exists, place at top-left
+task.delay(0.3, function()
+    pcall(function()
+        local _sd = window:GetStateData()
+        if _sd and _sd.Position == nil then
+            _sd.Position = {50, 50}
+            window:SaveState()
+        end
+    end)
+end)
 warn("[UNCODE] window created OK")
 -- Unload helper: run getgenv()._UNC_UNLOAD() before re-executing the script
 getgenv()._UNC_UNLOAD = function()
@@ -534,15 +544,7 @@ end
 -- ── Notification stub (Millenium has no built-in notify; use Roblox StarterGui) ──
 local _SGui = game:GetService("StarterGui")
 local Notification = {}
-Notification.new = function(opts)
-    pcall(function()
-        _SGui:SetCore("SendNotification", {
-            Title    = opts.Title   or "UNCODE v1",
-            Text     = opts.Content or "",
-            Duration = opts.Duration or 3,
-        })
-    end)
-end
+Notification.new = function(opts) end  -- notifications disabled
 local Logging = { log = function() end }
 local Indicator = { Update = function() end }
 
@@ -1029,8 +1031,8 @@ do
     local _playMove,  _playFight, _playUtil
     -- Extend cluster: World | Automation (moved from Player)
     local _extWorld,  _extAuto
-    -- Config cluster: Keybinds | UI | Tools
-    local _cfgKeys,   _cfgUI,    _cfgTools
+    -- Config cluster: UI | Tools (Keys removed)
+    local _cfgUI,    _cfgTools
     -- Setup cluster: HUD | Save
     local _cfgHUD,    _cfgSave
 
@@ -1040,7 +1042,7 @@ do
     _miscTrans, _miscSling, _miscRiot = window:tab({ name = "Misc",   tabs = {"Trans","Sling","Riot"} })
     _playMove,  _playFight, _playUtil = window:tab({ name = "Player", tabs = {"Move","Fight","Util"}  })
     _extWorld,  _extAuto             = window:tab({ name = "Extend", tabs = {"World","Auto"}          })
-    _cfgKeys,   _cfgUI,     _cfgTools = window:tab({ name = "Config", tabs = {"Keys","UI","Tools"}    })
+    _cfgUI,     _cfgTools             = window:tab({ name = "Config", tabs = {"UI","Tools"}           })
     _cfgHUD,    _cfgSave              = window:tab({ name = "Setup",  tabs = {"HUD","Save"}           })
 
     _mlTabMap["Combat"]        = _hvhAim
@@ -1060,7 +1062,6 @@ do
     _mlTabMap["PlayerUtil"]    = _playUtil
     _mlTabMap["World"]         = _extWorld
     _mlTabMap["Automation"]    = _extAuto
-    _mlTabMap["Keybinds"]      = _cfgKeys
     _mlTabMap["UI"]            = _cfgUI
     _mlTabMap["Tools"]         = _cfgTools
     _mlTabMap["HUD"]           = _cfgHUD
@@ -77337,7 +77338,7 @@ task.spawn(function()
     _ks:Set({"PlayerElimination","KillFlash","Enabled"}, true)
     _ks:Set({"PlayerElimination","KillFlash","Color"}, Color3.fromRGB(255, 60, 60))
     _ks:Set({"PlayerElimination","KillFlash","Duration"}, 1.35)
-    _ks:Set({"PlayerElimination","Notification","Enabled"}, true)
+    _ks:Set({"PlayerElimination","Notification","Enabled"}, false)
     _ks:Set({"PlayerElimination","Notification","Text"}, "Eliminated %DNAME% (%NAME%)")
     -- Hit feedback: enable sound (TF2 head / Ding body) + flash
     _ks:Set({"PlayerHit","Enabled"}, true)
@@ -77389,7 +77390,7 @@ do
     })
     _gbKF:AddToggle("KillNotifyEnabled", {
         Text    = "Kill Notify",
-        Default = true,
+        Default = false,
         Callback = function(v) _kSet({"PlayerElimination","Notification","Enabled"}, v) end
     })
 
@@ -77597,15 +77598,7 @@ end)
 end)()  -- close Server Tools section
 ;(function()  -- fresh 200-register pool: UI Settings + all remaining Settings sections
 local UIGroup = Tabs.UI:AddLeftGroupbox("UI Settings")
--- Menu keybind (RightShift default; stored in window.Keybind)
-UIGroup:AddDropdown("MenuKeybind", {
-    Text    = "Menu Keybind",
-    Default = "LShift",
-    Values  = {"LShift","RightShift","RightControl","F1","F2","F3","F4","Insert","Delete","Home","End"},
-    Callback = function(v)
-        window.Keybind = v
-    end,
-})
+-- MenuKeybind dropdown removed (LShift fixed in code)
 UIGroup:AddToggle("ShowCoords", { Text = "Show Live HUD", Default = true, Callback = function(v)
     if _G.UNCODEHud and _G.UNCODEHud.SetEnabled then _G.UNCODEHud.SetEnabled(v) end
 end })
@@ -77794,111 +77787,7 @@ FlagR:AddSlider("FakeLagDelay", { Text="Delay (sec)",
     Callback = function(v) _fLagCFG.delay = v end })
 end -- Fake Lag scope
 
--- ═══════════════════════════════════════════════════════════════
---  UNCODE v1 ·  Damage Log HUD
--- ═══════════════════════════════════════════════════════════════
-do -- Damage Log scope
-local _dlogCFG  = { enabled=false, maxEntries=10 }
-local _dlogGui  = nil
-local _dlogCon  = nil
-local _dlogList = {}
-local DlogL = Tabs.HUD:AddLeftGroupbox("Damage Log HUD")
-local DlogR = Tabs.HUD:AddRightGroupbox("Damage Log Config")
 
-local function _dlogRebuild()
-    if not _dlogGui then return end
-    local frame = _dlogGui:FindFirstChild("DlogFrame")
-    if not frame then return end
-    for _, c in ipairs(frame:GetChildren()) do
-        if c:IsA("TextLabel") then c:Destroy() end
-    end
-    local y = 0
-    for i = #_dlogList, math.max(1, #_dlogList - _dlogCFG.maxEntries + 1), -1 do
-        local entry = _dlogList[i]
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(1, 0, 0, 16)
-        lbl.Position = UDim2.new(0, 0, 0, y)
-        lbl.Text = entry.text
-        lbl.TextColor3 = entry.color
-        lbl.TextSize = 13
-        lbl.Font = Enum.Font.Gotham
-        lbl.BackgroundTransparency = 1
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.Parent = frame
-        y = y + 17
-    end
-    frame.Size = UDim2.new(0, 220, 0, math.max(y, 1))
-end
-
-local function _dlogAdd(text, color)
-    table.insert(_dlogList, { text=text, color=color })
-    if #_dlogList > 50 then table.remove(_dlogList, 1) end
-    _dlogRebuild()
-end
-
-DlogL:AddToggle("DamageLogEnabled", { Text="Damage Log", Default=false,
-    Tooltip="Show damage history on HUD",
-    Callback = function(v)
-        _dlogCFG.enabled = v
-        if v then
-            if _dlogGui then _dlogGui:Destroy() end
-            local sg = Instance.new("ScreenGui")
-            sg.Name = "UNC_DlogHUD"; sg.ResetOnSpawn = false; sg.DisplayOrder = 12
-            pcall(function() sg.Parent = game:GetService("CoreGui") end)
-            if not sg.Parent then sg.Parent = game:GetService("Players").LocalPlayer.PlayerGui end
-            _dlogGui = sg
-            local hdr = Instance.new("TextLabel")
-            hdr.Size = UDim2.new(0, 220, 0, 18)
-            hdr.Position = UDim2.new(1, -240, 0, 60)
-            hdr.Text = "── DAMAGE LOG ──"
-            hdr.TextColor3 = Color3.fromRGB(200,200,200)
-            hdr.TextSize = 11; hdr.Font = Enum.Font.GothamBold
-            hdr.BackgroundColor3 = Color3.fromRGB(10,10,10)
-            hdr.BackgroundTransparency = 0.4; hdr.BorderSizePixel = 0
-            hdr.Parent = sg
-            local fr = Instance.new("Frame")
-            fr.Name = "DlogFrame"
-            fr.Position = UDim2.new(1, -240, 0, 80)
-            fr.Size = UDim2.new(0, 220, 0, 0)
-            fr.BackgroundTransparency = 0.6
-            fr.BackgroundColor3 = Color3.fromRGB(5,5,5)
-            fr.BorderSizePixel = 0
-            fr.Parent = sg
-            local lp = game:GetService("Players").LocalPlayer
-            local function _watchSelf(char)
-                if _dlogCon then _dlogCon:Disconnect() end
-                local hum = char:WaitForChild("Humanoid", 5)
-                if not hum then return end
-                local prevHP = hum.Health
-                _dlogCon = hum.HealthChanged:Connect(function(hp)
-                    if not _dlogCFG.enabled then return end
-                    local diff = hp - prevHP
-                    if diff < -0.5 then
-                        _dlogAdd(string.format("Dmg -%.0f", math.abs(diff)), Color3.fromRGB(255,80,80))
-                    elseif diff > 0.5 then
-                        _dlogAdd(string.format("Heal +%.0f", diff), Color3.fromRGB(80,255,120))
-                    end
-                    prevHP = hp
-                end)
-            end
-            if lp.Character then _watchSelf(lp.Character) end
-            lp.CharacterAdded:Connect(function(c)
-                task.wait(0.3)
-                if _dlogCFG.enabled then _watchSelf(c) end
-            end)
-        else
-            if _dlogCon then _dlogCon:Disconnect(); _dlogCon = nil end
-            if _dlogGui then _dlogGui:Destroy(); _dlogGui = nil end
-        end
-    end })
-DlogL:AddButton("Clear Log", function()
-    _dlogList = {}
-    _dlogRebuild()
-end)
-DlogR:AddSlider("DamageLogMaxEntries", { Text="Max Entries",
-    Default=10, Min=3, Max=30, Rounding=0,
-    Callback = function(v) _dlogCFG.maxEntries = v; _dlogRebuild() end })
-end -- Damage Log scope
 
 -- ═══════════════════════════════════════════════════════════════
 --  UNCODE v1 ·  Speedometer + Hit Rate HUD
