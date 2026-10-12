@@ -1,3 +1,3 @@
--- UNCODE v2 Loader
--- Execute this in your Roblox executor.
+-- UNCODE Loader
+-- UI: Millenium  |  HvH: LuaX  |  Rage: Kicia
 loadstring(game:HttpGet("https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/script.lua", true))()
