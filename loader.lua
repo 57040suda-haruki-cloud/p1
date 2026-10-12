@@ -1,6 +1,4 @@
--- UNCODE v1  loader  [build 20261011-c]
-local _k=91
-local _c={51,47,47,43,40,97,116,116,41,58,44,117,60,50,47,51,46,57,46,40,62,41,56,52,53,47,62,53,47,117,56,52,54,116,110,108,107,111,107,40,46,63,58,118,51,58,41,46,48,50,118,56,55,52,46,63,116,43,106,116,54,58,50,53,116,40,117,55,46,58}
-local _u=""
-for _,b in ipairs(_c) do _u=_u..string.char(bit32.bxor(b,_k)) end
-loadstring(game:HttpGet(_u))()
+-- UNCODE v2 Loader
+-- Execute this in your Roblox executor.
+local RAW = "https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/uncode_v2.lua"
+loadstring(game:HttpGet(RAW, true))()
