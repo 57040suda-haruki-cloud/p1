@@ -77705,7 +77705,8 @@ do
         end)
     end)
 
-    R:AddLabel("Server: " .. tostring(game.JobId ~= "" and game.JobId:sub(1,12).."..." or "Studio"))
+    local _jid = tostring(game.JobId or "")
+    R:AddLabel("Server: " .. (_jid ~= "" and _jid:sub(1, 12) or "Studio"))
     R:AddLabel("PlaceId: " .. tostring(game.PlaceId))
     R:AddLabel("Players: " .. tostring(#game.Players:GetPlayers()))
     R:AddLabel("")
@@ -78955,7 +78956,7 @@ end)()  -- close outer fn L388
 -- UNCODE: UeCrack Engine (Visuals / ESP / Combat)
 -- Launches after Millenium UI is ready.
 -- ============================================================
-task.spawn(function()
+task.spawn(function(...)
     task.wait(1.0)
 
 --!nocheck
