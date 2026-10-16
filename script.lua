@@ -1037,6 +1037,15 @@ do
     local _cfgHUD,    _cfgSave
 
     _hvhAim,    _hvhRage,   _hvhAA    = window:tab({ name = "HvH",    tabs = {"Aim","Rage","AA"}      })
+
+    -- ESP cluster: Box | Info | Sound
+    local _espBox, _espInfo, _espSound
+    _espBox, _espInfo, _espSound = window:tab({ name = "ESP",  tabs = {"Box","Info","Sound"} })
+
+    -- QoL cluster: Movement | Misc
+    local _qolMove, _qolMisc
+    _qolMove, _qolMisc = window:tab({ name = "QoL",  tabs = {"Move","Misc"} })
+
     _rvsTrap,   _rvsPred,   _rvsVS    = window:tab({ name = "Rivals", tabs = {"Trap","Pred","VS"}     })
     _wldOrbit,  _wldDef,    _wldSkin  = window:tab({ name = "World",  tabs = {"Orbit","Def","Skin"}   })
     _miscTrans, _miscSling, _miscRiot = window:tab({ name = "Misc",   tabs = {"Trans","Sling","Riot"} })
@@ -1045,19 +1054,11 @@ do
     _cfgUI,     _cfgTools             = window:tab({ name = "Config", tabs = {"UI","Tools"}           })
     _cfgHUD,    _cfgSave              = window:tab({ name = "Setup",  tabs = {"HUD","Save"}           })
 
-    -- ESP cluster: Box | Info | Sound
-    local _espBox, _espInfo, _espSound
-    _espBox, _espInfo, _espSound = window:tab({ name = "ESP",   tabs = {"Box","Info","Sound"} })
-
-    -- Extra cluster: Movement | Misc
-    local _extMove, _extMisc
-    _extMove, _extMisc = window:tab({ name = "Extra", tabs = {"Move","Misc"} })
-
     _mlTabMap["EspBox"]   = _espBox
     _mlTabMap["EspInfo"]  = _espInfo
     _mlTabMap["EspSound"] = _espSound
-    _mlTabMap["Movement"] = _extMove
-    _mlTabMap["Misc"]     = _extMisc
+    _mlTabMap["Movement"] = _qolMove
+    _mlTabMap["QolMisc"]  = _qolMisc
 
     _mlTabMap["Combat"]        = _hvhAim
     _mlTabMap["HvH"]           = _hvhRage
@@ -3331,7 +3332,7 @@ Tabs.EspBox       = Window:AddTab("EspBox",   "eye")
 Tabs.EspInfo      = Window:AddTab("EspInfo",  "info")
 Tabs.EspSound     = Window:AddTab("EspSound", "volume-2")
 Tabs.Movement     = Window:AddTab("Movement", "move")
-Tabs.Misc         = Window:AddTab("Misc",     "settings")
+Tabs.QolMisc      = Window:AddTab("QolMisc",  "settings")
 
 --[[ inner IIFE nested inside outer fn — upvalues share Tabs/Window/CFG/AddBindableToggle ]]
 ;(function()  -- fresh 200-register pool: VoidSpam + all remaining UI tabs
@@ -77496,7 +77497,7 @@ end
 
 -- ===========================================================================
 -- UNCODE EXPANDED: Extra Millenium Tabs
--- ESP (Box/Info/Sound) and Extra (Movement/Misc)
+-- ESP (Box/Info/Sound) and QoL (Movement/Misc)
 -- Features powered by UeCrack (ESP/Visuals), Kicia (Movement), LuaX (HvH)
 -- Native engines run in parallel for immediate Millenium UI control
 -- ===========================================================================
@@ -77553,7 +77554,7 @@ do
     R:AddColorPicker("SndGunColor", { Title = "Circle Color", Default = Color3.fromRGB(255, 220, 60) })
 end
 
--- ── Extra > Movement Tab ───────────────────────────────────────────────────
+-- ── QoL > Movement Tab ────────────────────────────────────────────────────
 do
     local L = Tabs.Movement:AddLeftGroupbox("Movement Mods")
     local R = Tabs.Movement:AddRightGroupbox("Fly / Noclip")
@@ -77675,10 +77676,10 @@ task.spawn(function()
     end)
 end)
 
--- ── Extra > Misc Tab ───────────────────────────────────────────────────────
+-- ── QoL > Misc Tab ────────────────────────────────────────────────────────
 do
-    local L = Tabs.Misc:AddLeftGroupbox("Utilities")
-    local R = Tabs.Misc:AddRightGroupbox("Session Info")
+    local L = Tabs.QolMisc:AddLeftGroupbox("Utilities")
+    local R = Tabs.QolMisc:AddRightGroupbox("Session Info")
 
     L:AddToggle("AntiAFK", { Text = "Anti-AFK", Default = false, Callback = function(v)
         getgenv()._UC_ANTIAFK = v
