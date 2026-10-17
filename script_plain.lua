@@ -4220,9 +4220,8 @@ end)()  -- end skinchanger function scope
 
 -- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
 do
+do  -- SK inner block (split so SK and SKR never live simultaneously)
 local SK  = Tabs.SkinChanger:AddLeftGroupbox("SkinChanger")
-local SKR = Tabs.SkinChanger:AddRightGroupbox("Info")
-
 SK:AddLabel("Status: " .. (_skLoadConfig and "Active ✓" or "Unavailable"))
 SK:AddButton("Reload Config", function()
     if _skLoadConfig then pcall(_skLoadConfig) end
@@ -4232,7 +4231,9 @@ SK:AddButton("Save Config", function()
     if _skSaveConfig then pcall(_skSaveConfig) end
     Notify("SkinChanger config saved", 3)
 end)
-
+end  -- SK freed; register slot reusable
+do  -- SKR inner block
+local SKR = Tabs.SkinChanger:AddRightGroupbox("Info")
 SKR:AddLabel("UNCODE v1 SkinChanger")
 SKR:AddLabel("Unlocks all Rivals cosmetics")
 SKR:AddLabel("locally — no server-side changes.")
@@ -4240,6 +4241,7 @@ SKR:AddLabel("Use the in-game shop / wardrobe")
 SKR:AddLabel("UI to equip skins, charms, wraps.")
 SKR:AddLabel("Config saved to:")
 SKR:AddLabel("Rivals-Skinchanger/skins.txt")
+end  -- SKR freed
 
 
 

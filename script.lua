@@ -524,32 +524,46 @@ if getgenv()._UNC_RUNNING then
 end
 getgenv()._UNC_RUNNING = true
 -- ╔═══════════════════════════════════════════════════════════════════════╗
--- ║  UNCODE v1 — Millenium UI  (build 20261009-h)                       ║
+-- ║  UNCODE v1 — Linoria UI  (build 20261017)                           ║
 -- ╚═══════════════════════════════════════════════════════════════════════╝
-local _mlLib = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/i77lhm/Libraries/refs/heads/main/Millenium/Library.lua"
-))()
-warn("[UNCODE] Millenium loaded OK")
+local _lnRepo = "https://raw.githubusercontent.com/xyznick/UELinoriaLib/main/"
+local Library      = loadstring(game:HttpGet(_lnRepo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(_lnRepo .. "addons/ThemeManager.lua"))()
+local SaveManager  = loadstring(game:HttpGet(_lnRepo .. "addons/SaveManager.lua"))()
+warn("[UNCODE] Linoria loaded OK")
 
--- Snapshot PlayerGui ScreenGuis before Millenium window creation
-local _mlPG         = game:GetService("Players").LocalPlayer.PlayerGui
-local _mlPGSnapshot = {}
-for _, _sg in ipairs(_mlPG:GetChildren()) do
-    if _sg:IsA("ScreenGui") then _mlPGSnapshot[_sg] = true end
+Library.ShowCustomCursor          = false
+Library.NotifySide                = "Left"
+Library.ShowToggleFrameInKeybinds = true
+
+-- Snapshot PlayerGui before CreateWindow so we can inject UIScale into new ScreenGuis
+local _lnPG = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+local _lnPGSnap = {}
+for _, _sg in ipairs(_lnPG:GetChildren()) do
+    if _sg:IsA("ScreenGui") then _lnPGSnap[_sg] = true end
 end
 
-local window = _mlLib:window({
-    name     = "UNCODE",
-    suffix   = "v1",
-    gameInfo = "Rivals · UNCODE v1",
+local _lnWindow = Library:CreateWindow({
+    Title                = "UNCODE  v1",
+    Center               = true,
+    AutoShow             = true,
+    Resizable            = true,
+    UnlockMouseWhileOpen = true,
+    MenuFadeTime         = 0.2,
+    TabPadding           = 8,
 })
+-- Menu toggle keybind: Left Shift
+pcall(function()
+    Library.ToggleKeybind = Enum.KeyCode.LeftShift
+end)
+warn("[UNCODE] window created OK")
 
--- Apply UIScale to the Millenium ScreenGui(s) created above
+-- Apply UIScale to new Linoria ScreenGui(s) (mobile / tablet support)
 if _UNC_UI_SCALE ~= 1 then
     task.delay(0.5, function()
         pcall(function()
-            for _, _sg in ipairs(_mlPG:GetChildren()) do
-                if _sg:IsA("ScreenGui") and not _mlPGSnapshot[_sg]
+            for _, _sg in ipairs(_lnPG:GetChildren()) do
+                if _sg:IsA("ScreenGui") and not _lnPGSnap[_sg]
                         and not _sg:FindFirstChildOfClass("UIScale") then
                     local _sc = Instance.new("UIScale")
                     _sc.Scale  = _UNC_UI_SCALE
@@ -559,57 +573,62 @@ if _UNC_UI_SCALE ~= 1 then
         end)
     end)
 end
-window.Keybind = "LShift" -- Left Shift toggles Millenium UI
--- Fix window position: if no saved position exists, place at top-left
-task.delay(0.3, function()
-    pcall(function()
-        local _sd = window:GetStateData()
-        if _sd and _sd.Position == nil then
-            _sd.Position = {50, 50}
-            window:SaveState()
-        end
-    end)
-end)
-warn("[UNCODE] window created OK")
--- Unload helper: run getgenv()._UNC_UNLOAD() before re-executing the script
+
 getgenv()._UNC_UNLOAD = function()
-    pcall(function() window:Destroy() end)
+    pcall(function() Library:Unload() end)
     getgenv()._UNC_RUNNING = false
     getgenv()._UNC_UNLOAD  = nil
     warn("[UNCODE] Unloaded — safe to re-run")
 end
 
--- ── Notification stub (Millenium has no built-in notify; use Roblox StarterGui) ──
-local _SGui = game:GetService("StarterGui")
+-- Compatibility shim: window.tab({name, tabs={}}) creates flat Linoria tabs
+-- and populates _mlTabMap so Window:AddTab() can look them up by key.
+local window = {}
+function window:tab(opts)
+    local refs = {}
+    for _, subName in ipairs(opts.tabs or {}) do
+        local t = _lnWindow:AddTab(opts.name .. "  " .. subName)
+        table.insert(refs, t)
+    end
+    return table.unpack(refs)
+end
+function window:Destroy() pcall(function() Library:Unload() end) end
+function window:GetStateData() return {} end
+function window:SaveState() end
+
+-- Accent shim (Linoria uses ThemeManager; no direct SetAccent API)
+local _mlLib = {}
+function _mlLib:SetAccent(_c) end
+function _mlLib:init_config() end
+
+-- Notification helper: delegates to Linoria built-in notification
 local Notification = {}
-Notification.new = function(opts) end  -- notifications disabled
-local Logging = { log = function() end }
+Notification.new = function(opts)
+    pcall(function()
+        Library:Notify({
+            Title       = opts.Title   or "UNCODE v1",
+            Description = opts.Content or opts.Description or "",
+            Time        = opts.Duration or opts.Time or 3,
+        })
+    end)
+end
+local Logging   = { log = function() end }
 local Indicator = { Update = function() end }
 
--- Watermark stubs (Millenium has no watermark API)
+-- Watermark stubs
 local _WmPing  = { SetText = function() end }
 local _WmBuild = { Input  = function() end }
 
 -- ── Flag registry (replaces Obsidian Library.Toggles / Library.Options) ──
 local _FlagCb = {}
 local function _regFlag(id, cb) if cb then _FlagCb[id] = cb end end
--- _T / _O are also declared at file scope here so community configs can reach them
+-- _T / _O declared at file scope so community configs can reach them
 local function _T(id, v) if _FlagCb[id] then local ok, err = pcall(_FlagCb[id], v); if not ok then warn("[UNCODE _T] " .. tostring(id) .. ": " .. tostring(err)) end end end
 local function _O(id, v) _T(id, v) end
 
--- Backward-compat stubs so existing code that refs Library / Options / Toggles doesn't error
-local Library = {}
-function Library:Notify(opts)
-    Notification.new({
-        Title    = opts.Title   or "UNCODE v1",
-        Content  = opts.Description or opts.Content or "",
-        Duration = opts.Time    or opts.Duration   or 3,
-    })
-end
-function Library:Unload() end   -- no-op in NeverLose build
-Library.ToggleKeybind = nil
-local Options = setmetatable({}, { __index = function() return nil end })
-local Toggles = setmetatable({}, { __index = function() return nil end })
+-- Options / Toggles: alias Linoria globals (populated as controls are added)
+local Options = getgenv().Options
+local Toggles = getgenv().Toggles
 
 -- ╔═══════════════════════════════════════════════════════════════════════╗
 -- ║  LANGUAGE SYSTEM — JP / EN                                           ║
@@ -1158,6 +1177,8 @@ function Window:AddTab(name, _icon)
         warn("[UNCODE] Window:AddTab — unknown tab name: " .. tostring(name))
         return _noopTab()
     end
+    -- Linoria tabs already have AddLeftGroupbox/AddRightGroupbox natively
+    if t.AddLeftGroupbox then return t end
     return wrapTab(t)
 end
 
@@ -79861,12 +79882,21 @@ end)
 end)()  -- close Community Configs wrapper
 -- ── End Community Configs ──────────────────────────────────────────────────
 
--- (No watermark loop — Millenium has no watermark API)
+-- Linoria ThemeManager + SaveManager final setup
+pcall(function()
+    ThemeManager:SetLibrary(Library)
+    SaveManager:SetLibrary(Library)
+    SaveManager:SetFolder("UNCODE")
+    SaveManager:SetIgnoreFlags({"SaveManager_Hub"})
+    local _cfgTab = _mlTabMap["Save"] or _mlTabMap["UI"]
+    if _cfgTab then
+        ThemeManager:ApplyToTab(_cfgTab)
+        SaveManager:LoadAutoloadConfig()
+    end
+end)
 
-pcall(function() if _mlLib.init_config then _mlLib:init_config(window) end end)
-
-Notification.new({ Title = "UNCODE v1  [build 20261009-h]", Content = "Rivals HvH | Millenium UI  loaded", Duration = 6 })
-warn("[UNCODE] build 20261009-h — Millenium UI active")
+Notification.new({ Title = "UNCODE v1  [build 20261017]", Content = "Rivals HvH | Linoria UI loaded", Duration = 5 })
+warn("[UNCODE] build 20261017 — Linoria UI active")
 end)()
 end)()  -- close outer fn L388
 
