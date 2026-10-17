@@ -1076,76 +1076,73 @@ end
 -- before the gameplay section; _mlTabMap persists as the single outer local.
 local _mlTabMap = {}
 do
-    -- HvH cluster: Aim (Combat/SilentAim) | Rage (Ragebot/Triggerbot) | AA
-    local _hvhAim,    _hvhRage,  _hvhAA
-    -- Rivals cluster: Trap | Pred | VoidSpam
-    local _rvsTrap,   _rvsPred,  _rvsVS
-    -- World cluster: Orbit | Defense | SkinChanger
-    local _wldOrbit,  _wldDef,   _wldSkin
-    -- Misc cluster: Translocation | Sling Bypass | Riot
-    local _miscTrans, _miscSling, _miscRiot
-    -- Player cluster: Move | Fight | Util
-    local _playMove,  _playFight, _playUtil
-    -- Extend cluster: World | Automation (moved from Player)
-    local _extWorld,  _extAuto
-    -- Config cluster: UI | Tools (Keys removed)
-    local _cfgUI,    _cfgTools
-    -- Setup cluster: HUD | Save
-    local _cfgHUD,    _cfgSave
-
-    _hvhAim,    _hvhRage,   _hvhAA    = window:tab({ name = "HvH",    tabs = {"Aim","Rage","AA"}      })
-
+    -- Main cluster: Move | Fight | Util
+    local _mainMove,    _mainFight,   _mainUtil
+    -- World cluster: Orbit | Defense | Skin
+    local _wldOrbit,    _wldDef,      _wldSkin
     -- ESP cluster: Box | Info | Sound
-    local _espBox, _espInfo, _espSound
-    _espBox, _espInfo, _espSound = window:tab({ name = "ESP",  tabs = {"Box","Info","Sound"} })
+    local _espBox,      _espInfo,     _espSound
+    -- Visual cluster: Chams | FX
+    local _visChams,    _visFX
+    -- HvH cluster: Aim | Rage | AA
+    local _hvhAim,      _hvhRage,     _hvhAA
+    -- Misc cluster: Rivals | Trans | Riot
+    local _miscRivals,  _miscTrans,   _miscRiot
+    -- Setting cluster: UI | HUD | Save
+    local _setUI,       _setHUD,      _setSave
 
-    -- Weapon cluster: Chams | FX
-    local _wepChams, _wepFX
-    _wepChams, _wepFX = window:tab({ name = "Weapon", tabs = {"Chams","FX"} })
+    _mainMove,   _mainFight,  _mainUtil  = window:tab({ name = "Main",    tabs = {"Move","Fight","Util"}     })
+    _wldOrbit,   _wldDef,     _wldSkin   = window:tab({ name = "World",   tabs = {"Orbit","Defense","Skin"}  })
+    _espBox,     _espInfo,    _espSound  = window:tab({ name = "ESP",     tabs = {"Box","Info","Sound"}      })
+    _visChams,   _visFX                  = window:tab({ name = "Visual",  tabs = {"Chams","FX"}             })
+    _hvhAim,     _hvhRage,    _hvhAA    = window:tab({ name = "HvH",     tabs = {"Aim","Rage","AA"}         })
+    _miscRivals, _miscTrans,  _miscRiot  = window:tab({ name = "Misc",    tabs = {"Rivals","Trans","Riot"}   })
+    _setUI,      _setHUD,     _setSave   = window:tab({ name = "Setting", tabs = {"UI","HUD","Save"}         })
 
-    -- QoL cluster: Movement | Misc
-    local _qolMove, _qolMisc
-    _qolMove, _qolMisc = window:tab({ name = "QoL",  tabs = {"Move","Misc"} })
+    -- Main: player movement / combat / utility
+    _mlTabMap["Player"]        = _mainMove
+    _mlTabMap["Movement"]      = _mainMove
+    _mlTabMap["PlayerFight"]   = _mainFight
+    _mlTabMap["PlayerUtil"]    = _mainUtil
+    _mlTabMap["Automation"]    = _mainUtil
 
-    _rvsTrap,   _rvsPred,   _rvsVS    = window:tab({ name = "Rivals", tabs = {"Trap","Pred","VS"}     })
-    _wldOrbit,  _wldDef,    _wldSkin  = window:tab({ name = "World",  tabs = {"Orbit","Def","Skin"}   })
-    _miscTrans, _miscSling, _miscRiot = window:tab({ name = "Misc",   tabs = {"Trans","Sling","Riot"} })
-    _playMove,  _playFight, _playUtil = window:tab({ name = "Player", tabs = {"Move","Fight","Util"}  })
-    _extWorld,  _extAuto             = window:tab({ name = "Extend", tabs = {"World","Auto"}          })
-    _cfgUI,     _cfgTools             = window:tab({ name = "Config", tabs = {"UI","Tools"}           })
-    _cfgHUD,    _cfgSave              = window:tab({ name = "Setup",  tabs = {"HUD","Save"}           })
-
-    _mlTabMap["EspBox"]   = _espBox
-    _mlTabMap["EspInfo"]  = _espInfo
-    _mlTabMap["EspSound"] = _espSound
-    _mlTabMap["WepChams"] = _wepChams
-    _mlTabMap["WepFX"]    = _wepFX
-    _mlTabMap["Movement"] = _qolMove
-    _mlTabMap["QolMisc"]  = _qolMisc
-
-    _mlTabMap["Combat"]        = _hvhAim
-    _mlTabMap["HvH"]           = _hvhRage
-    _mlTabMap["AA"]            = _hvhAA
-    _mlTabMap["Trap"]          = _rvsTrap
-    _mlTabMap["Prediction"]    = _rvsPred
-    _mlTabMap["VoidSpam"]      = _rvsVS
+    -- World: orbit / defense / skin changer
     _mlTabMap["Orbit"]         = _wldOrbit
     _mlTabMap["Defense"]       = _wldDef
     _mlTabMap["SkinChanger"]   = _wldSkin
+    _mlTabMap["World"]         = _wldOrbit
+
+    -- ESP: box / info / sound
+    _mlTabMap["EspBox"]        = _espBox
+    _mlTabMap["EspInfo"]       = _espInfo
+    _mlTabMap["EspSound"]      = _espSound
+
+    -- Visual: weapon chams / FX + QoL
+    _mlTabMap["WepChams"]      = _visChams
+    _mlTabMap["WepFX"]         = _visFX
+    _mlTabMap["QolMisc"]       = _visFX
+
+    -- HvH: aim / rage / AA
+    _mlTabMap["Combat"]        = _hvhAim
+    _mlTabMap["HvH"]           = _hvhRage
+    _mlTabMap["AA"]            = _hvhAA
+
+    -- Misc: rivals features / translocation / riot
+    _mlTabMap["Trap"]          = _miscRivals
+    _mlTabMap["Prediction"]    = _miscRivals
+    _mlTabMap["VoidSpam"]      = _miscRivals
     _mlTabMap["Translocation"] = _miscTrans
-    _mlTabMap["Sling Bypass"]  = _miscSling
+    _mlTabMap["Sling Bypass"]  = _miscTrans
     _mlTabMap["Riot"]          = _miscRiot
-    _mlTabMap["Player"]        = _playMove
-    _mlTabMap["PlayerFight"]   = _playFight
-    _mlTabMap["PlayerUtil"]    = _playUtil
-    _mlTabMap["World"]         = _extWorld
-    _mlTabMap["Automation"]    = _extAuto
-    _mlTabMap["UI"]            = _cfgUI
-    _mlTabMap["Tools"]         = _cfgTools
-    _mlTabMap["HUD"]           = _cfgHUD
-    _mlTabMap["Save"]          = _cfgSave
+
+    -- Setting: UI config / HUD / save
+    _mlTabMap["Keybinds"]      = _setUI
+    _mlTabMap["UI"]            = _setUI
+    _mlTabMap["Tools"]         = _setUI
+    _mlTabMap["HUD"]           = _setHUD
+    _mlTabMap["Save"]          = _setSave
 end
--- All 20 sub-tab locals freed here; _mlTabMap persists with all values
+-- All tab locals freed here; _mlTabMap persists (7 groups: Main/World/ESP/Visual/HvH/Misc/Setting)
 
 -- Fallback no-op tab (returns Obsidian-style API directly; never reaches wrapTab)
 local function _noopTab()
