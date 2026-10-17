@@ -531,11 +531,34 @@ local _mlLib = loadstring(game:HttpGet(
 ))()
 warn("[UNCODE] Millenium loaded OK")
 
+-- Snapshot PlayerGui ScreenGuis before Millenium window creation
+local _mlPG         = game:GetService("Players").LocalPlayer.PlayerGui
+local _mlPGSnapshot = {}
+for _, _sg in ipairs(_mlPG:GetChildren()) do
+    if _sg:IsA("ScreenGui") then _mlPGSnapshot[_sg] = true end
+end
+
 local window = _mlLib:window({
     name     = "UNCODE",
     suffix   = "v1",
     gameInfo = "Rivals · UNCODE v1",
 })
+
+-- Apply UIScale to the Millenium ScreenGui(s) created above
+if _UNC_UI_SCALE ~= 1 then
+    task.delay(0.5, function()
+        pcall(function()
+            for _, _sg in ipairs(_mlPG:GetChildren()) do
+                if _sg:IsA("ScreenGui") and not _mlPGSnapshot[_sg]
+                        and not _sg:FindFirstChildOfClass("UIScale") then
+                    local _sc = Instance.new("UIScale")
+                    _sc.Scale  = _UNC_UI_SCALE
+                    _sc.Parent = _sg
+                end
+            end
+        end)
+    end)
+end
 window.Keybind = "LShift" -- Left Shift toggles Millenium UI
 -- Fix window position: if no saved position exists, place at top-left
 task.delay(0.3, function()
@@ -10713,7 +10736,7 @@ return t.c
 end
 end
 do -- u
-local function fn35()local I= tbl17 .t();local l,W,N=I.GuiService,I.UserInputService,{DesignSize=UDim2.fromOffset(919,643),MinSize=UDim2.fromOffset(700,400),Scale=_UNC_UI_SCALE};local function I()return workspace.CurrentCamera;end;local function P(a)if not a then return false;end;a=I();if a==nil then return false;end;local I=a.ViewportSize;return math.min(I.X,I.Y)>500;end;local function I(a)if a then return false;end;a=W.PreferredInput;if a==Enum.PreferredInput.Touch then return true;end;if a==Enum.PreferredInput.KeyboardAndMouse or a==Enum.PreferredInput.Gamepad then return false;end;a=W:GetLastInputType();if a==Enum.UserInputType.Touch then return true;end;if a==Enum.UserInputType.MouseButton1 or a==Enum.UserInputType.MouseButton2 or a==Enum.UserInputType.MouseMovement or a==Enum.UserInputType.Keyboard then return false;end;return W.TouchEnabled and not W.KeyboardEnabled;end;local a=l:IsTenFootInterface();local l=I(a);local I;N.IsMobile=function()return l;end;N.ForceMobileLayout=function(e)l=true;I=e==true;end;N.IsTablet=function()local l=I;if l==nil then l=P(N.IsMobile());I=l;end;return l;end;N.HasTouch=function()return not a and W.TouchEnabled;end;N.WantsMobileButtons=function()return N.HasTouch()or(N.IsMobile());end;return N;end
+local function fn35()local I= tbl17 .t();local l,W,N=I.GuiService,I.UserInputService,{DesignSize=UDim2.fromOffset(919,643),MinSize=UDim2.fromOffset(700,400),Scale=1};local function I()return workspace.CurrentCamera;end;local function P(a)if not a then return false;end;a=I();if a==nil then return false;end;local I=a.ViewportSize;return math.min(I.X,I.Y)>500;end;local function I(a)if a then return false;end;a=W.PreferredInput;if a==Enum.PreferredInput.Touch then return true;end;if a==Enum.PreferredInput.KeyboardAndMouse or a==Enum.PreferredInput.Gamepad then return false;end;a=W:GetLastInputType();if a==Enum.UserInputType.Touch then return true;end;if a==Enum.UserInputType.MouseButton1 or a==Enum.UserInputType.MouseButton2 or a==Enum.UserInputType.MouseMovement or a==Enum.UserInputType.Keyboard then return false;end;return W.TouchEnabled and not W.KeyboardEnabled;end;local a=l:IsTenFootInterface();local l=I(a);local I;N.IsMobile=function()return l;end;N.ForceMobileLayout=function(e)l=true;I=e==true;end;N.IsTablet=function()local l=I;if l==nil then l=P(N.IsMobile());I=l;end;return l;end;N.HasTouch=function()return not a and W.TouchEnabled;end;N.WantsMobileButtons=function()return N.HasTouch()or(N.IsMobile());end;return N;end
 
 tbl17.u = function()
 local u = tbl17.cache.u
