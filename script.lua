@@ -151,6 +151,17 @@ end
 local eattheF = getfenv()
 local eattheG = getgenv()
 
+-- Device detection: scale UI elements for mobile / tablet / desktop
+local _UNC_UIS_svc   = game:GetService("UserInputService")
+local _UNC_IS_MOBILE = _UNC_UIS_svc.TouchEnabled and not _UNC_UIS_svc.KeyboardEnabled
+local _UNC_IS_TABLET = _UNC_IS_MOBILE and (function()
+    local cam = workspace.CurrentCamera
+    if cam then local vp = cam.ViewportSize; return math.min(vp.X, vp.Y) > 500 end
+    return false
+end)()
+-- Scale: desktop = 1.0  |  tablet = 0.85  |  phone = 0.65
+local _UNC_UI_SCALE  = _UNC_IS_MOBILE and (_UNC_IS_TABLET and 0.85 or 0.65) or 1.0
+
 
 local C = (cloneref(game:GetService("Players"))).LocalPlayer;
 local g = C.PlayerScripts;
@@ -181,8 +192,10 @@ do
     pcall(function() gui.Parent = game:GetService("CoreGui") end)
     if not gui.Parent then gui.Parent = LP:WaitForChild("PlayerGui") end
     local card = Instance.new("Frame")
-    card.Size = UDim2.new(0, 190, 0, 108); card.Position = UDim2.new(0, 16, 1, -124)
+    card.Size = UDim2.new(0, 190, 0, 108)
+    card.Position = UDim2.new(0, 16, 1, -(math.floor(108 * _UNC_UI_SCALE) + 16))
     card.BackgroundColor3 = Color3.fromRGB(9, 11, 18); card.BorderSizePixel = 0; card.Parent = gui
+    local _hudSc = Instance.new("UIScale"); _hudSc.Scale = _UNC_UI_SCALE; _hudSc.Parent = card
     Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
     local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(28, 42, 72); stroke.Thickness = 1; stroke.Transparency = 0.15; stroke.Parent = card
@@ -315,7 +328,8 @@ local function UNCODELoadingScreen()
     end
     local ringHolder = Instance.new("Frame")
     ringHolder.Size = UDim2.new(0, 460, 0, 460)
-    ringHolder.Position = UDim2.new(0.5, -230, 0.5, -230)
+    ringHolder.Position = UDim2.new(0.5, -math.floor(230 * _UNC_UI_SCALE), 0.5, -math.floor(230 * _UNC_UI_SCALE))
+    local _ringSc = Instance.new("UIScale"); _ringSc.Scale = _UNC_UI_SCALE; _ringSc.Parent = ringHolder
     ringHolder.BackgroundTransparency = 1; ringHolder.ZIndex = 5; ringHolder.Parent = sg
     local function mkRing(size, color, thick, trans)
         local r = Instance.new("Frame")
@@ -345,7 +359,8 @@ local function UNCODELoadingScreen()
     Instance.new("UICorner", dot3).CornerRadius = UDim.new(1, 0)
     local card = Instance.new("Frame")
     card.Size = UDim2.new(0, 440, 0, 230)
-    card.Position = UDim2.new(0.5, -220, 0.5, -115)
+    card.Position = UDim2.new(0.5, -math.floor(220 * _UNC_UI_SCALE), 0.5, -math.floor(115 * _UNC_UI_SCALE))
+    local _cardSc = Instance.new("UIScale"); _cardSc.Scale = _UNC_UI_SCALE; _cardSc.Parent = card
     card.BackgroundColor3 = Color3.fromRGB(6, 8, 18)
     card.BackgroundTransparency = 0.1; card.BorderSizePixel = 0
     card.ZIndex = 10; card.Parent = sg
