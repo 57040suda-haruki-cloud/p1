@@ -1080,6 +1080,10 @@ do
     local _espBox, _espInfo, _espSound
     _espBox, _espInfo, _espSound = window:tab({ name = "ESP",  tabs = {"Box","Info","Sound"} })
 
+    -- Weapon cluster: Chams | FX
+    local _wepChams, _wepFX
+    _wepChams, _wepFX = window:tab({ name = "Weapon", tabs = {"Chams","FX"} })
+
     -- QoL cluster: Movement | Misc
     local _qolMove, _qolMisc
     _qolMove, _qolMisc = window:tab({ name = "QoL",  tabs = {"Move","Misc"} })
@@ -1095,6 +1099,8 @@ do
     _mlTabMap["EspBox"]   = _espBox
     _mlTabMap["EspInfo"]  = _espInfo
     _mlTabMap["EspSound"] = _espSound
+    _mlTabMap["WepChams"] = _wepChams
+    _mlTabMap["WepFX"]    = _wepFX
     _mlTabMap["Movement"] = _qolMove
     _mlTabMap["QolMisc"]  = _qolMisc
 
@@ -3369,6 +3375,8 @@ Tabs.Save         = Window:AddTab("Save",     "save")
 Tabs.EspBox       = Window:AddTab("EspBox",   "eye")
 Tabs.EspInfo      = Window:AddTab("EspInfo",  "info")
 Tabs.EspSound     = Window:AddTab("EspSound", "volume-2")
+Tabs.WepChams     = Window:AddTab("WepChams", "sword")
+Tabs.WepFX        = Window:AddTab("WepFX",    "zap")
 Tabs.Movement     = Window:AddTab("Movement", "move")
 Tabs.QolMisc      = Window:AddTab("QolMisc",  "settings")
 
@@ -77535,7 +77543,7 @@ end
 
 -- ===========================================================================
 -- UNCODE EXPANDED: Extra Millenium Tabs
--- ESP (Box/Info/Sound) and QoL (Movement/Misc)
+-- ESP (Box/Info/Sound), Weapon (Chams/FX), QoL (Movement/Misc)
 -- Features powered by UeCrack (ESP/Visuals), Kicia (Movement), LuaX (HvH)
 -- Native engines run in parallel for immediate Millenium UI control
 -- ===========================================================================
@@ -77591,6 +77599,230 @@ do
     R:AddSlider("SndGunSize",  { Text = "Max Radius",      Default = 150, Min = 50, Max = 500, Rounding = 0 })
     R:AddColorPicker("SndGunColor", { Title = "Circle Color", Default = Color3.fromRGB(255, 220, 60) })
 end
+
+-- ── Weapon > Chams Tab ───────────────────────────────────────────────────
+do
+    local L = Tabs.WepChams:AddLeftGroupbox("Weapon Chams")
+    local R = Tabs.WepChams:AddRightGroupbox("Properties")
+
+    L:AddToggle("WepChamsEnabled", { Text = "Enable Weapon Chams", Default = false })
+    L:AddColorPicker("WepChamsColor",  { Title = "Weapon Color",  Default = Color3.fromRGB(255, 60, 60) })
+    L:AddSlider("WepChamsAlpha", {
+        Text = "Transparency", Default = 0, Min = 0, Max = 100, Rounding = 0, Suffix = "%",
+        Callback = function(v)
+            getgenv()._UC_WEP_ALPHA = v / 100
+        end,
+    })
+    L:AddToggle("WepChamsGhost", {
+        Text = "Ghost Mode (fully invisible)",
+        Default = false,
+        Callback = function(v)
+            Options.WepChamsAlpha:SetValue(v and 100 or 0)
+        end,
+    })
+
+    R:AddDropdown("WepChamsMaterial", {
+        Text = "Material",
+        Default = "Neon",
+        Values = { "Neon", "SmoothPlastic", "Metal", "Glass", "ForceField", "Air" },
+    })
+    R:AddSlider("WepChamsReflect", {
+        Text = "Reflectance", Default = 0, Min = 0, Max = 100, Rounding = 0, Suffix = "%",
+        Callback = function(v)
+            getgenv()._UC_WEP_REFLECT = v / 100
+        end,
+    })
+    R:AddToggle("WepChamsRainbow", { Text = "Rainbow Mode", Default = false })
+    R:AddSlider("WepChamsRainbowSpeed", {
+        Text = "Rainbow Speed", Default = 2, Min = 1, Max = 10, Rounding = 0,
+    })
+end
+
+-- ── Weapon > FX Tab ──────────────────────────────────────────────────────
+do
+    local L = Tabs.WepFX:AddLeftGroupbox("Weapon Trail")
+    local R = Tabs.WepFX:AddRightGroupbox("Swing Speed")
+
+    L:AddToggle("WepTrailEnabled", { Text = "Enable Trail", Default = false })
+    L:AddColorPicker("WepTrailColor0", { Title = "Trail Color (Start)", Default = Color3.fromRGB(255, 100, 100) })
+    L:AddColorPicker("WepTrailColor1", { Title = "Trail Color (End)",   Default = Color3.fromRGB(100, 100, 255) })
+    L:AddSlider("WepTrailLifetime", {
+        Text = "Trail Lifetime", Default = 3, Min = 1, Max = 10, Rounding = 0,
+        Suffix = "×0.1s",
+    })
+    L:AddSlider("WepTrailWidth", {
+        Text = "Trail Width", Default = 5, Min = 1, Max = 20, Rounding = 0,
+    })
+
+    R:AddToggle("WepSwingSpeed", { Text = "Custom Swing Speed", Default = false })
+    R:AddSlider("WepSwingSpeedVal", {
+        Text = "Speed Multiplier", Default = 10, Min = 5, Max = 50, Rounding = 0,
+        Suffix = "×0.1",
+    })
+    R:AddLabel("Modifies ToolAnimSpeed on equipped tool")
+    R:AddLabel("May not work on all weapons")
+end
+
+-- Weapon Chams engine
+task.spawn(function()
+    local lp  = game.Players.LocalPlayer
+    local RS  = game:GetService("RunService")
+    local _hue = 0
+
+    local MAT_MAP = {
+        Neon          = Enum.Material.Neon,
+        SmoothPlastic = Enum.Material.SmoothPlastic,
+        Metal         = Enum.Material.Metal,
+        Glass         = Enum.Material.Glass,
+        ForceField    = Enum.Material.ForceField,
+        Air           = Enum.Material.Air,
+    }
+
+    local function applyChams(tool)
+        if not tool or not tool:IsA("Tool") then return end
+        if not Toggles.WepChamsEnabled.Value then return end
+
+        local rainbow = Toggles.WepChamsRainbow.Value
+        local color
+        if rainbow then
+            _hue = (_hue + (Options.WepChamsRainbowSpeed.Value or 2) * 0.005) % 1
+            color = Color3.fromHSV(_hue, 1, 1)
+        else
+            color = Options.WepChamsColor.Value
+        end
+
+        local alpha   = (Options.WepChamsAlpha.Value   or 0)   / 100
+        local reflect = (Options.WepChamsReflect.Value or 0)   / 100
+        local mat     = MAT_MAP[Options.WepChamsMaterial.Value] or Enum.Material.Neon
+
+        for _, p in ipairs(tool:GetDescendants()) do
+            if p:IsA("BasePart") then
+                pcall(function()
+                    p.Color        = color
+                    p.Transparency = alpha
+                    p.Reflectance  = reflect
+                    p.Material     = mat
+                end)
+            end
+        end
+    end
+
+    local function getEquippedTools()
+        local tools = {}
+        local char = lp.Character
+        if char then
+            for _, v in ipairs(char:GetChildren()) do
+                if v:IsA("Tool") then table.insert(tools, v) end
+            end
+        end
+        return tools
+    end
+
+    local _trailInstances = {}
+
+    local function clearTrails()
+        for _, t in ipairs(_trailInstances) do pcall(function() t:Destroy() end) end
+        _trailInstances = {}
+    end
+
+    local function applyTrail(tool)
+        if not tool or not tool:IsA("Tool") then return end
+        if not Toggles.WepTrailEnabled.Value then return end
+
+        clearTrails()
+
+        local handle = tool:FindFirstChild("Handle")
+        if not handle or not handle:IsA("BasePart") then return end
+
+        local a0 = Instance.new("Attachment"); a0.Position = Vector3.new(0,  1, 0); a0.Parent = handle
+        local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0, -1, 0); a1.Parent = handle
+
+        local trail = Instance.new("Trail")
+        trail.Attachment0  = a0
+        trail.Attachment1  = a1
+        trail.Lifetime     = (Options.WepTrailLifetime.Value or 3) * 0.1
+        trail.WidthScale   = NumberSequence.new(1)
+        trail.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(1, 1),
+        })
+
+        local c0 = Options.WepTrailColor0.Value
+        local c1 = Options.WepTrailColor1.Value
+        trail.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, c0),
+            ColorSequenceKeypoint.new(1, c1),
+        })
+        trail.Parent = handle
+
+        table.insert(_trailInstances, a0)
+        table.insert(_trailInstances, a1)
+        table.insert(_trailInstances, trail)
+    end
+
+    local _prevEquipped = nil
+
+    RS.Heartbeat:Connect(function()
+        local tools = getEquippedTools()
+        local tool  = tools[1]
+
+        if tool ~= _prevEquipped then
+            clearTrails()
+            if tool and Toggles.WepTrailEnabled.Value then
+                applyTrail(tool)
+            end
+            _prevEquipped = tool
+        end
+
+        if Toggles.WepChamsEnabled.Value then
+            applyChams(tool)
+        end
+
+        if Toggles.WepSwingSpeed.Value and tool then
+            local anim = tool:FindFirstChildOfClass("LocalScript")
+                      or tool:FindFirstChildOfClass("Script")
+            if anim then
+                local env = getfenv and pcall(function()
+                    local e = getfenv(anim)
+                    if e and e.ToolAnimSpeed then
+                        e.ToolAnimSpeed = (Options.WepSwingSpeedVal.Value or 10) * 0.1
+                    end
+                end)
+            end
+        end
+    end)
+
+    Toggles.WepTrailEnabled:OnChanged(function(v)
+        if v then
+            local tools = getEquippedTools()
+            applyTrail(tools[1])
+        else
+            clearTrails()
+        end
+    end)
+
+    Toggles.WepChamsEnabled:OnChanged(function(v)
+        if not v then
+            local char = lp.Character
+            if char then
+                for _, t in ipairs(char:GetChildren()) do
+                    if t:IsA("Tool") then
+                        for _, p in ipairs(t:GetDescendants()) do
+                            if p:IsA("BasePart") then
+                                pcall(function()
+                                    p.Color        = BrickColor.White().Color
+                                    p.Transparency = 0
+                                    p.Reflectance  = 0
+                                    p.Material     = Enum.Material.SmoothPlastic
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end)
 
 -- ── QoL > Movement Tab ────────────────────────────────────────────────────
 do
