@@ -77641,34 +77641,145 @@ end
 -- ── Weapon > FX Tab ──────────────────────────────────────────────────────
 do
     local L = Tabs.WepFX:AddLeftGroupbox("Weapon Trail")
-    local R = Tabs.WepFX:AddRightGroupbox("Swing Speed")
+    local R = Tabs.WepFX:AddRightGroupbox("Particles & Glow")
 
+    -- Trail controls
     L:AddToggle("WepTrailEnabled", { Text = "Enable Trail", Default = false })
-    L:AddColorPicker("WepTrailColor0", { Title = "Trail Color (Start)", Default = Color3.fromRGB(255, 100, 100) })
-    L:AddColorPicker("WepTrailColor1", { Title = "Trail Color (End)",   Default = Color3.fromRGB(100, 100, 255) })
+    L:AddColorPicker("WepTrailColor0", { Title = "Color (Tip)",  Default = Color3.fromRGB(180, 220, 255) })
+    L:AddColorPicker("WepTrailColor1", { Title = "Color (Base)", Default = Color3.fromRGB(30,  60,  160) })
     L:AddSlider("WepTrailLifetime", {
-        Text = "Trail Lifetime", Default = 3, Min = 1, Max = 10, Rounding = 0,
-        Suffix = "×0.1s",
+        Text = "Lifetime", Default = 4, Min = 1, Max = 12, Rounding = 0, Suffix = "×0.1s",
     })
     L:AddSlider("WepTrailWidth", {
-        Text = "Trail Width", Default = 5, Min = 1, Max = 20, Rounding = 0,
+        Text = "Width", Default = 6, Min = 1, Max = 30, Rounding = 0,
     })
+    L:AddToggle("WepTrailRainbow", { Text = "Rainbow Trail", Default = false })
 
-    R:AddToggle("WepSwingSpeed", { Text = "Custom Swing Speed", Default = false })
-    R:AddSlider("WepSwingSpeedVal", {
-        Text = "Speed Multiplier", Default = 10, Min = 5, Max = 50, Rounding = 0,
-        Suffix = "×0.1",
+    -- Particle FX controls
+    R:AddToggle("WepParticleEnabled", { Text = "Enable Particles", Default = false })
+    R:AddDropdown("WepParticlePreset", {
+        Text    = "Preset",
+        Default = "Electric",
+        Values  = { "Electric", "Ember", "Shadow", "Ice", "Custom" },
     })
-    R:AddLabel("Modifies ToolAnimSpeed on equipped tool")
-    R:AddLabel("May not work on all weapons")
+    R:AddColorPicker("WepParticleColor", { Title = "Custom Color", Default = Color3.fromRGB(100, 200, 255) })
+    R:AddSlider("WepParticleRate", {
+        Text = "Rate", Default = 15, Min = 1, Max = 50, Rounding = 0, Suffix = "/s",
+    })
+    R:AddToggle("WepHitBurst", { Text = "Hit Burst (on swing)", Default = false })
+
+    -- Glow controls
+    local G = Tabs.WepFX:AddLeftGroupbox("Weapon Glow")
+    G:AddToggle("WepGlowEnabled",  { Text = "Enable Glow",    Default = false })
+    G:AddColorPicker("WepGlowColor", { Title = "Glow Color",  Default = Color3.fromRGB(100, 180, 255) })
+    G:AddSlider("WepGlowBrightness", {
+        Text = "Brightness", Default = 4, Min = 1, Max = 15, Rounding = 0,
+    })
+    G:AddSlider("WepGlowRange", {
+        Text = "Range", Default = 12, Min = 4, Max = 40, Rounding = 0,
+    })
+    G:AddToggle("WepGlowPulse", { Text = "Pulse (breathing)", Default = false })
+    G:AddSlider("WepGlowPulseSpeed", {
+        Text = "Pulse Speed", Default = 3, Min = 1, Max = 10, Rounding = 0,
+    })
 end
 
--- Weapon Chams engine
+-- ── Weapon Visual Engine (Chams + Trail + Glow + Particles) ──────────────
 task.spawn(function()
     local lp  = game.Players.LocalPlayer
     local RS  = game:GetService("RunService")
-    local _hue = 0
+    local _chamHue  = 0
+    local _trailHue = 0
+    local _pulseT   = 0
 
+    -- ── Preset configs ────────────────────────────────────────────────
+    local PARTICLE_PRESETS = {
+        Electric = {
+            Texture     = "rbxasset://textures/particles/sparkles_main.dds",
+            Color0      = Color3.fromRGB(160, 220, 255),
+            Color1      = Color3.fromRGB(255, 255, 255),
+            LightEmission = 1,
+            LightInfluence = 0,
+            Size        = NumberSequence.new({
+                NumberSequenceKeypoint.new(0,   0.05),
+                NumberSequenceKeypoint.new(0.3, 0.12),
+                NumberSequenceKeypoint.new(1,   0),
+            }),
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.1),
+                NumberSequenceKeypoint.new(1, 1),
+            }),
+            Speed       = NumberRange.new(8, 18),
+            Lifetime    = NumberRange.new(0.08, 0.18),
+            SpreadAngle = Vector2.new(80, 80),
+            RotSpeed    = NumberRange.new(-300, 300),
+        },
+        Ember = {
+            Texture     = "rbxasset://textures/particles/fire_main.dds",
+            Color0      = Color3.fromRGB(255, 80, 0),
+            Color1      = Color3.fromRGB(255, 220, 60),
+            LightEmission = 0.9,
+            LightInfluence = 0.1,
+            Size        = NumberSequence.new({
+                NumberSequenceKeypoint.new(0,   0.08),
+                NumberSequenceKeypoint.new(0.5, 0.14),
+                NumberSequenceKeypoint.new(1,   0),
+            }),
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.2),
+                NumberSequenceKeypoint.new(0.7, 0.5),
+                NumberSequenceKeypoint.new(1, 1),
+            }),
+            Speed       = NumberRange.new(3, 9),
+            Lifetime    = NumberRange.new(0.25, 0.55),
+            SpreadAngle = Vector2.new(40, 40),
+            RotSpeed    = NumberRange.new(-60, 60),
+        },
+        Shadow = {
+            Texture     = "rbxasset://textures/particles/smoke_main.dds",
+            Color0      = Color3.fromRGB(60, 0, 90),
+            Color1      = Color3.fromRGB(15, 0, 30),
+            LightEmission = 0,
+            LightInfluence = 0,
+            Size        = NumberSequence.new({
+                NumberSequenceKeypoint.new(0,   0.1),
+                NumberSequenceKeypoint.new(0.5, 0.22),
+                NumberSequenceKeypoint.new(1,   0.3),
+            }),
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.4),
+                NumberSequenceKeypoint.new(0.6, 0.65),
+                NumberSequenceKeypoint.new(1, 1),
+            }),
+            Speed       = NumberRange.new(2, 6),
+            Lifetime    = NumberRange.new(0.4, 0.8),
+            SpreadAngle = Vector2.new(60, 60),
+            RotSpeed    = NumberRange.new(-40, 40),
+        },
+        Ice = {
+            Texture     = "rbxasset://textures/particles/sparkles_main.dds",
+            Color0      = Color3.fromRGB(200, 240, 255),
+            Color1      = Color3.fromRGB(100, 200, 240),
+            LightEmission = 0.6,
+            LightInfluence = 0.3,
+            Size        = NumberSequence.new({
+                NumberSequenceKeypoint.new(0,   0.04),
+                NumberSequenceKeypoint.new(0.4, 0.09),
+                NumberSequenceKeypoint.new(1,   0),
+            }),
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0),
+                NumberSequenceKeypoint.new(0.5, 0.3),
+                NumberSequenceKeypoint.new(1, 1),
+            }),
+            Speed       = NumberRange.new(1, 4),
+            Lifetime    = NumberRange.new(0.3, 0.7),
+            SpreadAngle = Vector2.new(25, 25),
+            RotSpeed    = NumberRange.new(-20, 20),
+        },
+    }
+
+    -- ── Material map ──────────────────────────────────────────────────
     local MAT_MAP = {
         Neon          = Enum.Material.Neon,
         SmoothPlastic = Enum.Material.SmoothPlastic,
@@ -77678,6 +77789,25 @@ task.spawn(function()
         Air           = Enum.Material.Air,
     }
 
+    -- ── Helpers ───────────────────────────────────────────────────────
+    local function getEquippedTools()
+        local tools = {}
+        local char = lp.Character
+        if char then
+            for _, v in ipairs(char:GetChildren()) do
+                if v:IsA("Tool") then table.insert(tools, v) end
+            end
+        end
+        return tools
+    end
+
+    local function getHandle(tool)
+        if not tool then return nil end
+        local h = tool:FindFirstChild("Handle")
+        return (h and h:IsA("BasePart")) and h or nil
+    end
+
+    -- ── Chams ─────────────────────────────────────────────────────────
     local function applyChams(tool)
         if not tool or not tool:IsA("Tool") then return end
         if not Toggles.WepChamsEnabled.Value then return end
@@ -77685,14 +77815,14 @@ task.spawn(function()
         local rainbow = Toggles.WepChamsRainbow.Value
         local color
         if rainbow then
-            _hue = (_hue + (Options.WepChamsRainbowSpeed.Value or 2) * 0.005) % 1
-            color = Color3.fromHSV(_hue, 1, 1)
+            _chamHue = (_chamHue + (Options.WepChamsRainbowSpeed.Value or 2) * 0.005) % 1
+            color = Color3.fromHSV(_chamHue, 1, 1)
         else
             color = Options.WepChamsColor.Value
         end
 
-        local alpha   = (Options.WepChamsAlpha.Value   or 0)   / 100
-        local reflect = (Options.WepChamsReflect.Value or 0)   / 100
+        local alpha   = (Options.WepChamsAlpha.Value   or 0) / 100
+        local reflect = (Options.WepChamsReflect.Value or 0) / 100
         local mat     = MAT_MAP[Options.WepChamsMaterial.Value] or Enum.Material.Neon
 
         for _, p in ipairs(tool:GetDescendants()) do
@@ -77707,52 +77837,66 @@ task.spawn(function()
         end
     end
 
-    local function getEquippedTools()
-        local tools = {}
-        local char = lp.Character
-        if char then
-            for _, v in ipairs(char:GetChildren()) do
-                if v:IsA("Tool") then table.insert(tools, v) end
-            end
-        end
-        return tools
-    end
-
+    -- ── Trail ─────────────────────────────────────────────────────────
     local _trailInstances = {}
 
-    local function clearTrails()
-        for _, t in ipairs(_trailInstances) do pcall(function() t:Destroy() end) end
-        _trailInstances = {}
+    local function clearFX(list)
+        for _, t in ipairs(list) do pcall(function() t:Destroy() end) end
+        for i in ipairs(list) do list[i] = nil end
     end
 
     local function applyTrail(tool)
-        if not tool or not tool:IsA("Tool") then return end
+        if not tool then return end
         if not Toggles.WepTrailEnabled.Value then return end
+        local handle = getHandle(tool)
+        if not handle then return end
 
-        clearTrails()
+        clearFX(_trailInstances)
 
-        local handle = tool:FindFirstChild("Handle")
-        if not handle or not handle:IsA("BasePart") then return end
+        local a0 = Instance.new("Attachment")
+        a0.Position = Vector3.new(0,  1.1, 0)
+        a0.Parent   = handle
 
-        local a0 = Instance.new("Attachment"); a0.Position = Vector3.new(0,  1, 0); a0.Parent = handle
-        local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0, -1, 0); a1.Parent = handle
+        local a1 = Instance.new("Attachment")
+        a1.Position = Vector3.new(0, -1.1, 0)
+        a1.Parent   = handle
 
         local trail = Instance.new("Trail")
-        trail.Attachment0  = a0
-        trail.Attachment1  = a1
-        trail.Lifetime     = (Options.WepTrailLifetime.Value or 3) * 0.1
-        trail.WidthScale   = NumberSequence.new(1)
+        trail.Attachment0      = a0
+        trail.Attachment1      = a1
+        trail.Lifetime         = math.max((Options.WepTrailLifetime.Value or 4) * 0.1, 0.05)
+        trail.MinLength        = 0
+        trail.FaceCamera       = true
+        trail.LightEmission    = 0.85
+        trail.LightInfluence   = 0.1
+
+        -- tapered width: full at start, zero at end
+        trail.WidthScale = NumberSequence.new({
+            NumberSequenceKeypoint.new(0,   1),
+            NumberSequenceKeypoint.new(0.3, 0.8),
+            NumberSequenceKeypoint.new(1,   0),
+        })
         trail.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0),
-            NumberSequenceKeypoint.new(1, 1),
+            NumberSequenceKeypoint.new(0,   0),
+            NumberSequenceKeypoint.new(0.4, 0.15),
+            NumberSequenceKeypoint.new(1,   1),
         })
 
-        local c0 = Options.WepTrailColor0.Value
-        local c1 = Options.WepTrailColor1.Value
-        trail.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, c0),
-            ColorSequenceKeypoint.new(1, c1),
-        })
+        local rainbowTrail = Toggles.WepTrailRainbow.Value
+        if not rainbowTrail then
+            local c0 = Options.WepTrailColor0.Value
+            local c1 = Options.WepTrailColor1.Value
+            trail.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0,   c0),
+                ColorSequenceKeypoint.new(0.5, Color3.new(
+                    (c0.R + c1.R) * 0.5,
+                    (c0.G + c1.G) * 0.5,
+                    (c0.B + c1.B) * 0.5
+                )),
+                ColorSequenceKeypoint.new(1,   c1),
+            })
+        end
+
         trail.Parent = handle
 
         table.insert(_trailInstances, a0)
@@ -77760,44 +77904,223 @@ task.spawn(function()
         table.insert(_trailInstances, trail)
     end
 
-    local _prevEquipped = nil
-
-    RS.Heartbeat:Connect(function()
-        local tools = getEquippedTools()
-        local tool  = tools[1]
-
-        if tool ~= _prevEquipped then
-            clearTrails()
-            if tool and Toggles.WepTrailEnabled.Value then
-                applyTrail(tool)
-            end
-            _prevEquipped = tool
-        end
-
-        if Toggles.WepChamsEnabled.Value then
-            applyChams(tool)
-        end
-
-        if Toggles.WepSwingSpeed.Value and tool then
-            local anim = tool:FindFirstChildOfClass("LocalScript")
-                      or tool:FindFirstChildOfClass("Script")
-            if anim then
-                local env = getfenv and pcall(function()
-                    local e = getfenv(anim)
-                    if e and e.ToolAnimSpeed then
-                        e.ToolAnimSpeed = (Options.WepSwingSpeedVal.Value or 10) * 0.1
+    -- Rainbow trail: update color each second
+    task.spawn(function()
+        local th = 0
+        while true do
+            task.wait(0.06)
+            if Toggles.WepTrailEnabled.Value and Toggles.WepTrailRainbow.Value then
+                th = (th + 0.016) % 1
+                for _, inst in ipairs(_trailInstances) do
+                    if inst:IsA("Trail") then
+                        local c0 = Color3.fromHSV(th,           1, 1)
+                        local c1 = Color3.fromHSV((th + 0.4) % 1, 1, 1)
+                        pcall(function()
+                            inst.Color = ColorSequence.new({
+                                ColorSequenceKeypoint.new(0,   c0),
+                                ColorSequenceKeypoint.new(0.5, Color3.fromHSV((th + 0.2) % 1, 1, 1)),
+                                ColorSequenceKeypoint.new(1,   c1),
+                            })
+                        end)
                     end
-                end)
+                end
             end
         end
     end)
 
-    Toggles.WepTrailEnabled:OnChanged(function(v)
-        if v then
-            local tools = getEquippedTools()
-            applyTrail(tools[1])
+    -- ── Glow (PointLight) ────────────────────────────────────────────
+    local _glowInstances = {}
+
+    local function clearGlow()
+        clearFX(_glowInstances)
+    end
+
+    local function applyGlow(tool)
+        if not tool then return end
+        if not Toggles.WepGlowEnabled.Value then return end
+        local handle = getHandle(tool)
+        if not handle then return end
+
+        clearGlow()
+
+        local pl = Instance.new("PointLight")
+        pl.Color      = Options.WepGlowColor.Value
+        pl.Brightness = Options.WepGlowBrightness.Value or 4
+        pl.Range      = Options.WepGlowRange.Value      or 12
+        pl.Shadows    = false
+        pl.Parent     = handle
+
+        table.insert(_glowInstances, pl)
+    end
+
+    -- Pulse logic runs in Heartbeat below
+    local _pulseBase = 0
+
+    -- ── Particles ────────────────────────────────────────────────────
+    local _particleInstances = {}
+
+    local function clearParticles()
+        clearFX(_particleInstances)
+    end
+
+    local function applyParticles(tool)
+        if not tool then return end
+        if not Toggles.WepParticleEnabled.Value then return end
+        local handle = getHandle(tool)
+        if not handle then return end
+
+        clearParticles()
+
+        local preset = PARTICLE_PRESETS[Options.WepParticlePreset.Value]
+        local c0, c1
+        if Options.WepParticlePreset.Value == "Custom" or not preset then
+            preset = PARTICLE_PRESETS.Electric
+            c0 = Options.WepParticleColor.Value
+            c1 = Color3.new(1, 1, 1)
         else
-            clearTrails()
+            c0 = preset.Color0
+            c1 = preset.Color1
+        end
+
+        local pe = Instance.new("ParticleEmitter")
+        pe.Texture         = preset.Texture
+        pe.Rate            = Options.WepParticleRate.Value or 15
+        pe.Color           = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, c0),
+            ColorSequenceKeypoint.new(1, c1),
+        })
+        pe.LightEmission   = preset.LightEmission
+        pe.LightInfluence  = preset.LightInfluence
+        pe.Size            = preset.Size
+        pe.Transparency    = preset.Transparency
+        pe.Speed           = preset.Speed
+        pe.Lifetime        = preset.Lifetime
+        pe.SpreadAngle     = preset.SpreadAngle
+        pe.RotSpeed        = preset.RotSpeed
+        pe.LockedToPart    = true
+        pe.Parent          = handle
+
+        table.insert(_particleInstances, pe)
+    end
+
+    -- Hit burst: emit extra particles on tool.Activated
+    local _activatedConn = nil
+
+    local function connectHitBurst(tool)
+        if _activatedConn then pcall(function() _activatedConn:Disconnect() end) end
+        if not tool or not Toggles.WepHitBurst.Value then return end
+
+        _activatedConn = tool.Activated:Connect(function()
+            for _, pe in ipairs(_particleInstances) do
+                if pe:IsA("ParticleEmitter") then
+                    pcall(function() pe:Emit(math.random(12, 22)) end)
+                end
+            end
+        end)
+    end
+
+    -- ── Master equip / unequip cycle ─────────────────────────────────
+    local _prevEquipped = nil
+
+    local function onEquip(tool)
+        _prevEquipped = tool
+        if Toggles.WepTrailEnabled.Value    then applyTrail(tool) end
+        if Toggles.WepGlowEnabled.Value     then applyGlow(tool) end
+        if Toggles.WepParticleEnabled.Value then applyParticles(tool) end
+        connectHitBurst(tool)
+    end
+
+    local function onUnequip()
+        clearFX(_trailInstances)
+        clearGlow()
+        clearParticles()
+        if _activatedConn then
+            pcall(function() _activatedConn:Disconnect() end)
+            _activatedConn = nil
+        end
+    end
+
+    -- ── Heartbeat loop ───────────────────────────────────────────────
+    RS.Heartbeat:Connect(function(dt)
+        local tools = getEquippedTools()
+        local tool  = tools[1]
+
+        -- equip change detection
+        if tool ~= _prevEquipped then
+            onUnequip()
+            if tool then onEquip(tool) end
+            _prevEquipped = tool
+        end
+
+        -- chams every frame
+        if Toggles.WepChamsEnabled.Value then
+            applyChams(tool)
+        end
+
+        -- glow pulse
+        if Toggles.WepGlowEnabled.Value and Toggles.WepGlowPulse.Value then
+            _pulseT = _pulseT + dt * (Options.WepGlowPulseSpeed.Value or 3) * 0.5
+            local pulse = 0.5 + 0.5 * math.sin(_pulseT * math.pi * 2)
+            local base  = Options.WepGlowBrightness.Value or 4
+            for _, pl in ipairs(_glowInstances) do
+                if pl:IsA("PointLight") then
+                    pcall(function()
+                        pl.Color      = Options.WepGlowColor.Value
+                        pl.Brightness = base * (0.3 + 0.7 * pulse)
+                    end)
+                end
+            end
+        elseif Toggles.WepGlowEnabled.Value then
+            for _, pl in ipairs(_glowInstances) do
+                if pl:IsA("PointLight") then
+                    pcall(function()
+                        pl.Color      = Options.WepGlowColor.Value
+                        pl.Brightness = Options.WepGlowBrightness.Value or 4
+                        pl.Range      = Options.WepGlowRange.Value      or 12
+                    end)
+                end
+            end
+        end
+    end)
+
+    -- ── Toggle callbacks ─────────────────────────────────────────────
+    Toggles.WepTrailEnabled:OnChanged(function(v)
+        local tools = getEquippedTools()
+        local tool  = tools[1]
+        if v then applyTrail(tool) else clearFX(_trailInstances) end
+    end)
+
+    Toggles.WepGlowEnabled:OnChanged(function(v)
+        local tools = getEquippedTools()
+        local tool  = tools[1]
+        if v then applyGlow(tool) else clearGlow() end
+    end)
+
+    Toggles.WepParticleEnabled:OnChanged(function(v)
+        local tools = getEquippedTools()
+        local tool  = tools[1]
+        if v then
+            applyParticles(tool)
+            connectHitBurst(tool)
+        else
+            clearParticles()
+        end
+    end)
+
+    Options.WepParticlePreset:OnChanged(function()
+        if Toggles.WepParticleEnabled.Value then
+            local tools = getEquippedTools()
+            applyParticles(tools[1])
+        end
+    end)
+
+    Toggles.WepHitBurst:OnChanged(function(v)
+        local tools = getEquippedTools()
+        if v then connectHitBurst(tools[1]) else
+            if _activatedConn then
+                pcall(function() _activatedConn:Disconnect() end)
+                _activatedConn = nil
+            end
         end
     end)
 
