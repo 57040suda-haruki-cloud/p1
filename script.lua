@@ -78147,6 +78147,331 @@ task.spawn(function()
     end)
 end)
 
+-- ── Hit Sound / Kill Sound / Visual Feedback ─────────────────────────────
+do
+    -- Sound lookup table (extracted from Kicia sfx library)
+    local _UC_SOUNDS = {
+        -- Hit sounds
+        { Name = "Hitmarker",    Id = "rbxassetid://1129547534" },
+        { Name = "Ding",         Id = "rbxassetid://7149516994" },
+        { Name = "Crit",         Id = "rbxassetid://296102734"  },
+        { Name = "CoD",          Id = "rbxassetid://160432334"  },
+        { Name = "TF2 HitSound", Id = "rbxassetid://3455144981" },
+        { Name = "TF2",          Id = "rbxassetid://8255306220" },
+        { Name = "TF2 Squasher", Id = "rbxassetid://3466981613" },
+        { Name = "TF2 Retro",    Id = "rbxassetid://3466984142" },
+        { Name = "TF2 Vortex",   Id = "rbxassetid://3466980212" },
+        { Name = "Quake",        Id = "rbxassetid://4868633804" },
+        { Name = "AR2 Head",     Id = "rbxassetid://2062016772" },
+        { Name = "AR2 Body",     Id = "rbxassetid://2062015952" },
+        { Name = "AR2 Limb",     Id = "rbxassetid://6659353525" },
+        { Name = "Osu",          Id = "rbxassetid://7149919358" },
+        { Name = "Csgo",         Id = "rbxassetid://5764885315" },
+        { Name = "LaserSlash",   Id = "rbxassetid://199145497"  },
+        { Name = "RailGun",      Id = "rbxassetid://199145534"  },
+        { Name = "Saber",        Id = "rbxassetid://8415678813" },
+        { Name = "Click",        Id = "rbxassetid://8053704437" },
+        { Name = "Bonk",         Id = "rbxassetid://3765689841" },
+        { Name = "Bat",          Id = "rbxassetid://3333907347" },
+        { Name = "Bamboo",       Id = "rbxassetid://3769434519" },
+        { Name = "Bell",         Id = "rbxassetid://6534947240" },
+        { Name = "Pop",          Id = "rbxassetid://18803667669"},
+        { Name = "Bubble",       Id = "rbxassetid://6534947588" },
+        { Name = "Slime",        Id = "rbxassetid://6916371803" },
+        { Name = "Minecraft",    Id = "rbxassetid://4018616850" },
+        { Name = "Stone",        Id = "rbxassetid://3581383408" },
+        { Name = "Pick",         Id = "rbxassetid://1347140027" },
+        { Name = "Snow",         Id = "rbxassetid://6455527632" },
+        { Name = "Splat",        Id = "rbxassetid://12222152"   },
+        { Name = "Clink",        Id = "rbxassetid://711751971"  },
+        { Name = "Headshot",     Id = "rbxassetid://8418469749" },
+        { Name = "Sparkle",      Id = "rbxassetid://132463144859699" },
+        { Name = "Stomp",        Id = "rbxassetid://200632875"  },
+        { Name = "Bag",          Id = "rbxassetid://364942410"  },
+        { Name = "HL Crowbar",   Id = "rbxassetid://546410481"  },
+        { Name = "Grenade Hit",  Id = "rbxassetid://5684745272" },
+        { Name = "BB HitM",      Id = "rbxassetid://4645745735" },
+        { Name = "PD Head",      Id = "rbxassetid://4585351098" },
+        { Name = "PD Body",      Id = "rbxassetid://4585364605" },
+    }
+    local _UC_KILL_SOUNDS = {
+        { Name = "Fatality",       Id = "rbxassetid://7347423703" },
+        { Name = "Fatality MKX",   Id = "rbxassetid://6721975770" },
+        { Name = "KillTrocity",    Id = "rbxassetid://6818544945" },
+        { Name = "Killing Spree",  Id = "rbxassetid://6822465178" },
+        { Name = "Killing Frenzy", Id = "rbxassetid://6822465319" },
+        { Name = "Doublekill",     Id = "rbxassetid://1950547222" },
+        { Name = "Triple Kill",    Id = "rbxassetid://6818526855" },
+        { Name = "Over Kill",      Id = "rbxassetid://6818526995" },
+        { Name = "Taco Bell",      Id = "rbxassetid://5689199277" },
+        { Name = "Windows",        Id = "rbxassetid://9066167010" },
+        { Name = "HL Med Kit",     Id = "rbxassetid://4720445506" },
+        { Name = "Osu Combobreak", Id = "rbxassetid://3547118594" },
+        { Name = "BB Kill",        Id = "rbxassetid://2636743632" },
+        { Name = "Headshot",       Id = "rbxassetid://8418469749" },
+        { Name = "TF2 You Suck",   Id = "rbxassetid://1058417264" },
+        { Name = "Bruh",           Id = "rbxassetid://4275842574" },
+        { Name = "Clutch Kill",    Id = "rbxassetid://7379106527" },
+        { Name = "Kombat",         Id = "rbxassetid://8527433497" },
+        { Name = "Bop",            Id = "rbxassetid://8829676038" },
+        { Name = "Elevator",       Id = "rbxassetid://8322227967" },
+    }
+
+    -- Build name lists for dropdowns
+    local _hitSoundNames, _killSoundNames = {}, {}
+    for _, s in ipairs(_UC_SOUNDS)      do table.insert(_hitSoundNames,  s.Name) end
+    for _, s in ipairs(_UC_KILL_SOUNDS) do table.insert(_killSoundNames, s.Name) end
+
+    -- Sound id lookup helpers
+    local function _soundIdByName(list, name)
+        for _, s in ipairs(list) do
+            if s.Name == name then return s.Id end
+        end
+        return nil
+    end
+
+    -- Preload helper (PlayOnRemove trick from Kicia)
+    local _SS = game:GetService("SoundService")
+    local function _playSound(soundId, volume, pitch)
+        if not soundId then return end
+        local s = Instance.new("Sound")
+        s.SoundId       = soundId
+        s.Volume        = math.clamp(volume or 1, 0, 10)
+        s.PlaybackSpeed = math.clamp(pitch  or 1, 0.01, 4)
+        s.PlayOnRemove  = true
+        s.Parent        = _SS
+        s:Destroy()
+    end
+
+    -- ── UI ────────────────────────────────────────────────────────────
+    local LH = Tabs.WepFX:AddLeftGroupbox("Hit Sound")
+    LH:AddToggle("HitSoundEnabled", { Text = "Enable Hit Sound", Default = false })
+    LH:AddDropdown("HitSoundName", {
+        Text = "Sound", Default = "Ding", Values = _hitSoundNames,
+    })
+    LH:AddSlider("HitSoundVol", {
+        Text = "Volume", Default = 80, Min = 1, Max = 200, Rounding = 0, Suffix = "%",
+    })
+    LH:AddSlider("HitSoundPitch", {
+        Text = "Pitch", Default = 10, Min = 5, Max = 30, Rounding = 0, Suffix = "×0.1",
+    })
+
+    local LK = Tabs.WepFX:AddLeftGroupbox("Kill Sound")
+    LK:AddToggle("KillSoundEnabled", { Text = "Enable Kill Sound", Default = false })
+    LK:AddDropdown("KillSoundName", {
+        Text = "Sound", Default = "Fatality", Values = _killSoundNames,
+    })
+    LK:AddSlider("KillSoundVol", {
+        Text = "Volume", Default = 80, Min = 1, Max = 200, Rounding = 0, Suffix = "%",
+    })
+    LK:AddSlider("KillSoundPitch", {
+        Text = "Pitch", Default = 10, Min = 5, Max = 30, Rounding = 0, Suffix = "×0.1",
+    })
+
+    local RV = Tabs.WepFX:AddRightGroupbox("Visual Feedback")
+    RV:AddToggle("HitMarkerEnabled", { Text = "Hitmarker", Default = false })
+    RV:AddColorPicker("HitMarkerColor", { Title = "Hitmarker Color", Default = Color3.fromRGB(255, 60, 60) })
+    RV:AddSlider("HitMarkerSize", {
+        Text = "Size", Default = 12, Min = 4, Max = 40, Rounding = 0,
+    })
+    RV:AddSlider("HitMarkerDuration", {
+        Text = "Duration", Default = 3, Min = 1, Max = 10, Rounding = 0, Suffix = "×0.1s",
+    })
+    RV:AddToggle("HitFlashEnabled", { Text = "Hit Flash", Default = false })
+    RV:AddColorPicker("HitFlashColor", { Title = "Flash Color", Default = Color3.fromRGB(255, 80, 60) })
+    RV:AddSlider("HitFlashIntensity", {
+        Text = "Intensity", Default = 25, Min = 5, Max = 80, Rounding = 0, Suffix = "%",
+    })
+    RV:AddSlider("HitFlashDuration", {
+        Text = "Flash Duration", Default = 2, Min = 1, Max = 8, Rounding = 0, Suffix = "×0.1s",
+    })
+    RV:AddToggle("KillFlashEnabled", { Text = "Kill Flash (different color)", Default = false })
+    RV:AddColorPicker("KillFlashColor", { Title = "Kill Flash Color", Default = Color3.fromRGB(255, 220, 60) })
+
+    -- ── Hitmarker GUI ─────────────────────────────────────────────────
+    local _hmGui, _hmFrame
+    task.spawn(function()
+        local pg = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+        _hmGui = Instance.new("ScreenGui")
+        _hmGui.Name        = "UC_HitFeedback"
+        _hmGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        _hmGui.ResetOnSpawn = false
+        _hmGui.Parent      = pg
+
+        _hmFrame = Instance.new("Frame")
+        _hmFrame.Size            = UDim2.fromOffset(32, 32)
+        _hmFrame.AnchorPoint     = Vector2.new(0.5, 0.5)
+        _hmFrame.Position        = UDim2.fromScale(0.5, 0.5)
+        _hmFrame.BackgroundTransparency = 1
+        _hmFrame.Visible         = false
+        _hmFrame.Parent          = _hmGui
+
+        -- 4 arms of the X
+        local function arm(rot)
+            local b = Instance.new("Frame")
+            b.Size            = UDim2.new(0, 3, 0, 10)
+            b.AnchorPoint     = Vector2.new(0.5, 0.5)
+            b.Position        = UDim2.fromScale(0.5, 0.5)
+            b.Rotation        = rot
+            b.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+            b.BorderSizePixel = 0
+            b.Parent          = _hmFrame
+            return b
+        end
+        arm(45); arm(-45); arm(135); arm(-135)
+    end)
+
+    -- Flash frame
+    local _flashFrame
+    task.spawn(function()
+        task.wait(0.5)
+        local pg = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+        local flashGui = Instance.new("ScreenGui")
+        flashGui.Name         = "UC_HitFlash"
+        flashGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        flashGui.ResetOnSpawn = false
+        flashGui.Parent       = pg
+
+        _flashFrame = Instance.new("Frame")
+        _flashFrame.Size                 = UDim2.fromScale(1, 1)
+        _flashFrame.BackgroundColor3     = Color3.fromRGB(255, 80, 60)
+        _flashFrame.BackgroundTransparency = 1
+        _flashFrame.BorderSizePixel      = 0
+        _flashFrame.Visible              = false
+        _flashFrame.Parent               = flashGui
+    end)
+
+    local _TS = game:GetService("TweenService")
+
+    local function showHitFeedback(isKill)
+        -- Hitmarker
+        if Toggles.HitMarkerEnabled.Value and _hmFrame then
+            local sz     = Options.HitMarkerSize.Value or 12
+            local dur    = (Options.HitMarkerDuration.Value or 3) * 0.1
+            local col    = Options.HitMarkerColor.Value
+            _hmFrame.Size = UDim2.fromOffset(sz * 2, sz * 2)
+            _hmFrame.Visible = true
+            for _, arm in ipairs(_hmFrame:GetChildren()) do
+                if arm:IsA("Frame") then
+                    arm.BackgroundColor3 = col
+                    arm.BackgroundTransparency = 0
+                end
+            end
+            task.delay(dur, function()
+                pcall(function()
+                    for _, arm in ipairs(_hmFrame:GetChildren()) do
+                        if arm:IsA("Frame") then
+                            _TS:Create(arm, TweenInfo.new(0.08), { BackgroundTransparency = 1 }):Play()
+                        end
+                    end
+                    task.wait(0.09)
+                    if _hmFrame then _hmFrame.Visible = false end
+                end)
+            end)
+        end
+
+        -- Hit Flash / Kill Flash
+        local flashEnabled  = isKill and Toggles.KillFlashEnabled.Value or Toggles.HitFlashEnabled.Value
+        if flashEnabled and _flashFrame then
+            local col       = isKill and Options.KillFlashColor.Value or Options.HitFlashColor.Value
+            local intensity = (Options.HitFlashIntensity.Value or 25) / 100
+            local dur       = (Options.HitFlashDuration.Value  or 2)  * 0.1
+            _flashFrame.BackgroundColor3 = col
+            _flashFrame.Visible = true
+            _flashFrame.BackgroundTransparency = 1 - intensity
+            _TS:Create(_flashFrame, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                { BackgroundTransparency = 1 }):Play()
+            task.delay(dur + 0.05, function()
+                pcall(function() if _flashFrame then _flashFrame.Visible = false end end)
+            end)
+        end
+
+        -- Hit Sound
+        if not isKill and Toggles.HitSoundEnabled.Value then
+            local id  = _soundIdByName(_UC_SOUNDS, Options.HitSoundName.Value)
+            local vol = (Options.HitSoundVol.Value   or 80) / 100
+            local pit = (Options.HitSoundPitch.Value or 10) / 10
+            _playSound(id, vol, pit)
+        end
+
+        -- Kill Sound
+        if isKill and Toggles.KillSoundEnabled.Value then
+            local id  = _soundIdByName(_UC_KILL_SOUNDS, Options.KillSoundName.Value)
+            local vol = (Options.KillSoundVol.Value   or 80) / 100
+            local pit = (Options.KillSoundPitch.Value or 10) / 10
+            _playSound(id, vol, pit)
+        end
+    end
+
+    -- ── Hit Detection Engine ─────────────────────────────────────────
+    task.spawn(function()
+        local lp    = game:GetService("Players").LocalPlayer
+        local _lastSwing = 0
+
+        -- track tool activations
+        local function trackChar(char)
+            if not char then return end
+            char.ChildAdded:Connect(function(child)
+                if child:IsA("Tool") then
+                    child.Activated:Connect(function()
+                        _lastSwing = tick()
+                    end)
+                end
+            end)
+            for _, t in ipairs(char:GetChildren()) do
+                if t:IsA("Tool") then
+                    t.Activated:Connect(function() _lastSwing = tick() end)
+                end
+            end
+        end
+
+        trackChar(lp.Character)
+        lp.CharacterAdded:Connect(trackChar)
+
+        -- monitor enemy health
+        local function monitorEnemy(plr)
+            if plr == lp then return end
+
+            local function watchChar(char)
+                local hum = char:WaitForChild("Humanoid", 5)
+                if not hum then return end
+                local prevHp = hum.Health
+                local died   = false
+
+                hum.HealthChanged:Connect(function(hp)
+                    if hp < prevHp and not died then
+                        -- only credit if within swing window (1.5s)
+                        if (tick() - _lastSwing) < 1.5 then
+                            if hp <= 0 then
+                                died = true
+                                showHitFeedback(true)  -- kill
+                            else
+                                showHitFeedback(false) -- hit
+                            end
+                        end
+                    end
+                    prevHp = hp
+                end)
+
+                hum.Died:Connect(function()
+                    if not died and (tick() - _lastSwing) < 2 then
+                        died = true
+                        showHitFeedback(true)
+                    end
+                end)
+            end
+
+            if plr.Character then watchChar(plr.Character) end
+            plr.CharacterAdded:Connect(watchChar)
+        end
+
+        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+            monitorEnemy(p)
+        end
+        game:GetService("Players").PlayerAdded:Connect(monitorEnemy)
+    end)
+end
+
 -- ── QoL > Movement Tab ────────────────────────────────────────────────────
 do
     local L = Tabs.Movement:AddLeftGroupbox("Movement Mods")
