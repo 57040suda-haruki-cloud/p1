@@ -91508,14 +91508,14 @@ end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
         end
         -- Map each Yabujin tab name to an existing UNCODE tab
         local _yTabMap = {
-            ['Spoofers']         = Tabs.PlayerSpoof,
+            ['Spoofers']         = Tabs.Player,
+            ['Settings']         = Tabs.Player,
             ['Cosmetics']        = Tabs.SkinChanger,
             ['Inventory']        = Tabs.SkinChanger,
             ['Custom cosmetics'] = Tabs.SkinChanger,
             ['Ranks']            = Tabs.SkinChanger,
             ['Resources']        = Tabs.SkinChanger,
             ['Visuals']          = Tabs.SkinChanger,
-            ['Settings']         = Tabs.SkinChanger,
         }
         -- Fake window: AddTab returns the mapped UNCODE tab
         local _fakeWin = {}
@@ -91531,6 +91531,31 @@ end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
             warn('[UNCODE] Yabujin frontend: ' .. tostring(_err))
         end
     end)
+end)()
+
+-- ============================================================
+--  Noclip + movement extras (Tabs.Player)
+-- ============================================================
+;(function()
+    local _LP  = game:GetService('Players').LocalPlayer
+    local _RS  = game:GetService('RunService')
+    local _noclipOn = false
+    _RS.Stepped:Connect(function()
+        if not _noclipOn then return end
+        local char = _LP.Character
+        if not char then return end
+        for _, p in ipairs(char:GetDescendants()) do
+            if p:IsA('BasePart') and p.CanCollide then
+                p.CanCollide = false
+            end
+        end
+    end)
+    local _MG  = Tabs.Player:AddLeftGroupbox('Noclip')
+    _MG:AddToggle('NoclipEnabled', {
+        Text    = 'Noclip',
+        Default = false,
+        Callback = function(v) _noclipOn = v end,
+    })
 end)()
 
 if not _uiSec1Ok then warn("[UNCODE] UI-section-1 failed (non-fatal): " .. tostring(_uiSec1Err)) end
