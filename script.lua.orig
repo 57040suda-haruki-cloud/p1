@@ -566,14 +566,16 @@ getgenv()._UNC_UNLOAD = function()
     warn("[UNCODE] Unloaded — safe to re-run")
 end
 
--- Compatibility shim: window.tab({name, tabs={}}) creates flat Linoria tabs
--- and populates _mlTabMap so Window:AddTab() can look them up by key.
+-- Compatibility shim: window.tab({name, tabs={}}) creates ONE Linoria sidebar
+-- tab for the parent group (name) and returns that same tab object once per
+-- sub-tab entry, so all sub-tab locals share a single sidebar tab.
+-- Result: 7 sidebar tabs total (Main/World/ESP/Visual/HvH/Tools/Setting).
 local window = {}
 function window:tab(opts)
+    local t = _lnWindow:AddTab(opts.name)   -- one tab per parent group only
     local refs = {}
-    for _, subName in ipairs(opts.tabs or {}) do
-        local t = _lnWindow:AddTab(opts.name .. "  " .. subName)
-        table.insert(refs, t)
+    for _ in ipairs(opts.tabs or {}) do
+        table.insert(refs, t)               -- every sub-tab slot gets the same tab
     end
     return table.unpack(refs)
 end
@@ -1054,62 +1056,75 @@ end
 --   ├─ Misc ──────┤  Trans | Sling | Riot
 --   ├─ Player ────┤  Cam | World | Auto
 --   ├─ Config ────┤  Keys | UI | Tools
---   └─ Setup ─────┘  HUD | Save
+--   └─ settings ──┘  HUD | Save
+--
+-- Layout mirrors Unnamed Enhancements (discord.gg/enhancements):
+--   main / world / esp / visuals / character / misc / settings
 --
 -- ── Window compat ────────────────────────────────────────────────────────
--- Sub-tab vars declared+used inside do..end so all 20 registers are freed
--- before the gameplay section; _mlTabMap persists as the single outer local.
+-- window:tab() now creates ONE Linoria sidebar tab per group name.
+-- All sub-tab locals for the same group alias the same tab object.
+-- _mlTabMap persists after the do..end; locals are freed.
 local _mlTabMap = {}
 do
-    -- HvH cluster: Aim (Combat/SilentAim) | Rage (Ragebot/Triggerbot) | AA
-    local _hvhAim,    _hvhRage,  _hvhAA
-    -- Rivals cluster: Trap | Pred | VoidSpam
-    local _rvsTrap,   _rvsPred,  _rvsVS
-    -- World cluster: Orbit | Defense | SkinChanger
-    local _wldOrbit,  _wldDef,   _wldSkin
-    -- Misc cluster: Translocation | Sling Bypass | Riot
-    local _miscTrans, _miscSling, _miscRiot
-    -- Player cluster: Move | Fight | Util
-    local _playMove,  _playFight, _playUtil
-    -- Extend cluster: World | Automation (moved from Player)
-    local _extWorld,  _extAuto
-    -- Config cluster: UI | Tools (Keys removed)
-    local _cfgUI,    _cfgTools
-    -- Setup cluster: HUD | Save
-    local _cfgHUD,    _cfgSave
+    local _tMain, _tWorld, _tEsp, _tVisuals, _tCharacter, _tMisc, _tSettings
 
-    _hvhAim,    _hvhRage,   _hvhAA    = window:tab({ name = "HvH",    tabs = {"Aim","Rage","AA"}      })
-    _rvsTrap,   _rvsPred,   _rvsVS    = window:tab({ name = "Rivals", tabs = {"Trap","Pred","VS"}     })
-    _wldOrbit,  _wldDef,    _wldSkin  = window:tab({ name = "World",  tabs = {"Orbit","Def","Skin"}   })
-    _miscTrans, _miscSling, _miscRiot = window:tab({ name = "Misc",   tabs = {"Trans","Sling","Riot"} })
-    _playMove,  _playFight, _playUtil = window:tab({ name = "Player", tabs = {"Move","Fight","Util"}  })
-    _extWorld,  _extAuto             = window:tab({ name = "Extend", tabs = {"World","Auto"}          })
-    _cfgUI,     _cfgTools             = window:tab({ name = "Config", tabs = {"UI","Tools"}           })
-    _cfgHUD,    _cfgSave              = window:tab({ name = "Setup",  tabs = {"HUD","Save"}           })
+    -- One Linoria sidebar tab per group: 7 tabs total (matches UE layout)
+    _tMain      = window:tab({ name = "main",      tabs = {"Main"}      })
+    _tWorld     = window:tab({ name = "world",     tabs = {"World"}     })
+    _tEsp       = window:tab({ name = "esp",       tabs = {"Esp"}       })
+    _tVisuals   = window:tab({ name = "visuals",   tabs = {"Visuals"}   })
+    _tCharacter = window:tab({ name = "character", tabs = {"Character"} })
+    _tMisc      = window:tab({ name = "misc",      tabs = {"Misc"}      })
+    _tSettings  = window:tab({ name = "settings",  tabs = {"Settings"}  })
 
-    _mlTabMap["Combat"]        = _hvhAim
-    _mlTabMap["HvH"]           = _hvhRage
-    _mlTabMap["AA"]            = _hvhAA
-    _mlTabMap["Trap"]          = _rvsTrap
-    _mlTabMap["Prediction"]    = _rvsPred
-    _mlTabMap["VoidSpam"]      = _rvsVS
-    _mlTabMap["Orbit"]         = _wldOrbit
-    _mlTabMap["Defense"]       = _wldDef
-    _mlTabMap["SkinChanger"]   = _wldSkin
-    _mlTabMap["Translocation"] = _miscTrans
-    _mlTabMap["Sling Bypass"]  = _miscSling
-    _mlTabMap["Riot"]          = _miscRiot
-    _mlTabMap["Player"]        = _playMove
-    _mlTabMap["PlayerFight"]   = _playFight
-    _mlTabMap["PlayerUtil"]    = _playUtil
-    _mlTabMap["World"]         = _extWorld
-    _mlTabMap["Automation"]    = _extAuto
-    _mlTabMap["UI"]            = _cfgUI
-    _mlTabMap["Tools"]         = _cfgTools
-    _mlTabMap["HUD"]           = _cfgHUD
-    _mlTabMap["Save"]          = _cfgSave
+    -- main: silent aim / combat / ragebot / HvH combat (mirrors UE "main")
+    _mlTabMap["Combat"]        = _tMain
+    _mlTabMap["PlayerFight"]   = _tMain
+    _mlTabMap["HvH"]           = _tMain
+    _mlTabMap["VoidSpam"]      = _tMain
+    _mlTabMap["Trap"]          = _tMain
+    _mlTabMap["Prediction"]    = _tMain
+    _mlTabMap["Orbit"]         = _tMain
+    _mlTabMap["Defense"]       = _tMain
+
+    -- world: world changer / skin changer
+    _mlTabMap["SkinChanger"]   = _tWorld
+    _mlTabMap["World"]         = _tWorld
+
+    -- esp: box / info / sound
+    _mlTabMap["EspBox"]        = _tEsp
+    _mlTabMap["EspInfo"]       = _tEsp
+    _mlTabMap["EspSound"]      = _tEsp
+
+    -- visuals: chams / FX / misc visuals (mirrors UE "visuals")
+    _mlTabMap["WepChams"]      = _tVisuals
+    _mlTabMap["WepFX"]         = _tVisuals
+    _mlTabMap["QolMisc"]       = _tVisuals
+
+    -- character: movement / player / animation / anti-aim / spoofer
+    --            (mirrors UE "character": movement + noclip + fly + AA)
+    _mlTabMap["Player"]        = _tCharacter
+    _mlTabMap["Movement"]      = _tCharacter
+    _mlTabMap["PlayerUtil"]    = _tCharacter
+    _mlTabMap["Automation"]    = _tCharacter
+    _mlTabMap["AA"]            = _tCharacter
+    _mlTabMap["Spoofer"]       = _tCharacter
+    _mlTabMap["PlayerSpoofer"] = _tCharacter
+
+    -- misc: utility / tools / bypass (mirrors UE "misc")
+    _mlTabMap["Translocation"] = _tMisc
+    _mlTabMap["Sling Bypass"]  = _tMisc
+    _mlTabMap["Riot"]          = _tMisc
+    _mlTabMap["Keybinds"]      = _tMisc
+    _mlTabMap["UI"]            = _tMisc
+    _mlTabMap["Tools"]         = _tMisc
+
+    -- settings: HUD / save config
+    _mlTabMap["HUD"]           = _tSettings
+    _mlTabMap["Save"]          = _tSettings
 end
--- All 20 sub-tab locals freed here; _mlTabMap persists with all values
+-- All tab locals freed here; _mlTabMap persists (7 groups matching UE layout)
 
 -- Fallback no-op tab (returns Obsidian-style API directly; never reaches wrapTab)
 local function _noopTab()
@@ -3348,11 +3363,11 @@ Tabs.SkinChanger  = Window:AddTab("SkinChanger",   "shirt")
 Tabs.Player       = Window:AddTab("Player",         "user")
 Tabs.PlayerFight  = Window:AddTab("PlayerFight",    "swords")
 Tabs.PlayerUtil   = Window:AddTab("PlayerUtil",     "settings")
+Tabs.PlayerSpoof  = Window:AddTab("PlayerSpoof",   "shield")
 Tabs.World        = Window:AddTab("World",          "sun")
 Tabs.Automation   = Window:AddTab("Automation",    "zap")
 Tabs.AA           = Window:AddTab("AA",       "aa")
 Tabs.Trap         = Window:AddTab("Trap",     "trap")
-Tabs.Keybinds     = Window:AddTab("Keybinds", "keybinds")
 Tabs.UI           = Window:AddTab("UI",       "ui")
 Tabs.Tools        = Window:AddTab("Tools",    "tools")
 Tabs.HUD          = Window:AddTab("HUD",      "hud")
@@ -4497,8 +4512,8 @@ end)
 do -- Player Tab scope
 local PLM  = Tabs.Player:AddLeftGroupbox("Movement")
 local PLM2 = Tabs.Player:AddRightGroupbox("Movement Config")
-local PLS  = Tabs.Player:AddLeftGroupbox("Player Spoofer")
-local PLS2 = Tabs.Player:AddRightGroupbox("Spoofer Config")
+local PLS  = Tabs.PlayerSpoof:AddLeftGroupbox("Player Spoofer")
+local PLS2 = Tabs.PlayerSpoof:AddRightGroupbox("Spoofer Config")
 
 -- ── Movement ─────────────────────────────────────────────────
 -- NoClip: pure-Lua (CanCollide=false every Stepped) + Kicia bridge
@@ -75369,6 +75384,7 @@ local Config = {
 	Cam = { AntiFlash = false, FOVOn = false, FOV = 60, Blur = 0.5 },
 }
 
+getgenv()._RV_Config = Config
 local State = { Conns = {}, ESPGui = {}, HitClones = {}, TracerN = 0, Destroyed = false, Hue = 0, Backup = nil, FX = {}, SkyObj = nil, VMCon = nil, LastESP = 0, LastHUD = 0, LastFlash = 0, LastVM = 0, VMDirty = false, TracerPool = {}, TracerLast = 0, DmgConns = {}, SliderActive = nil, SliderGlobal = false }
 
 local function Bind(c) table.insert(State.Conns, c) return c end
@@ -77520,10 +77536,11 @@ do
 end
 end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
 if not _uiSec1Ok then warn("[UNCODE] UI-section-1 failed (non-fatal): " .. tostring(_uiSec1Err)) end
-;(function()  -- fresh 200-register pool: Quick Binds section isolated from outer fn's 201 locals
-warn("[UNCODE P3] Config-IIFE reached — Tabs.Keybinds=" .. tostring(Tabs.Keybinds ~= nil))
-local QBL = Tabs.Keybinds:AddLeftGroupbox("Quick Binds")
-local QBR = Tabs.Keybinds:AddRightGroupbox("Quick Binds (2)")
+;(function()  -- Quick Binds section removed (keybinds tab eliminated)
+-- placeholder: keybind UI removed per user request
+if false then
+local QBL = {AddToggle=function()end,AddLabel=function()end,AddDropdown=function()end}
+local QBR = {AddToggle=function()end,AddLabel=function()end,AddDropdown=function()end}
 
 QBL:AddToggle("QbMasterToggle", {
     Text    = "Keybinds Active",
@@ -77619,8 +77636,8 @@ _addQbEntry(HvHKbR, "QbHvHEspToggle","Player ESP",  "EspEnabled",      "None")
 -- Trap tab: Rage Trap bind
 local TrapKbL = Tabs.Trap:AddLeftGroupbox("Keybinds")
 _addQbEntry(TrapKbL, "QbTrapRage",   "Rage Trap",   "RtEnabled",       "None")
-
-end)()  -- close Quick Binds section
+end -- close if false
+end)()  -- close Quick Binds section (disabled)
 ;(function()  -- fresh 200-register pool: Server Tools
 local MenuG = Tabs.Tools:AddRightGroupbox("Server Tools")
 MenuG:AddButton("Rejoin Server", function()
@@ -77640,6 +77657,190 @@ MenuG:AddButton("Server Hop", function()
 end)
 
 end)()  -- close Server Tools section
+;(function()  -- ESP tab + Visuals tab + World CC/Cam (UeCrack Rivals_Visuals.lua bindings)
+local function _RVC() return getgenv()._RV_Config end
+
+-- ── World: Color Correction + Camera (UeCrack) ───────────────────────────
+local _CCL  = Tabs.World:AddLeftGroupbox("color correction")
+local _CamR = Tabs.World:AddRightGroupbox("camera")
+
+_CCL:AddToggle("RV_CCEnabled", { Text="enabled", Default=false,
+    Callback=function(v) if _RVC() then _RVC().CC.Enabled=v end end })
+_CCL:AddSlider("RV_CCSat", { Text="saturation", Default=10, Min=-100, Max=100, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().CC.Saturation=v/100 end end })
+_CCL:AddSlider("RV_CCContrast", { Text="contrast", Default=0, Min=-100, Max=100, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().CC.Contrast=v/100 end end })
+_CCL:AddSlider("RV_CCBrightness", { Text="brightness", Default=0, Min=-100, Max=100, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().CC.Brightness=v/100 end end })
+
+_CamR:AddToggle("RV_CamAntiFlash", { Text="anti flashbang", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Cam.AntiFlash=v end end })
+_CamR:AddToggle("RV_CamFOVOn", { Text="fov changer", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Cam.FOVOn=v end end })
+_CamR:AddSlider("RV_CamFOV", { Text="fov", Default=60, Min=30, Max=120, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Cam.FOV=v end end })
+_CamR:AddSlider("RV_CamBlur", { Text="blur", Default=50, Min=0, Max=100, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Cam.Blur=v/100 end end })
+
+-- ── ESP Tab (UeCrack) ────────────────────────────────────────────────────
+local _EL = _mlTabMap["EspBox"]:AddLeftGroupbox("esp")
+local _ER = _mlTabMap["EspInfo"]:AddRightGroupbox("appearance")
+
+_EL:AddToggle("RV_EspBox", { Text="box", Default=false,
+    Callback=function(v) if _RVC() then _RVC().ESP.Box=v end end })
+_EL:AddToggle("RV_EspSkeleton", { Text="skeleton", Default=false,
+    Callback=function(v) if _RVC() then _RVC().ESP.Skeleton=v end end })
+_EL:AddToggle("RV_EspOutline", { Text="outline", Default=false,
+    Callback=function(v) if _RVC() then _RVC().ESP.Outline=v end end })
+_EL:AddSlider("RV_EspThickness", { Text="thickness", Default=2, Min=1, Max=10, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().ESP.Thickness=v end end })
+_EL:AddToggle("RV_EspName", { Text="name", Default=false,
+    Callback=function(v) if _RVC() then _RVC().ESP.Name=v end end })
+_EL:AddToggle("RV_EspWeapon", { Text="weapon", Default=false,
+    Callback=function(v) if _RVC() then _RVC().ESP.Weapon=v end end })
+_EL:AddToggle("RV_EspDistance", { Text="distance", Default=false,
+    Callback=function(v) if _RVC() then _RVC().ESP.Distance=v end end })
+_EL:AddToggle("RV_EspHealthbar", { Text="healthbar", Default=false,
+    Callback=function(v) if _RVC() then _RVC().ESP.Healthbar=v end end })
+_EL:AddDropdown("RV_EspHBType", { Text="healthbar type", Default="gradient",
+    Values={"gradient","solid","outline"},
+    Callback=function(v) if _RVC() then _RVC().ESP.HBType=v end end })
+_EL:AddSlider("RV_EspSlices", { Text="slices", Default=1, Min=1, Max=20, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().ESP.Slices=v end end })
+_EL:AddToggle("RV_EspResizeOutline", { Text="resize outline", Default=false,
+    Callback=function(v) if _RVC() then _RVC().ESP.ResizeOutline=v end end })
+_EL:AddToggle("RV_EspMovingHB", { Text="moving healthbar", Default=false,
+    Callback=function(v) if _RVC() then _RVC().ESP.MovingHB=v end end })
+_EL:AddToggle("RV_EspIncludeTeam", { Text="include teammates", Default=false,
+    Callback=function(v) if _RVC() then _RVC().ESP.IncludeTeam=v end end })
+_EL:AddDropdown("RV_EspBounding", { Text="bounding mode", Default="fixed",
+    Values={"fixed","dynamic"},
+    Callback=function(v) if _RVC() then _RVC().ESP.Bounding=v end end })
+_EL:AddSlider("RV_EspFixedScale", { Text="fixed width scale", Default=100, Min=20, Max=200, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().ESP.FixedScale=v end end })
+_EL:AddSlider("RV_EspMaxDist", { Text="max distance", Default=1200, Min=100, Max=5000, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().ESP.MaxDistance=v end end })
+_EL:AddDropdown("RV_EspNameType", { Text="name type", Default="DisplayName",
+    Values={"DisplayName","Username"},
+    Callback=function(v) if _RVC() then _RVC().ESP.NameType=v end end })
+
+_ER:AddToggle("RV_AppearEnabled", { Text="override appearance", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Appearance.Enabled=v end end })
+_ER:AddDropdown("RV_AppearMat", { Text="material", Default="ForceField",
+    Values={"ForceField","Neon","SmoothPlastic","Metal","Glass"},
+    Callback=function(v) if _RVC() then _RVC().Appearance.Material=v end end })
+_ER:AddSlider("RV_AppearTrans", { Text="transparency", Default=100, Min=0, Max=100, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Appearance.Transparency=v/100 end end })
+_ER:AddToggle("RV_AppearParticle", { Text="particle", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Appearance.Particle=v end end })
+_ER:AddToggle("RV_AppearAura", { Text="aura", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Appearance.Aura=v end end })
+_ER:AddDropdown("RV_AppearAuraType", { Text="aura type", Default="angel",
+    Values={"angel","devil","cyber","radiant"},
+    Callback=function(v) if _RVC() then _RVC().Appearance.AuraType=v end end })
+
+-- ── Visuals Tab (UeCrack) ────────────────────────────────────────────────
+local _VL1 = _mlTabMap["WepChams"]:AddLeftGroupbox("viewmodel")
+local _VR1 = _mlTabMap["WepFX"]:AddRightGroupbox("hit effects")
+local _VL2 = _mlTabMap["WepChams"]:AddLeftGroupbox("crosshair")
+local _VR2 = _mlTabMap["QolMisc"]:AddRightGroupbox("target hud")
+local _VL3 = _mlTabMap["WepChams"]:AddLeftGroupbox("tracers")
+local _VR3 = _mlTabMap["QolMisc"]:AddRightGroupbox("hit sound")
+
+-- Viewmodel / chams
+_VL1:AddToggle("RV_VMOverrideFPS", { Text="override fps", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Viewmodel.OverrideFPS=v end end })
+_VL1:AddSlider("RV_VMFPS", { Text="fps", Default=60, Min=10, Max=240, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Viewmodel.FPS=v end end })
+_VL1:AddSlider("RV_VMRecoil", { Text="recoil", Default=100, Min=0, Max=100, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Viewmodel.Recoil=v end end })
+_VL1:AddToggle("RV_VMChams", { Text="chams", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Viewmodel.OverrideEnabled=v end end })
+_VL1:AddDropdown("RV_VMChamsMat", { Text="material", Default="Neon",
+    Values={"Neon","ForceField","SmoothPlastic","Metal","Glass"},
+    Callback=function(v) if _RVC() then _RVC().Viewmodel.VMMaterial=v end end })
+_VL1:AddSlider("RV_VMTrans", { Text="transparency", Default=95, Min=0, Max=100, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Viewmodel.VMTrans=v end end })
+_VL1:AddToggle("RV_VMWireframe", { Text="wireframe", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Viewmodel.VMWireframe=v end end })
+
+-- Crosshair
+_VL2:AddToggle("RV_CrossEnabled", { Text="enabled", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Crosshair.Enabled=v end end })
+_VL2:AddToggle("RV_CrossDisableGame", { Text="disable game crosshair", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Crosshair.DisableGame=v end end })
+_VL2:AddSlider("RV_CrossGap", { Text="gap", Default=8, Min=0, Max=30, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Crosshair.Gap=v end end })
+_VL2:AddSlider("RV_CrossSize", { Text="size", Default=17, Min=1, Max=50, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Crosshair.Size=v end end })
+_VL2:AddSlider("RV_CrossThick", { Text="thickness", Default=1, Min=1, Max=5, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Crosshair.Thick=v end end })
+_VL2:AddToggle("RV_CrossRGB", { Text="rgb", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Crosshair.RGB=v end end })
+_VL2:AddToggle("RV_CrossPulse", { Text="pulse", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Crosshair.Pulse=v end end })
+_VL2:AddToggle("RV_CrossGlow", { Text="glow", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Crosshair.Glow=v end end })
+
+-- Tracers
+_VL3:AddToggle("RV_TracerEnabled", { Text="tracers", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Tracers.Enabled=v end end })
+_VL3:AddDropdown("RV_TracerStyle", { Text="style", Default="trail",
+    Values={"trail","beam","line"},
+    Callback=function(v) if _RVC() then _RVC().Tracers.Selected=v end end })
+_VL3:AddSlider("RV_TracerLifetime", { Text="lifetime (x0.01)", Default=30, Min=5, Max=200, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Tracers.Lifetime=v/100 end end })
+_VL3:AddSlider("RV_TracerSize", { Text="size", Default=1, Min=1, Max=5, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Tracers.Size=v end end })
+_VL3:AddSlider("RV_TracerSpeed", { Text="speed", Default=5, Min=1, Max=20, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Tracers.Speed=v end end })
+_VL3:AddToggle("RV_TracerOutline", { Text="outline", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Tracers.Outline=v end end })
+_VL3:AddDropdown("RV_TracerShootSound", { Text="shoot sound", Default="default",
+    Values={"default","none","silencer","ak47","mp5"},
+    Callback=function(v) if _RVC() then _RVC().Tracers.ShootSound=v end end })
+
+-- Hit Effects
+_VR1:AddToggle("RV_HitFXEnabled", { Text="enabled", Default=false,
+    Callback=function(v) if _RVC() then _RVC().HitFX.Enabled=v end end })
+_VR1:AddDropdown("RV_HitFXSelected", { Text="effects", Default="fortnite damage",
+    Values={"fortnite damage","blood","sparks","shatter","confetti","matrix"},
+    Callback=function(v) if _RVC() then _RVC().HitFX.Selected=v end end })
+_VR1:AddDropdown("RV_HitFXMaterial", { Text="preferred material", Default="ForceField",
+    Values={"ForceField","Neon","SmoothPlastic","Metal"},
+    Callback=function(v) if _RVC() then _RVC().HitFX.Material=v end end })
+_VR1:AddToggle("RV_HitFXRemoveAcc", { Text="remove accessories", Default=false,
+    Callback=function(v) if _RVC() then _RVC().HitFX.RemoveAcc=v end end })
+_VR1:AddToggle("RV_HitFXDisableMarker", { Text="disable hit marker", Default=false,
+    Callback=function(v) if _RVC() then _RVC().HitFX.DisableMarker=v end end })
+_VR1:AddToggle("RV_HitFXDisableNumbers", { Text="disable damage numbers", Default=false,
+    Callback=function(v) if _RVC() then _RVC().HitFX.DisableNumbers=v end end })
+
+-- Hit Sound
+_VR3:AddSlider("RV_HitSoundVol", { Text="volume", Default=5, Min=0, Max=10, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().HitSound.Volume=v end end })
+_VR3:AddDropdown("RV_HitSoundSelected", { Text="sound", Default="bell",
+    Values={"bell","ding","cod","minecraft","bubble"},
+    Callback=function(v) if _RVC() then _RVC().HitSound.Selected=v end end })
+_VR3:AddSlider("RV_HitSoundPitch", { Text="pitch (x0.01)", Default=100, Min=50, Max=200, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().HitSound.Pitch=v/100 end end })
+
+-- Target HUD
+_VR2:AddToggle("RV_HUDEnabled", { Text="enabled", Default=false,
+    Callback=function(v) if _RVC() then _RVC().TargetHUD.Enabled=v end end })
+_VR2:AddSlider("RV_HUDOffX", { Text="offset x", Default=17, Min=-100, Max=100, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().TargetHUD.OffX=v end end })
+_VR2:AddSlider("RV_HUDOffY", { Text="offset y", Default=70, Min=-100, Max=100, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().TargetHUD.OffY=v end end })
+_VR2:AddSlider("RV_HUDItemScale", { Text="item scale", Default=150, Min=50, Max=300, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().TargetHUD.ItemScale=v end end })
+_VR2:AddSlider("RV_HUDUIScale", { Text="ui scale", Default=170, Min=50, Max=300, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().TargetHUD.UIScale=v end end })
+_VR2:AddDropdown("RV_HUDMode", { Text="show targets", Default="aimbot, ragebot",
+    Values={"aimbot, ragebot","aimbot","ragebot","all"},
+    Callback=function(v) if _RVC() then _RVC().TargetHUD.Mode=v end end })
+
+end)()  -- close ESP + Visuals + World CC/Cam (UeCrack)
 ;(function()  -- fresh 200-register pool: UI Settings + all remaining Settings sections
 local UIGroup = Tabs.UI:AddLeftGroupbox("UI Settings")
 -- MenuKeybind dropdown removed (LShift fixed in code)
