@@ -1067,10 +1067,11 @@ end
 -- _mlTabMap persists after the do..end; locals are freed.
 local _mlTabMap = {}
 do
-    local _tMain, _tWorld, _tEsp, _tVisuals, _tCharacter, _tMisc, _tSettings
+    local _tMain, _tHvH, _tWorld, _tEsp, _tVisuals, _tCharacter, _tMisc, _tSettings
 
-    -- One Linoria sidebar tab per group: 7 tabs total (matches UE layout)
-    _tMain      = window:tab({ name = "main",      tabs = {"Main"}      })
+    -- One Linoria sidebar tab per group: 8 tabs total
+    _tMain      = window:tab({ name = "combat",    tabs = {"Combat"}    })
+    _tHvH       = window:tab({ name = "hvh",       tabs = {"HvH"}       })
     _tWorld     = window:tab({ name = "world",     tabs = {"World"}     })
     _tEsp       = window:tab({ name = "esp",       tabs = {"Esp"}       })
     _tVisuals   = window:tab({ name = "visuals",   tabs = {"Visuals"}   })
@@ -1078,15 +1079,17 @@ do
     _tMisc      = window:tab({ name = "misc",      tabs = {"Misc"}      })
     _tSettings  = window:tab({ name = "settings",  tabs = {"Settings"}  })
 
-    -- main: silent aim / combat / ragebot / HvH combat (mirrors UE "main")
+    -- combat: silent aim / aimbot / general combat content
     _mlTabMap["Combat"]        = _tMain
     _mlTabMap["PlayerFight"]   = _tMain
-    _mlTabMap["HvH"]           = _tMain
     _mlTabMap["VoidSpam"]      = _tMain
     _mlTabMap["Trap"]          = _tMain
     _mlTabMap["Prediction"]    = _tMain
     _mlTabMap["Orbit"]         = _tMain
     _mlTabMap["Defense"]       = _tMain
+
+    -- hvh: ragebot / triggerbot / flickbot (dedicated rage tab)
+    _mlTabMap["HvH"]           = _tHvH
 
     -- world: world changer / skin changer
     _mlTabMap["SkinChanger"]   = _tWorld
@@ -1111,6 +1114,7 @@ do
     _mlTabMap["AA"]            = _tCharacter
     _mlTabMap["Spoofer"]       = _tCharacter
     _mlTabMap["PlayerSpoofer"] = _tCharacter
+    _mlTabMap["PlayerSpoof"]   = _tCharacter
 
     -- misc: utility / tools / bypass (mirrors UE "misc")
     _mlTabMap["Translocation"] = _tMisc
