@@ -1071,82 +1071,75 @@ end
 --   ├─ Misc ──────┤  Trans | Sling | Riot
 --   ├─ Player ────┤  Cam | World | Auto
 --   ├─ Config ────┤  Keys | UI | Tools
---   └─ Setup ─────┘  HUD | Save
+--   └─ settings ──┘  HUD | Save
+--
+-- Layout mirrors Unnamed Enhancements (discord.gg/enhancements):
+--   main / world / esp / visuals / character / misc / settings
 --
 -- ── Window compat ────────────────────────────────────────────────────────
--- Sub-tab vars declared+used inside do..end so all 20 registers are freed
--- before the gameplay section; _mlTabMap persists as the single outer local.
+-- window:tab() now creates ONE Linoria sidebar tab per group name.
+-- All sub-tab locals for the same group alias the same tab object.
+-- _mlTabMap persists after the do..end; locals are freed.
 local _mlTabMap = {}
 do
-    -- Main cluster: Aim (SilentAim/Combat) | Rage (Ragebot) | AA | Move (Player/Movement) | Spoof (PlayerSpoofer)
-    local _mainAim,    _mainRage,   _mainAA,    _mainMove,   _mainSpoof
-    -- World cluster: Change (world changer only)
-    local _wldChange
-    -- ESP cluster: Box | Info | Sound
-    local _espBox,     _espInfo,    _espSound
-    -- Visual cluster: Chams | FX
-    local _visChams,   _visFX
-    -- HvH cluster: Rivals (Trap/Pred/VS) | Orbit | Defense
-    local _hvhRivals,  _hvhOrbit,   _hvhDef
-    -- Tools cluster: Trans | Sling | Riot
-    local _miscTrans,  _miscSling,  _miscRiot
-    -- Setting cluster: UI | HUD | Save
-    local _setUI,      _setHUD,     _setSave
+    local _tMain, _tWorld, _tEsp, _tVisuals, _tCharacter, _tMisc, _tSettings
 
-    _mainAim,    _mainRage,  _mainAA,  _mainMove, _mainSpoof = window:tab({ name = "Main",    tabs = {"Aim","Rage","AA","Move","Spoof"} })
-    _wldChange                                    = window:tab({ name = "World",   tabs = {"Change"}                        })
-    _espBox,     _espInfo,   _espSound            = window:tab({ name = "ESP",     tabs = {"Box","Info","Sound"}            })
-    _visChams,   _visFX                           = window:tab({ name = "Visual",  tabs = {"Chams","FX"}                   })
-    _hvhRivals,  _hvhOrbit,  _hvhDef             = window:tab({ name = "HvH",     tabs = {"Rivals","Orbit","Defense"}      })
-    _miscTrans,  _miscSling, _miscRiot            = window:tab({ name = "Tools",   tabs = {"Trans","Sling","Riot"}          })
-    _setUI,      _setHUD,    _setSave             = window:tab({ name = "Setting", tabs = {"UI","HUD","Save"}               })
+    -- One Linoria sidebar tab per group: 7 tabs total (matches UE layout)
+    _tMain      = window:tab({ name = "main",      tabs = {"Main"}      })
+    _tWorld     = window:tab({ name = "world",     tabs = {"World"}     })
+    _tEsp       = window:tab({ name = "esp",       tabs = {"Esp"}       })
+    _tVisuals   = window:tab({ name = "visuals",   tabs = {"Visuals"}   })
+    _tCharacter = window:tab({ name = "character", tabs = {"Character"} })
+    _tMisc      = window:tab({ name = "misc",      tabs = {"Misc"}      })
+    _tSettings  = window:tab({ name = "settings",  tabs = {"Settings"}  })
 
-    -- Main: silent aim / ragebot / anti-aim / movement
-    _mlTabMap["Combat"]        = _mainAim        -- silent aim / kill aura
-    _mlTabMap["PlayerFight"]   = _mainAim        -- fight groupboxes (hitbox, damage mod)
-    _mlTabMap["HvH"]           = _mainRage       -- ragebot (rage engine)
-    _mlTabMap["AA"]            = _mainAA         -- anti-aim
-    _mlTabMap["Player"]        = _mainMove       -- player movement
-    _mlTabMap["Movement"]      = _mainMove       -- QoL movement
-    _mlTabMap["PlayerUtil"]    = _mainMove       -- utility (auto pickup, size mod, etc.)
-    _mlTabMap["Automation"]    = _mainMove       -- automation features
-    _mlTabMap["Spoofer"]       = _mainSpoof      -- player data spoofer
-    _mlTabMap["PlayerSpoofer"] = _mainSpoof      -- alias
+    -- main: silent aim / combat / ragebot / HvH combat (mirrors UE "main")
+    _mlTabMap["Combat"]        = _tMain
+    _mlTabMap["PlayerFight"]   = _tMain
+    _mlTabMap["HvH"]           = _tMain
+    _mlTabMap["VoidSpam"]      = _tMain
+    _mlTabMap["Trap"]          = _tMain
+    _mlTabMap["Prediction"]    = _tMain
+    _mlTabMap["Orbit"]         = _tMain
+    _mlTabMap["Defense"]       = _tMain
 
-    -- World: world changer only
-    _mlTabMap["SkinChanger"]   = _wldChange      -- world/skin changer
-    _mlTabMap["World"]         = _wldChange      -- alias
+    -- world: world changer / skin changer
+    _mlTabMap["SkinChanger"]   = _tWorld
+    _mlTabMap["World"]         = _tWorld
 
-    -- ESP: box / info / sound
-    _mlTabMap["EspBox"]        = _espBox
-    _mlTabMap["EspInfo"]       = _espInfo
-    _mlTabMap["EspSound"]      = _espSound
+    -- esp: box / info / sound
+    _mlTabMap["EspBox"]        = _tEsp
+    _mlTabMap["EspInfo"]       = _tEsp
+    _mlTabMap["EspSound"]      = _tEsp
 
-    -- Visual: weapon chams / FX
-    _mlTabMap["WepChams"]      = _visChams
-    _mlTabMap["WepFX"]         = _visFX
-    _mlTabMap["QolMisc"]       = _visFX
+    -- visuals: chams / FX / misc visuals (mirrors UE "visuals")
+    _mlTabMap["WepChams"]      = _tVisuals
+    _mlTabMap["WepFX"]         = _tVisuals
+    _mlTabMap["QolMisc"]       = _tVisuals
 
-    -- HvH: rivals-specific (trap/pred/vs) + orbit + defense
-    _mlTabMap["Trap"]          = _hvhRivals
-    _mlTabMap["Prediction"]    = _hvhRivals
-    _mlTabMap["VoidSpam"]      = _hvhRivals
-    _mlTabMap["Orbit"]         = _hvhOrbit
-    _mlTabMap["Defense"]       = _hvhDef
+    -- character: movement / player / animation / anti-aim / spoofer
+    --            (mirrors UE "character": movement + noclip + fly + AA)
+    _mlTabMap["Player"]        = _tCharacter
+    _mlTabMap["Movement"]      = _tCharacter
+    _mlTabMap["PlayerUtil"]    = _tCharacter
+    _mlTabMap["Automation"]    = _tCharacter
+    _mlTabMap["AA"]            = _tCharacter
+    _mlTabMap["Spoofer"]       = _tCharacter
+    _mlTabMap["PlayerSpoofer"] = _tCharacter
 
-    -- Misc: translocation / sling bypass / riot
-    _mlTabMap["Translocation"] = _miscTrans
-    _mlTabMap["Sling Bypass"]  = _miscSling
-    _mlTabMap["Riot"]          = _miscRiot
+    -- misc: utility / tools / bypass (mirrors UE "misc")
+    _mlTabMap["Translocation"] = _tMisc
+    _mlTabMap["Sling Bypass"]  = _tMisc
+    _mlTabMap["Riot"]          = _tMisc
+    _mlTabMap["Keybinds"]      = _tMisc
+    _mlTabMap["UI"]            = _tMisc
+    _mlTabMap["Tools"]         = _tMisc
 
-    -- Setting: UI config / HUD / save
-    _mlTabMap["Keybinds"]      = _setUI
-    _mlTabMap["UI"]            = _setUI
-    _mlTabMap["Tools"]         = _setUI
-    _mlTabMap["HUD"]           = _setHUD
-    _mlTabMap["Save"]          = _setSave
+    -- settings: HUD / save config
+    _mlTabMap["HUD"]           = _tSettings
+    _mlTabMap["Save"]          = _tSettings
 end
--- All tab locals freed here; _mlTabMap persists (7 groups: Main/World/ESP/Visual/HvH/Misc/Setting)
+-- All tab locals freed here; _mlTabMap persists (7 groups matching UE layout)
 
 -- Fallback no-op tab (returns Obsidian-style API directly; never reaches wrapTab)
 local function _noopTab()
