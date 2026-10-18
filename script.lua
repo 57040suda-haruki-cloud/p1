@@ -581,14 +581,16 @@ getgenv()._UNC_UNLOAD = function()
     warn("[UNCODE] Unloaded — safe to re-run")
 end
 
--- Compatibility shim: window.tab({name, tabs={}}) creates flat Linoria tabs
--- and populates _mlTabMap so Window:AddTab() can look them up by key.
+-- Compatibility shim: window.tab({name, tabs={}}) creates ONE Linoria sidebar
+-- tab for the parent group (name) and returns that same tab object once per
+-- sub-tab entry, so all sub-tab locals share a single sidebar tab.
+-- Result: 7 sidebar tabs total (Main/World/ESP/Visual/HvH/Tools/Setting).
 local window = {}
 function window:tab(opts)
+    local t = _lnWindow:AddTab(opts.name)   -- one tab per parent group only
     local refs = {}
-    for _, subName in ipairs(opts.tabs or {}) do
-        local t = _lnWindow:AddTab(subName)
-        table.insert(refs, t)
+    for _ in ipairs(opts.tabs or {}) do
+        table.insert(refs, t)               -- every sub-tab slot gets the same tab
     end
     return table.unpack(refs)
 end
