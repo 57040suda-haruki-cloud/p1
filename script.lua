@@ -587,7 +587,7 @@ local window = {}
 function window:tab(opts)
     local refs = {}
     for _, subName in ipairs(opts.tabs or {}) do
-        local t = _lnWindow:AddTab(opts.name .. "  " .. subName)
+        local t = _lnWindow:AddTab(subName)
         table.insert(refs, t)
     end
     return table.unpack(refs)
@@ -1076,8 +1076,8 @@ end
 -- before the gameplay section; _mlTabMap persists as the single outer local.
 local _mlTabMap = {}
 do
-    -- Main cluster: Aim (SilentAim/Combat) | Rage (Ragebot) | AA | Move (Player/Movement)
-    local _mainAim,    _mainRage,   _mainAA,    _mainMove
+    -- Main cluster: Aim (SilentAim/Combat) | Rage (Ragebot) | AA | Move (Player/Movement) | Spoof (PlayerSpoofer)
+    local _mainAim,    _mainRage,   _mainAA,    _mainMove,   _mainSpoof
     -- World cluster: Change (world changer only)
     local _wldChange
     -- ESP cluster: Box | Info | Sound
@@ -1091,7 +1091,7 @@ do
     -- Setting cluster: UI | HUD | Save
     local _setUI,      _setHUD,     _setSave
 
-    _mainAim,    _mainRage,  _mainAA,  _mainMove = window:tab({ name = "Main",    tabs = {"Aim","Rage","AA","Move"}        })
+    _mainAim,    _mainRage,  _mainAA,  _mainMove, _mainSpoof = window:tab({ name = "Main",    tabs = {"Aim","Rage","AA","Move","Spoof"} })
     _wldChange                                    = window:tab({ name = "World",   tabs = {"Change"}                        })
     _espBox,     _espInfo,   _espSound            = window:tab({ name = "ESP",     tabs = {"Box","Info","Sound"}            })
     _visChams,   _visFX                           = window:tab({ name = "Visual",  tabs = {"Chams","FX"}                   })
@@ -1108,6 +1108,8 @@ do
     _mlTabMap["Movement"]      = _mainMove       -- QoL movement
     _mlTabMap["PlayerUtil"]    = _mainMove       -- utility (auto pickup, size mod, etc.)
     _mlTabMap["Automation"]    = _mainMove       -- automation features
+    _mlTabMap["Spoofer"]       = _mainSpoof      -- player data spoofer
+    _mlTabMap["PlayerSpoofer"] = _mainSpoof      -- alias
 
     -- World: world changer only
     _mlTabMap["SkinChanger"]   = _wldChange      -- world/skin changer
@@ -3381,11 +3383,11 @@ Tabs.SkinChanger  = Window:AddTab("SkinChanger",   "shirt")
 Tabs.Player       = Window:AddTab("Player",         "user")
 Tabs.PlayerFight  = Window:AddTab("PlayerFight",    "swords")
 Tabs.PlayerUtil   = Window:AddTab("PlayerUtil",     "settings")
+Tabs.PlayerSpoof  = Window:AddTab("PlayerSpoof",   "shield")
 Tabs.World        = Window:AddTab("World",          "sun")
 Tabs.Automation   = Window:AddTab("Automation",    "zap")
 Tabs.AA           = Window:AddTab("AA",       "aa")
 Tabs.Trap         = Window:AddTab("Trap",     "trap")
-Tabs.Keybinds     = Window:AddTab("Keybinds", "keybinds")
 Tabs.UI           = Window:AddTab("UI",       "ui")
 Tabs.Tools        = Window:AddTab("Tools",    "tools")
 Tabs.HUD          = Window:AddTab("HUD",      "hud")
@@ -4537,8 +4539,8 @@ end)
 do -- Player Tab scope
 local PLM  = Tabs.Player:AddLeftGroupbox("Movement")
 local PLM2 = Tabs.Player:AddRightGroupbox("Movement Config")
-local PLS  = Tabs.Player:AddLeftGroupbox("Player Spoofer")
-local PLS2 = Tabs.Player:AddRightGroupbox("Spoofer Config")
+local PLS  = Tabs.PlayerSpoof:AddLeftGroupbox("Player Spoofer")
+local PLS2 = Tabs.PlayerSpoof:AddRightGroupbox("Spoofer Config")
 
 -- ── Movement ─────────────────────────────────────────────────
 -- NoClip: pure-Lua (CanCollide=false every Stepped) + Kicia bridge
@@ -78668,10 +78670,11 @@ end)
 
 end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
 if not _uiSec1Ok then warn("[UNCODE] UI-section-1 failed (non-fatal): " .. tostring(_uiSec1Err)) end
-;(function()  -- fresh 200-register pool: Quick Binds section isolated from outer fn's 201 locals
-warn("[UNCODE P3] Config-IIFE reached — Tabs.Keybinds=" .. tostring(Tabs.Keybinds ~= nil))
-local QBL = Tabs.Keybinds:AddLeftGroupbox("Quick Binds")
-local QBR = Tabs.Keybinds:AddRightGroupbox("Quick Binds (2)")
+;(function()  -- Quick Binds section removed (keybinds tab eliminated)
+-- placeholder: keybind UI removed per user request
+if false then
+local QBL = {AddToggle=function()end,AddLabel=function()end,AddDropdown=function()end}
+local QBR = {AddToggle=function()end,AddLabel=function()end,AddDropdown=function()end}
 
 QBL:AddToggle("QbMasterToggle", {
     Text    = "Keybinds Active",
@@ -78767,8 +78770,8 @@ _addQbEntry(HvHKbR, "QbHvHEspToggle","Player ESP",  "EspEnabled",      "None")
 -- Trap tab: Rage Trap bind
 local TrapKbL = Tabs.Trap:AddLeftGroupbox("Keybinds")
 _addQbEntry(TrapKbL, "QbTrapRage",   "Rage Trap",   "RtEnabled",       "None")
-
-end)()  -- close Quick Binds section
+end -- close if false
+end)()  -- close Quick Binds section (disabled)
 ;(function()  -- fresh 200-register pool: Server Tools
 local MenuG = Tabs.Tools:AddRightGroupbox("Server Tools")
 MenuG:AddButton("Rejoin Server", function()
