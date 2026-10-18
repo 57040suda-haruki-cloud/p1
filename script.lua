@@ -1086,7 +1086,7 @@ do
     local _visChams,   _visFX
     -- HvH cluster: Rivals (Trap/Pred/VS) | Orbit | Defense
     local _hvhRivals,  _hvhOrbit,   _hvhDef
-    -- Misc cluster: Trans | Sling | Riot
+    -- Tools cluster: Trans | Sling | Riot
     local _miscTrans,  _miscSling,  _miscRiot
     -- Setting cluster: UI | HUD | Save
     local _setUI,      _setHUD,     _setSave
@@ -1096,7 +1096,7 @@ do
     _espBox,     _espInfo,   _espSound            = window:tab({ name = "ESP",     tabs = {"Box","Info","Sound"}            })
     _visChams,   _visFX                           = window:tab({ name = "Visual",  tabs = {"Chams","FX"}                   })
     _hvhRivals,  _hvhOrbit,  _hvhDef             = window:tab({ name = "HvH",     tabs = {"Rivals","Orbit","Defense"}      })
-    _miscTrans,  _miscSling, _miscRiot            = window:tab({ name = "Misc",    tabs = {"Trans","Sling","Riot"}          })
+    _miscTrans,  _miscSling, _miscRiot            = window:tab({ name = "Tools",   tabs = {"Trans","Sling","Riot"}          })
     _setUI,      _setHUD,    _setSave             = window:tab({ name = "Setting", tabs = {"UI","HUD","Save"}               })
 
     -- Main: silent aim / ragebot / anti-aim / movement
