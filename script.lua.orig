@@ -18967,14 +18967,13 @@ end
 -- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
 local _uiSec1Ok, _uiSec1Err = pcall(function() (function()  -- fresh 200-register pool: isolates all UI locals from outer fn's 201
 (function()  -- own 200-register pool: SK/SKR won't overflow outer fn's 201 locals
-local SK = Tabs.SkinChanger:AddLeftGroupbox("Yabujin")
-SK:AddLabel("Yabujin skin changer integrated.")
+local SK = Tabs.SkinChanger:AddLeftGroupbox("Skin Changer")
 SK:AddLabel("Tabs: Cosmetics / Inventory")
 SK:AddLabel("Spoofers / Ranks / Resources")
 SK:AddLabel("are available in this window.")
 local SKR = Tabs.SkinChanger:AddRightGroupbox("Info")
 SKR:AddLabel("Skin changer + spoofer")
-SKR:AddLabel("powered by Yabujin Recovery.")
+SKR:AddLabel("integrated into UNCODE.")
 SKR:AddLabel("All cosmetics unlocked locally.")
 SKR:AddLabel("No server-side changes.")
 end)()
@@ -91531,119 +91530,6 @@ end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
             warn('[UNCODE] Yabujin frontend: ' .. tostring(_err))
         end
     end)
-end)()
-
--- ============================================================
---  Movement cheats (Tabs.Player): Noclip/Speed/Jump/InfJump
--- ============================================================
-;(function()
-    local _LP  = game:GetService('Players').LocalPlayer
-    local _RS  = game:GetService('RunService')
-    local _UIS = game:GetService('UserInputService')
-
-    -- state
-    local _noclipOn = false
-    local _speedOn  = false
-    local _jumpOn   = false
-    local _infJump  = false
-    local _speedVal = 16
-    local _jumpVal  = 50
-
-    local function _getHum()
-        local char = _LP.Character
-        return char and char:FindFirstChildOfClass('Humanoid')
-    end
-
-    -- Noclip: disable CanCollide on all character BaseParts every physics step
-    _RS.Stepped:Connect(function()
-        if not _noclipOn then return end
-        local char = _LP.Character
-        if not char then return end
-        for _, p in ipairs(char:GetDescendants()) do
-            if p:IsA('BasePart') and p.CanCollide then
-                p.CanCollide = false
-            end
-        end
-    end)
-
-    -- Speed / Jump Power: reapply every Heartbeat while enabled
-    _RS.Heartbeat:Connect(function()
-        local hum = _getHum()
-        if not hum then return end
-        if _speedOn then hum.WalkSpeed  = _speedVal end
-        if _jumpOn  then hum.JumpPower  = _jumpVal  end
-    end)
-
-    -- Restore defaults on character respawn
-    _LP.CharacterAdded:Connect(function(char)
-        local hum = char:WaitForChild('Humanoid', 10)
-        if not hum then return end
-        if _speedOn then hum.WalkSpeed = _speedVal end
-        if _jumpOn  then hum.JumpPower = _jumpVal  end
-    end)
-
-    -- Infinite Jump: jump state change on every JumpRequest
-    _UIS.JumpRequest:Connect(function()
-        if not _infJump then return end
-        local hum = _getHum()
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-    end)
-
-    -- UI: left groupbox = toggles, right = sliders
-    local _MGL = Tabs.Player:AddLeftGroupbox('Movement')
-    local _MGR = Tabs.Player:AddRightGroupbox('Movement Config')
-
-    _MGL:AddToggle('NoclipEnabled', {
-        Text    = 'Noclip',
-        Default = false,
-        Callback = function(v) _noclipOn = v end,
-    })
-    _MGL:AddToggle('SpeedEnabled', {
-        Text    = 'Speed Hack',
-        Default = false,
-        Callback = function(v)
-            _speedOn = v
-            local hum = _getHum()
-            if hum then hum.WalkSpeed = v and _speedVal or 16 end
-        end,
-    })
-    _MGL:AddToggle('JumpEnabled', {
-        Text    = 'Jump Hack',
-        Default = false,
-        Callback = function(v)
-            _jumpOn = v
-            local hum = _getHum()
-            if hum then hum.JumpPower = v and _jumpVal or 50 end
-        end,
-    })
-    _MGL:AddToggle('InfJumpEnabled', {
-        Text    = 'Infinite Jump',
-        Default = false,
-        Callback = function(v) _infJump = v end,
-    })
-
-    _MGR:AddSlider('WalkSpeedSlider', {
-        Text     = 'Walk Speed',
-        Default  = 16, Min = 0, Max = 500, Rounding = 0,
-        Callback = function(v)
-            _speedVal = v
-            if _speedOn then
-                local hum = _getHum()
-                if hum then hum.WalkSpeed = v end
-            end
-        end,
-    })
-    _MGR:AddSlider('JumpPowerSlider', {
-        Text     = 'Jump Power',
-        Default  = 50, Min = 0, Max = 500, Rounding = 0,
-        Callback = function(v)
-            _jumpVal = v
-            if _jumpOn then
-                local hum = _getHum()
-                if hum then hum.JumpPower = v end
-            end
-        end,
-    })
 end)()
 
 -- ============================================================
