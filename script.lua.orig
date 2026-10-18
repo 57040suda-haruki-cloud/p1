@@ -77660,27 +77660,106 @@ end)()  -- close Server Tools section
 ;(function()  -- ESP tab + Visuals tab + World CC/Cam (UeCrack Rivals_Visuals.lua bindings)
 local function _RVC() return getgenv()._RV_Config end
 
--- ── World: Color Correction + Camera (UeCrack) ───────────────────────────
-local _CCL  = Tabs.World:AddLeftGroupbox("color correction")
-local _CamR = Tabs.World:AddRightGroupbox("camera")
+-- ── World: full UeCrack port (Lighting / CC / Sky / Camera / Aura) ──────
+local _CCL    = Tabs.World:AddLeftGroupbox("color correction")
+local _LightR = Tabs.World:AddRightGroupbox("lighting")
+local _SkyL   = Tabs.World:AddLeftGroupbox("skybox")
+local _CamR   = Tabs.World:AddRightGroupbox("camera")
+local _AuraL  = Tabs.World:AddLeftGroupbox("aura")
 
+-- Color Correction
 _CCL:AddToggle("RV_CCEnabled", { Text="enabled", Default=false,
     Callback=function(v) if _RVC() then _RVC().CC.Enabled=v end end })
+_CCL:AddColorPicker("RV_CCTint", { Text="tint", Default=Color3.fromRGB(255,255,255),
+    Callback=function(c) if _RVC() then _RVC().CC.Tint=c end end })
 _CCL:AddSlider("RV_CCSat", { Text="saturation", Default=10, Min=-100, Max=100, Rounding=0,
     Callback=function(v) if _RVC() then _RVC().CC.Saturation=v/100 end end })
 _CCL:AddSlider("RV_CCContrast", { Text="contrast", Default=0, Min=-100, Max=100, Rounding=0,
     Callback=function(v) if _RVC() then _RVC().CC.Contrast=v/100 end end })
-_CCL:AddSlider("RV_CCBrightness", { Text="brightness", Default=0, Min=-100, Max=100, Rounding=0,
+_CCL:AddSlider("RV_CCBright", { Text="brightness", Default=0, Min=-100, Max=100, Rounding=0,
     Callback=function(v) if _RVC() then _RVC().CC.Brightness=v/100 end end })
 
+-- Lighting
+_LightR:AddToggle("RV_LExposureOn", { Text="exposure compensation", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Light.UseExposure=v end end })
+_LightR:AddSlider("RV_LExposure", { Text="exposure", Default=-20, Min=-200, Max=200, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Light.Exposure=v/100 end end })
+_LightR:AddToggle("RV_LBrightOn", { Text="brightness", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Light.UseBright=v end end })
+_LightR:AddSlider("RV_LBright", { Text="brightness value", Default=37, Min=0, Max=500, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Light.Bright=v/10 end end })
+_LightR:AddToggle("RV_LClockOn", { Text="clock time", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Light.UseClock=v end end })
+_LightR:AddSlider("RV_LClock", { Text="clock (0-24h)", Default=116, Min=0, Max=240, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Light.Clock=v/10 end end })
+_LightR:AddToggle("RV_LShadows", { Text="global shadows", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Light.Shadows=v end end })
+_LightR:AddToggle("RV_LFogEndOn", { Text="custom fog end", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Light.UseFogEnd=v end end })
+_LightR:AddSlider("RV_LFogEnd", { Text="fog end", Default=995, Min=100, Max=10000, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Light.FogEnd=v end end })
+_LightR:AddToggle("RV_LFogStartOn", { Text="custom fog start", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Light.UseFogStart=v end end })
+_LightR:AddSlider("RV_LFogStart", { Text="fog start", Default=0, Min=0, Max=5000, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Light.FogStart=v end end })
+_LightR:AddColorPicker("RV_LAmbient", { Text="ambient", Default=Color3.fromRGB(40,80,255),
+    Callback=function(c) if _RVC() then _RVC().Light.Ambient=c end end })
+_LightR:AddColorPicker("RV_LCSB", { Text="color shift bottom", Default=Color3.fromRGB(20,60,255),
+    Callback=function(c) if _RVC() then _RVC().Light.CSB=c end end })
+_LightR:AddColorPicker("RV_LCST", { Text="color shift top", Default=Color3.fromRGB(20,60,255),
+    Callback=function(c) if _RVC() then _RVC().Light.CST=c end end })
+_LightR:AddColorPicker("RV_LFogColor", { Text="fog color", Default=Color3.fromRGB(80,40,255),
+    Callback=function(c) if _RVC() then _RVC().Light.FogColor=c end end })
+
+-- Skybox
+_SkyL:AddToggle("RV_SkyEnabled", { Text="enabled", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Sky.Enabled=v end end })
+_SkyL:AddDropdown("RV_SkySelected", { Text="preset", Default="Vertical Milky Way",
+    Values={"Vertical Milky Way","Night Stars","Clean Day"},
+    Callback=function(v) if _RVC() then _RVC().Sky.Selected=v end end })
+_SkyL:AddToggle("RV_SkyNoStars", { Text="no sun / stars", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Sky.NoSunStars=v end end })
+_SkyL:AddToggle("RV_SkyBloom", { Text="bloom", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Sky.Bloom=v end end })
+_SkyL:AddSlider("RV_SkyBInt", { Text="bloom intensity", Default=10, Min=0, Max=200, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Sky.BInt=v/100 end end })
+_SkyL:AddSlider("RV_SkyBSize", { Text="bloom size", Default=0, Min=0, Max=50, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Sky.BSize=v end end })
+_SkyL:AddSlider("RV_SkyBThresh", { Text="bloom threshold", Default=88, Min=0, Max=100, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Sky.BThresh=v/100 end end })
+_SkyL:AddToggle("RV_SkySunRays", { Text="sun rays", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Sky.SunRays=v end end })
+
+-- Camera
 _CamR:AddToggle("RV_CamAntiFlash", { Text="anti flashbang", Default=false,
     Callback=function(v) if _RVC() then _RVC().Cam.AntiFlash=v end end })
 _CamR:AddToggle("RV_CamFOVOn", { Text="fov changer", Default=false,
     Callback=function(v) if _RVC() then _RVC().Cam.FOVOn=v end end })
 _CamR:AddSlider("RV_CamFOV", { Text="fov", Default=60, Min=30, Max=120, Rounding=0,
     Callback=function(v) if _RVC() then _RVC().Cam.FOV=v end end })
-_CamR:AddSlider("RV_CamBlur", { Text="blur", Default=50, Min=0, Max=100, Rounding=0,
+_CamR:AddSlider("RV_CamBlur", { Text="blur", Default=50, Min=0, Max=300, Rounding=0,
     Callback=function(v) if _RVC() then _RVC().Cam.Blur=v/100 end end })
+
+-- Aura
+_AuraL:AddToggle("RV_AuraEnabled", { Text="aura enabled", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Aura.Enabled=v end end })
+_AuraL:AddToggle("RV_AuraRGB", { Text="rgb cycle", Default=false,
+    Callback=function(v) if _RVC() then _RVC().Aura.RGB=v end end })
+_AuraL:AddDropdown("RV_AuraMode", { Text="aura mode", Default="Cyber Blue",
+    Values={"Cyber Blue","Blood Red","Venom Green","Royal Purple","Sun God","Shadow"},
+    Callback=function(v) if _RVC() then _RVC().Aura.Mode=v end end })
+_AuraL:AddSlider("RV_AuraIntensity", { Text="intensity", Default=100, Min=30, Max=200, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Aura.Intensity=v/100 end end })
+_AuraL:AddSlider("RV_AuraSize", { Text="size", Default=100, Min=60, Max=180, Rounding=0,
+    Callback=function(v) if _RVC() then _RVC().Aura.Size=v/100 end end })
+_AuraL:AddToggle("RV_AuraLight", { Text="point light", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Aura.Light=v end end })
+_AuraL:AddToggle("RV_AuraRing", { Text="ring", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Aura.Ring=v end end })
+_AuraL:AddToggle("RV_AuraTrail", { Text="trail", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Aura.Trail=v end end })
+_AuraL:AddToggle("RV_AuraPulse", { Text="pulse", Default=true,
+    Callback=function(v) if _RVC() then _RVC().Aura.Pulse=v end end })
 
 -- ── ESP Tab (UeCrack) ────────────────────────────────────────────────────
 local _EL = _mlTabMap["EspBox"]:AddLeftGroupbox("esp")
