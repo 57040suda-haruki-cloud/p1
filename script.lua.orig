@@ -18947,19 +18947,17 @@ end
 
 end)()
 if game then runtime.Backend=createBackend(runtime)end
-if options.AutoStart~=false and game then
-    local library,why=runtime:StartUI()
-    if library then
-        local ok,result=pcall(createFrontend,runtime,library)
-        if not ok then runtime.LastError=result;warn("[Yabujin Recovery] Window failed: "..tostring(result))end
-    else runtime.LastError=why;warn("[Yabujin Recovery] UI failed: "..tostring(why))end
-end
+getgenv().__YabujinCF=createFrontend
 return runtime]=]
     local _yaby_fn, _yaby_err = loadstring(_yaby_src, "YabujinRecovery")
     if _yaby_fn then
         task.spawn(function()
-            local ok, result = pcall(_yaby_fn)
-            if not ok then warn("[UNCODE] Yabujin err: " .. tostring(result)) end
+            local _ok, _rt = pcall(_yaby_fn)
+            if _ok then
+                getgenv()._YabyRuntime = _rt
+            else
+                warn("[UNCODE] Yabujin err: " .. tostring(_rt))
+            end
         end)
     else
         warn("[UNCODE] Yabujin parse err: " .. tostring(_yaby_err))
@@ -18970,10 +18968,10 @@ end
 local _uiSec1Ok, _uiSec1Err = pcall(function() (function()  -- fresh 200-register pool: isolates all UI locals from outer fn's 201
 (function()  -- own 200-register pool: SK/SKR won't overflow outer fn's 201 locals
 local SK = Tabs.SkinChanger:AddLeftGroupbox("Yabujin")
-SK:AddLabel("Yabujin skin changer active.")
-SK:AddLabel("RShift to open Yabujin window.")
-SK:AddLabel("Use tabs: Cosmetics / Spoofers")
-SK:AddLabel("Inventory / Ranks / Resources")
+SK:AddLabel("Yabujin skin changer integrated.")
+SK:AddLabel("Tabs: Cosmetics / Inventory")
+SK:AddLabel("Spoofers / Ranks / Resources")
+SK:AddLabel("are available in this window.")
 local SKR = Tabs.SkinChanger:AddRightGroupbox("Info")
 SKR:AddLabel("Skin changer + spoofer")
 SKR:AddLabel("powered by Yabujin Recovery.")
@@ -91492,6 +91490,32 @@ do
     })
 end
 end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
+
+-- ============================================================
+--  Yabujin frontend: wire into existing UNCODE Linoria window
+-- ============================================================
+;(function()
+    task.spawn(function()
+        local _t0 = os.clock()
+        repeat task.wait(0.2) until
+            (getgenv()._YabyRuntime and getgenv().__YabujinCF)
+            or (os.clock() - _t0) > 25
+        local _rt = getgenv()._YabyRuntime
+        local _cf = getgenv().__YabujinCF
+        if not (_rt and _cf) then
+            warn('[UNCODE] Yabujin: runtime or frontend not ready after timeout')
+            return
+        end
+        local _origCW = Library.CreateWindow
+        Library.CreateWindow = function() return _lnWindow end
+        local _ok, _err = pcall(_cf, _rt, Library)
+        Library.CreateWindow = _origCW
+        if not _ok then
+            warn('[UNCODE] Yabujin frontend: ' .. tostring(_err))
+        end
+    end)
+end)()
+
 if not _uiSec1Ok then warn("[UNCODE] UI-section-1 failed (non-fatal): " .. tostring(_uiSec1Err)) end
 ;(function()  -- Quick Binds section removed (keybinds tab eliminated)
 -- placeholder: keybind UI removed per user request
