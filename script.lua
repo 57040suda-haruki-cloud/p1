@@ -1076,63 +1076,63 @@ end
 -- before the gameplay section; _mlTabMap persists as the single outer local.
 local _mlTabMap = {}
 do
-    -- Main cluster: Move | Fight | Util
-    local _mainMove,    _mainFight,   _mainUtil
-    -- World cluster: Orbit | Defense | Skin
-    local _wldOrbit,    _wldDef,      _wldSkin
+    -- Main cluster: Aim (SilentAim/Combat) | Rage (Ragebot) | AA | Move (Player/Movement)
+    local _mainAim,    _mainRage,   _mainAA,    _mainMove
+    -- World cluster: Change (world changer only)
+    local _wldChange
     -- ESP cluster: Box | Info | Sound
-    local _espBox,      _espInfo,     _espSound
+    local _espBox,     _espInfo,    _espSound
     -- Visual cluster: Chams | FX
-    local _visChams,    _visFX
-    -- HvH cluster: Aim | Rage | AA
-    local _hvhAim,      _hvhRage,     _hvhAA
-    -- Misc cluster: Rivals | Trans | Riot
-    local _miscRivals,  _miscTrans,   _miscRiot
+    local _visChams,   _visFX
+    -- HvH cluster: Rivals (Trap/Pred/VS) | Orbit | Defense
+    local _hvhRivals,  _hvhOrbit,   _hvhDef
+    -- Misc cluster: Trans | Sling | Riot
+    local _miscTrans,  _miscSling,  _miscRiot
     -- Setting cluster: UI | HUD | Save
-    local _setUI,       _setHUD,      _setSave
+    local _setUI,      _setHUD,     _setSave
 
-    _mainMove,   _mainFight,  _mainUtil  = window:tab({ name = "Main",    tabs = {"Move","Fight","Util"}     })
-    _wldOrbit,   _wldDef,     _wldSkin   = window:tab({ name = "World",   tabs = {"Orbit","Defense","Skin"}  })
-    _espBox,     _espInfo,    _espSound  = window:tab({ name = "ESP",     tabs = {"Box","Info","Sound"}      })
-    _visChams,   _visFX                  = window:tab({ name = "Visual",  tabs = {"Chams","FX"}             })
-    _hvhAim,     _hvhRage,    _hvhAA    = window:tab({ name = "HvH",     tabs = {"Aim","Rage","AA"}         })
-    _miscRivals, _miscTrans,  _miscRiot  = window:tab({ name = "Misc",    tabs = {"Rivals","Trans","Riot"}   })
-    _setUI,      _setHUD,     _setSave   = window:tab({ name = "Setting", tabs = {"UI","HUD","Save"}         })
+    _mainAim,    _mainRage,  _mainAA,  _mainMove = window:tab({ name = "Main",    tabs = {"Aim","Rage","AA","Move"}        })
+    _wldChange                                    = window:tab({ name = "World",   tabs = {"Change"}                        })
+    _espBox,     _espInfo,   _espSound            = window:tab({ name = "ESP",     tabs = {"Box","Info","Sound"}            })
+    _visChams,   _visFX                           = window:tab({ name = "Visual",  tabs = {"Chams","FX"}                   })
+    _hvhRivals,  _hvhOrbit,  _hvhDef             = window:tab({ name = "HvH",     tabs = {"Rivals","Orbit","Defense"}      })
+    _miscTrans,  _miscSling, _miscRiot            = window:tab({ name = "Misc",    tabs = {"Trans","Sling","Riot"}          })
+    _setUI,      _setHUD,    _setSave             = window:tab({ name = "Setting", tabs = {"UI","HUD","Save"}               })
 
-    -- Main: player movement / combat / utility
-    _mlTabMap["Player"]        = _mainMove
-    _mlTabMap["Movement"]      = _mainMove
-    _mlTabMap["PlayerFight"]   = _mainFight
-    _mlTabMap["PlayerUtil"]    = _mainUtil
-    _mlTabMap["Automation"]    = _mainUtil
+    -- Main: silent aim / ragebot / anti-aim / movement
+    _mlTabMap["Combat"]        = _mainAim        -- silent aim / kill aura
+    _mlTabMap["PlayerFight"]   = _mainAim        -- fight groupboxes (hitbox, damage mod)
+    _mlTabMap["HvH"]           = _mainRage       -- ragebot (rage engine)
+    _mlTabMap["AA"]            = _mainAA         -- anti-aim
+    _mlTabMap["Player"]        = _mainMove       -- player movement
+    _mlTabMap["Movement"]      = _mainMove       -- QoL movement
+    _mlTabMap["PlayerUtil"]    = _mainMove       -- utility (auto pickup, size mod, etc.)
+    _mlTabMap["Automation"]    = _mainMove       -- automation features
 
-    -- World: orbit / defense / skin changer
-    _mlTabMap["Orbit"]         = _wldOrbit
-    _mlTabMap["Defense"]       = _wldDef
-    _mlTabMap["SkinChanger"]   = _wldSkin
-    _mlTabMap["World"]         = _wldOrbit
+    -- World: world changer only
+    _mlTabMap["SkinChanger"]   = _wldChange      -- world/skin changer
+    _mlTabMap["World"]         = _wldChange      -- alias
 
     -- ESP: box / info / sound
     _mlTabMap["EspBox"]        = _espBox
     _mlTabMap["EspInfo"]       = _espInfo
     _mlTabMap["EspSound"]      = _espSound
 
-    -- Visual: weapon chams / FX + QoL
+    -- Visual: weapon chams / FX
     _mlTabMap["WepChams"]      = _visChams
     _mlTabMap["WepFX"]         = _visFX
     _mlTabMap["QolMisc"]       = _visFX
 
-    -- HvH: aim / rage / AA
-    _mlTabMap["Combat"]        = _hvhAim
-    _mlTabMap["HvH"]           = _hvhRage
-    _mlTabMap["AA"]            = _hvhAA
+    -- HvH: rivals-specific (trap/pred/vs) + orbit + defense
+    _mlTabMap["Trap"]          = _hvhRivals
+    _mlTabMap["Prediction"]    = _hvhRivals
+    _mlTabMap["VoidSpam"]      = _hvhRivals
+    _mlTabMap["Orbit"]         = _hvhOrbit
+    _mlTabMap["Defense"]       = _hvhDef
 
-    -- Misc: rivals features / translocation / riot
-    _mlTabMap["Trap"]          = _miscRivals
-    _mlTabMap["Prediction"]    = _miscRivals
-    _mlTabMap["VoidSpam"]      = _miscRivals
+    -- Misc: translocation / sling bypass / riot
     _mlTabMap["Translocation"] = _miscTrans
-    _mlTabMap["Sling Bypass"]  = _miscTrans
+    _mlTabMap["Sling Bypass"]  = _miscSling
     _mlTabMap["Riot"]          = _miscRiot
 
     -- Setting: UI config / HUD / save
