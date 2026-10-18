@@ -91646,6 +91646,116 @@ end)()
     })
 end)()
 
+-- ============================================================
+--  FFA Auto Collect (Tabs.Automation): balls + health pickups
+-- ============================================================
+;(function()
+    local _LP  = game:GetService('Players').LocalPlayer
+    local _RS  = game:GetService('RunService')
+    local _WS  = game:GetService('Workspace')
+
+    local _collectBalls  = false
+    local _collectHealth = false
+    local _collectRadius = 50
+    local _collectDelay  = 0.3
+
+    -- Case-insensitive substring patterns for each category
+    local _BALL_PATS = {
+        'abilityorb','abilityball','abilitydrop',
+        'droppedballs','droppedball','droporb',
+        'ballorb','orbball',
+        'ball','orb',
+    }
+    local _HEAL_PATS = {
+        'healorb','healthorb','healpack','healthpack',
+        'healthball','healball','healthpickup','healpickup',
+        'recoveryorb','healitem','healthitem',
+    }
+
+    local function _matches(name, pats)
+        local low = name:lower()
+        for _, p in ipairs(pats) do
+            if low:find(p, 1, true) then return true end
+        end
+        return false
+    end
+
+    local function _getHRP()
+        local c = _LP.Character
+        return c and c:FindFirstChild('HumanoidRootPart')
+    end
+    local function _getHum()
+        local c = _LP.Character
+        return c and c:FindFirstChildOfClass('Humanoid')
+    end
+
+    local _lastScan = 0
+
+    _RS.Heartbeat:Connect(function()
+        if not (_collectBalls or _collectHealth) then return end
+        local now = os.clock()
+        if now - _lastScan < _collectDelay then return end
+        _lastScan = now
+
+        local hrp = _getHRP()
+        if not hrp then return end
+        local hum = _getHum()
+        if not hum or hum.Health <= 0 then return end
+
+        local myPos = hrp.Position
+        local bestDist = _collectRadius + 1
+        local bestPart = nil
+
+        for _, obj in ipairs(_WS:GetDescendants()) do
+            if not obj:IsA('BasePart') then continue end
+            local matched = false
+            if _collectBalls  and _matches(obj.Name, _BALL_PATS) then matched = true end
+            if _collectHealth and _matches(obj.Name, _HEAL_PATS) then matched = true end
+            if not matched then continue end
+            local d = (obj.Position - myPos).Magnitude
+            if d < bestDist then
+                bestDist = d
+                bestPart = obj
+            end
+        end
+
+        if bestPart then
+            pcall(function()
+                hrp.CFrame = CFrame.new(bestPart.Position + Vector3.new(0, 3, 0))
+            end)
+        end
+    end)
+
+    local _AGL = Tabs.Automation:AddLeftGroupbox('FFA Auto Collect')
+    local _AGR = Tabs.Automation:AddRightGroupbox('Collect Config')
+
+    _AGL:AddToggle('FFACollectBalls', {
+        Text     = 'Auto Collect Balls',
+        Default  = false,
+        Tooltip  = 'Auto-collect dropped ability orbs/balls in FFA',
+        Callback = function(v) _collectBalls = v end,
+    })
+    _AGL:AddToggle('FFACollectHealth', {
+        Text     = 'Auto Collect Health',
+        Default  = false,
+        Tooltip  = 'Auto-collect health pickups in FFA',
+        Callback = function(v) _collectHealth = v end,
+    })
+
+    _AGR:AddSlider('FFACollectRadius', {
+        Text     = 'Collect Radius',
+        Default  = 50, Min = 5, Max = 500, Rounding = 0,
+        Tooltip  = 'Max pickup distance in studs',
+        Callback = function(v) _collectRadius = v end,
+    })
+    _AGR:AddSlider('FFACollectInterval', {
+        Text     = 'Scan Interval (x0.1s)',
+        Default  = 3, Min = 1, Max = 20, Rounding = 0,
+        Tooltip  = 'Scan frequency: value x 0.1 seconds (3 = 0.3s)',
+        Callback = function(v) _collectDelay = v * 0.1 end,
+    })
+end)()
+
 if not _uiSec1Ok then warn("[UNCODE] UI-section-1 failed (non-fatal): " .. tostring(_uiSec1Err)) end
 ;(function()  -- Quick Binds section removed (keybinds tab eliminated)
 -- placeholder: keybind UI removed per user request
