@@ -91656,7 +91656,6 @@ end)()
 
     local _collectBalls  = false
     local _collectHealth = false
-    local _collectRadius = 50
     local _collectDelay  = 0.3
 
     -- Case-insensitive substring patterns for each category
@@ -91702,57 +91701,31 @@ end)()
         local hum = _getHum()
         if not hum or hum.Health <= 0 then return end
 
-        local myPos = hrp.Position
-        local bestDist = _collectRadius + 1
-        local bestPart = nil
-
         for _, obj in ipairs(_WS:GetDescendants()) do
             if not obj:IsA('BasePart') then continue end
             local matched = false
             if _collectBalls  and _matches(obj.Name, _BALL_PATS) then matched = true end
             if _collectHealth and _matches(obj.Name, _HEAL_PATS) then matched = true end
             if not matched then continue end
-            local d = (obj.Position - myPos).Magnitude
-            if d < bestDist then
-                bestDist = d
-                bestPart = obj
-            end
-        end
-
-        if bestPart then
             pcall(function()
-                hrp.CFrame = CFrame.new(bestPart.Position + Vector3.new(0, 3, 0))
+                hrp.CFrame = CFrame.new(obj.Position + Vector3.new(0, 3, 0))
             end)
         end
     end)
 
     local _AGL = Tabs.Automation:AddLeftGroupbox('FFA Auto Collect')
-    local _AGR = Tabs.Automation:AddRightGroupbox('Collect Config')
 
     _AGL:AddToggle('FFACollectBalls', {
         Text     = 'Auto Collect Balls',
         Default  = false,
-        Tooltip  = 'Auto-collect dropped ability orbs/balls in FFA',
+        Tooltip  = 'Auto-collect all dropped ability orbs/balls in FFA',
         Callback = function(v) _collectBalls = v end,
     })
     _AGL:AddToggle('FFACollectHealth', {
         Text     = 'Auto Collect Health',
         Default  = false,
-        Tooltip  = 'Auto-collect health pickups in FFA',
+        Tooltip  = 'Auto-collect all health pickups in FFA',
         Callback = function(v) _collectHealth = v end,
-    })
-
-    _AGR:AddSlider('FFACollectRadius', {
-        Text     = 'Collect Radius',
-        Default  = 50, Min = 5, Max = 500, Rounding = 0,
-        Tooltip  = 'Max pickup distance in studs',
-        Callback = function(v) _collectRadius = v end,
-    })
-    _AGR:AddSlider('FFACollectInterval', {
-        Text     = 'Scan Interval (x0.1s)',
-        Default  = 3, Min = 1, Max = 20, Rounding = 0,
-        Tooltip  = 'Scan frequency: value x 0.1 seconds (3 = 0.3s)',
-        Callback = function(v) _collectDelay = v * 0.1 end,
     })
 end)()
 
