@@ -91492,7 +91492,7 @@ end
 end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
 
 -- ============================================================
---  Yabujin frontend: wire into existing UNCODE Linoria window
+--  Yabujin frontend: inject groupboxes into existing UNCODE tabs
 -- ============================================================
 ;(function()
     task.spawn(function()
@@ -91506,8 +91506,25 @@ end)() end) -- closes L4222 UI section 1 IIFE + pcall wrapper
             warn('[UNCODE] Yabujin: runtime or frontend not ready after timeout')
             return
         end
+        -- Map each Yabujin tab name to an existing UNCODE tab
+        local _yTabMap = {
+            ['Spoofers']         = Tabs.PlayerSpoof,
+            ['Cosmetics']        = Tabs.SkinChanger,
+            ['Inventory']        = Tabs.SkinChanger,
+            ['Custom cosmetics'] = Tabs.SkinChanger,
+            ['Ranks']            = Tabs.SkinChanger,
+            ['Resources']        = Tabs.SkinChanger,
+            ['Visuals']          = Tabs.SkinChanger,
+            ['Settings']         = Tabs.SkinChanger,
+        }
+        -- Fake window: AddTab returns the mapped UNCODE tab
+        local _fakeWin = {}
+        _fakeWin.AddTab = function(_, name, _icon)
+            return _yTabMap[name] or Tabs.SkinChanger
+        end
+        -- Intercept CreateWindow so createFrontend gets our fake window
         local _origCW = Library.CreateWindow
-        Library.CreateWindow = function() return _lnWindow end
+        Library.CreateWindow = function() return _fakeWin end
         local _ok, _err = pcall(_cf, _rt, Library)
         Library.CreateWindow = _origCW
         if not _ok then
