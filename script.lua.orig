@@ -1044,37 +1044,47 @@ local function wrapTab(mlSubTab)
     return wt
 end
 
--- ── Linoria sidebar tabs (4) + UE-style tabbox sub-tabs ────────────────────
--- 4 sidebar tabs, each containing a Linoria tabbox with named sub-tabs,
--- matching the UE navigation style the user expects:
+-- ── Linoria sidebar tabs (7) + UE-style tabbox sub-tabs ────────────────────
+-- 7 sidebar tabs mirroring UE's category grouping, each with tabbox sub-tabs:
 --
---   combat  ┬ Aim    → Combat (Silent Aim / Aimbot), PlayerFight (Kill Aura)
---            ├ HvH   → HvH (Ragebot, Triggerbot, Flickbot)
---            ├ Void  → VoidSpam, Trap, Prediction, Orbit
---            └ AA    → Defense (Anti-Aim, Range Ext), AA
+--   combat   ┬ Aim    → Combat (Silent Aim, Aimbot)
+--             ├ HvH   → HvH (Ragebot, Triggerbot, Flickbot)
+--             └ Fight → PlayerFight (Kill Aura)
 --
---   player  ┬ Move  → Player (Movement, Camera, Bhop), Movement
---            ├ Util  → PlayerUtil (Item Mods, Auto Pickup, Auto ADS)
---            └ Auto  → Automation, Spoofer, PlayerSpoofer, PlayerSpoof
+--   void     ┬ Void  → VoidSpam
+--             ├ Trap  → Trap
+--             ├ Orbit → Orbit
+--             └ Pred  → Prediction
 --
---   world   ┬ World  → World (World Changer), SkinChanger
---            ├ ESP   → EspBox, EspInfo, EspSound
---            └ Visual→ WepChams, WepFX, QolMisc
+--   defense  ┬ AA     → AA
+--             └ Shield → Defense (Anti-Aim, Range Ext)
 --
---   config  ┬ Tools  → Translocation, Sling Bypass, Riot, Tools
---            └ Config → HUD, Save, Keybinds, UI
+--   player   ┬ Move  → Player, Movement
+--             ├ Util  → PlayerUtil
+--             └ Auto  → Automation, Spoofer, PlayerSpoofer, PlayerSpoof
+--
+--   world    ┬ World → World, SkinChanger
+--             └ Misc  → Translocation, Sling Bypass, Riot
+--
+--   visual   ┬ ESP   → EspBox, EspInfo, EspSound
+--             ├ Chams → WepChams, WepFX
+--             └ Misc  → QolMisc
+--
+--   config   ┬ HUD   → HUD
+--             ├ Save  → Save, Keybinds
+--             └ UI    → UI, Tools
 --
 -- WJ sub-tab pages (Linoria tabbox) are patched with fake
 -- AddLeftGroupbox / AddRightGroupbox that delegate element calls
--- to the WJ itself (single-column; WJ.Container has UIListLayout).
+-- to WJ itself (single-column via WJ.Container UIListLayout).
 --
 -- window:tab() creates ONE Linoria sidebar tab per name.
 -- _mlTabMap persists after the do..end; locals are freed.
 local _mlTabMap = {}
 do
     -- Fake groupbox: routes AddToggle/AddSlider/etc. to a WJ sub-tab.
-    -- __index forwards any unknown key to the parent WJ object so all
-    -- Linoria element methods work transparently.
+    -- __index forwards any unknown key to the parent WJ so all Linoria
+    -- element methods work transparently.
     local function _wjSection(wj)
         local gb = {}
         setmetatable(gb, {__index = function(_, k)
@@ -1084,16 +1094,13 @@ do
             end
             return fn
         end})
-        -- Prevent infinite nesting if caller tries AddLeftGroupbox on gb
         gb.AddLeftGroupbox  = function() return gb end
         gb.AddRightGroupbox = function() return gb end
         return gb
     end
 
-    -- Patch a Linoria WJ (tabbox sub-tab page) so it accepts the
-    -- AddLeftGroupbox / AddRightGroupbox calls that UE modules make.
-    -- A label is inserted as a visual section title, then a fake groupbox
-    -- delegates all element calls back to the same WJ.
+    -- Patch a Linoria WJ (tabbox sub-tab page) so it accepts
+    -- AddLeftGroupbox / AddRightGroupbox calls from UE modules.
     local function _patchWJ(wj)
         wj.AddLeftGroupbox = function(_, title)
             pcall(function() wj:AddLabel(title or "") end)
@@ -1106,54 +1113,84 @@ do
         return wj
     end
 
-    -- 4 Linoria sidebar tabs
-    local _sAim    = window:tab({ name = "combat", tabs = {"combat"} })
-    local _sPlayer = window:tab({ name = "player", tabs = {"player"} })
-    local _sWorld  = window:tab({ name = "world",  tabs = {"world"}  })
-    local _sConfig = window:tab({ name = "config", tabs = {"config"} })
+    -- 7 Linoria sidebar tabs
+    local _sCombat  = window:tab({ name = "combat",  tabs = {"combat"}  })
+    local _sVoid    = window:tab({ name = "void",    tabs = {"void"}    })
+    local _sDefense = window:tab({ name = "defense", tabs = {"defense"} })
+    local _sPlayer  = window:tab({ name = "player",  tabs = {"player"}  })
+    local _sWorld   = window:tab({ name = "world",   tabs = {"world"}   })
+    local _sVisual  = window:tab({ name = "visual",  tabs = {"visual"}  })
+    local _sConfig  = window:tab({ name = "config",  tabs = {"config"}  })
 
     -- Tabboxes inside each sidebar tab (left column, Side=1)
-    local _tbAim    = _sAim:AddTabbox({Side=1})
-    local _tbPlayer = _sPlayer:AddTabbox({Side=1})
-    local _tbWorld  = _sWorld:AddTabbox({Side=1})
-    local _tbConfig = _sConfig:AddTabbox({Side=1})
+    local _tbCombat  = _sCombat:AddTabbox({Side=1})
+    local _tbVoid    = _sVoid:AddTabbox({Side=1})
+    local _tbDefense = _sDefense:AddTabbox({Side=1})
+    local _tbPlayer  = _sPlayer:AddTabbox({Side=1})
+    local _tbWorld   = _sWorld:AddTabbox({Side=1})
+    local _tbVisual  = _sVisual:AddTabbox({Side=1})
+    local _tbConfig  = _sConfig:AddTabbox({Side=1})
 
-    -- combat sub-tabs
-    local _wjAim  = _patchWJ(_tbAim:AddTab("Aim"))
-    local _wjHvH  = _patchWJ(_tbAim:AddTab("HvH"))
-    local _wjVoid = _patchWJ(_tbAim:AddTab("Void"))
-    local _wjAA   = _patchWJ(_tbAim:AddTab("AA"))
+    -- combat: Aim | HvH | Fight
+    local _wjAim   = _patchWJ(_tbCombat:AddTab("Aim"))
+    local _wjHvH   = _patchWJ(_tbCombat:AddTab("HvH"))
+    local _wjFight = _patchWJ(_tbCombat:AddTab("Fight"))
 
-    -- player sub-tabs
+    -- void: Void | Trap | Orbit | Pred
+    local _wjVoid  = _patchWJ(_tbVoid:AddTab("Void"))
+    local _wjTrap  = _patchWJ(_tbVoid:AddTab("Trap"))
+    local _wjOrbit = _patchWJ(_tbVoid:AddTab("Orbit"))
+    local _wjPred  = _patchWJ(_tbVoid:AddTab("Pred"))
+
+    -- defense: AA | Shield
+    local _wjAA     = _patchWJ(_tbDefense:AddTab("AA"))
+    local _wjShield = _patchWJ(_tbDefense:AddTab("Shield"))
+
+    -- player: Move | Util | Auto
     local _wjMove = _patchWJ(_tbPlayer:AddTab("Move"))
     local _wjUtil = _patchWJ(_tbPlayer:AddTab("Util"))
     local _wjAuto = _patchWJ(_tbPlayer:AddTab("Auto"))
 
-    -- world sub-tabs
-    local _wjWorld  = _patchWJ(_tbWorld:AddTab("World"))
-    local _wjEsp    = _patchWJ(_tbWorld:AddTab("ESP"))
-    local _wjVisual = _patchWJ(_tbWorld:AddTab("Visual"))
+    -- world: World | Misc
+    local _wjWorld = _patchWJ(_tbWorld:AddTab("World"))
+    local _wjMisc  = _patchWJ(_tbWorld:AddTab("Misc"))
 
-    -- config sub-tabs
-    local _wjTools    = _patchWJ(_tbConfig:AddTab("Tools"))
-    local _wjSettings = _patchWJ(_tbConfig:AddTab("Config"))
+    -- visual: ESP | Chams | Misc
+    local _wjEsp    = _patchWJ(_tbVisual:AddTab("ESP"))
+    local _wjChams  = _patchWJ(_tbVisual:AddTab("Chams"))
+    local _wjFX     = _patchWJ(_tbVisual:AddTab("FX"))
+
+    -- config: HUD | Save | UI
+    local _wjHUD  = _patchWJ(_tbConfig:AddTab("HUD"))
+    local _wjSave = _patchWJ(_tbConfig:AddTab("Save"))
+    local _wjUI   = _patchWJ(_tbConfig:AddTab("UI"))
 
     -- combat → Aim
     _mlTabMap["Combat"]      = _wjAim
-    _mlTabMap["PlayerFight"] = _wjAim
 
     -- combat → HvH
     _mlTabMap["HvH"]         = _wjHvH
 
-    -- combat → Void
-    _mlTabMap["VoidSpam"]    = _wjVoid
-    _mlTabMap["Trap"]        = _wjVoid
-    _mlTabMap["Prediction"]  = _wjVoid
-    _mlTabMap["Orbit"]       = _wjVoid
+    -- combat → Fight
+    _mlTabMap["PlayerFight"] = _wjFight
 
-    -- combat → AA
-    _mlTabMap["Defense"]     = _wjAA
+    -- void → Void
+    _mlTabMap["VoidSpam"]    = _wjVoid
+
+    -- void → Trap
+    _mlTabMap["Trap"]        = _wjTrap
+
+    -- void → Orbit
+    _mlTabMap["Orbit"]       = _wjOrbit
+
+    -- void → Pred
+    _mlTabMap["Prediction"]  = _wjPred
+
+    -- defense → AA
     _mlTabMap["AA"]          = _wjAA
+
+    -- defense → Shield
+    _mlTabMap["Defense"]     = _wjShield
 
     -- player → Move
     _mlTabMap["Player"]      = _wjMove
@@ -1172,29 +1209,35 @@ do
     _mlTabMap["World"]       = _wjWorld
     _mlTabMap["SkinChanger"] = _wjWorld
 
-    -- world → ESP
+    -- world → Misc
+    _mlTabMap["Translocation"] = _wjMisc
+    _mlTabMap["Sling Bypass"]  = _wjMisc
+    _mlTabMap["Riot"]          = _wjMisc
+
+    -- visual → ESP
     _mlTabMap["EspBox"]   = _wjEsp
     _mlTabMap["EspInfo"]  = _wjEsp
     _mlTabMap["EspSound"] = _wjEsp
 
-    -- world → Visual
-    _mlTabMap["WepChams"] = _wjVisual
-    _mlTabMap["WepFX"]    = _wjVisual
-    _mlTabMap["QolMisc"]  = _wjVisual
+    -- visual → Chams
+    _mlTabMap["WepChams"] = _wjChams
+    _mlTabMap["WepFX"]    = _wjChams
 
-    -- config → Tools
-    _mlTabMap["Translocation"] = _wjTools
-    _mlTabMap["Sling Bypass"]  = _wjTools
-    _mlTabMap["Riot"]          = _wjTools
-    _mlTabMap["Tools"]         = _wjTools
+    -- visual → FX
+    _mlTabMap["QolMisc"]  = _wjFX
 
-    -- config → Config
-    _mlTabMap["HUD"]      = _wjSettings
-    _mlTabMap["Save"]     = _wjSettings
-    _mlTabMap["Keybinds"] = _wjSettings
-    _mlTabMap["UI"]       = _wjSettings
+    -- config → HUD
+    _mlTabMap["HUD"]      = _wjHUD
+
+    -- config → Save
+    _mlTabMap["Save"]     = _wjSave
+    _mlTabMap["Keybinds"] = _wjSave
+
+    -- config → UI
+    _mlTabMap["UI"]       = _wjUI
+    _mlTabMap["Tools"]    = _wjUI
 end
--- All locals freed; _mlTabMap persists (4 sidebar tabs, UE-style sub-tab navigation)
+-- All locals freed; _mlTabMap persists (7 sidebar tabs, UE-style sub-tab navigation)
 
 -- Fallback no-op tab (returns Obsidian-style API directly; never reaches wrapTab)
 local function _noopTab()
