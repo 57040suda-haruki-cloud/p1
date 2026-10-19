@@ -10,7 +10,7 @@ Library.ForceCheckbox = false
 Library.ShowToggleFrameInKeybinds = true
 
 local Window = Library:CreateWindow({
-    Title = "UNCODE",
+    Title = "Lua X Premium",
     Footer = "v5.0 made by chicken roaxi visnokkk milad dani",
     Icon = 0,
     NotifySide = "Left",

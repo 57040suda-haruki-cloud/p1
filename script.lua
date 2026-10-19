@@ -1,37 +1,41 @@
--- UNCODE
--- Engine: UeCrack (Visuals/ESP/Combat/Aimbot) + LuaX (HvH/Void/Orbit/Prediction)
--- Executor: Delta (iOS)
+-- UNCODE  |  Engine: UeCrack + LuaX  |  Executor: Delta (iOS)
 
 local BASE = "https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/"
 
-local function safe_load(url, label)
-    local ok, src = pcall(function() return game:HttpGet(url, true) end)
+local function fetch(name)
+    local ok, src = pcall(function() return game:HttpGet(BASE .. name, true) end)
     if not ok or not src or src == "" then
-        warn("[UNCODE] HttpGet failed: " .. label)
-        return
+        warn("[UNCODE] fetch failed: " .. name); return ""
     end
-    local fn, err = loadstring(src, label)
-    if not fn then
-        warn("[UNCODE] loadstring failed (" .. label .. "): " .. tostring(err))
-        return
-    end
-    local ok2, err2 = pcall(fn)
-    if not ok2 then
-        warn("[UNCODE] runtime error (" .. label .. "): " .. tostring(err2))
-    end
+    return src
 end
 
--- UeCrack: Visuals / ESP / Combat / Aimbot / Silent Aim etc.
+-- Reassemble UeCrack from 4 chunks in memory, then run it
 task.spawn(function()
     task.wait(0.5)
-    safe_load(BASE .. "ue.lua", "UeCrack")
+    local parts = {}
+    for i = 1, 4 do
+        parts[i] = fetch("ue_" .. i .. ".lua")
+        task.wait(0.1)
+    end
+    local full = table.concat(parts)
+    parts = nil
+    local fn, err = loadstring(full, "UeCrack")
+    full = nil
+    if not fn then warn("[UNCODE] UeCrack loadstring: " .. tostring(err)); return end
+    local ok2, err2 = pcall(fn)
+    if not ok2 then warn("[UNCODE] UeCrack runtime: " .. tostring(err2)) end
 end)
 
--- LuaX: HvH / Void / Orbit / Prediction / Sling Bypass / Riot / Defense
--- Waits for UeCrack to finish initializing (UE_LOADED flag)
+-- LuaX: Void / Orbit / Prediction / Sling Bypass / Riot / Defense / Settings
 task.spawn(function()
     local t = 0
-    repeat task.wait(0.3); t = t + 0.3 until getgenv().UE_LOADED == true or t >= 90
+    repeat task.wait(0.3); t += 0.3 until getgenv().UE_LOADED == true or t >= 90
     task.wait(0.5)
-    safe_load(BASE .. "luax.lua", "LuaX")
+    local src = fetch("luax.lua")
+    if src == "" then return end
+    local fn, err = loadstring(src, "LuaX")
+    if not fn then warn("[UNCODE] LuaX loadstring: " .. tostring(err)); return end
+    local ok2, err2 = pcall(fn)
+    if not ok2 then warn("[UNCODE] LuaX runtime: " .. tostring(err2)) end
 end)
