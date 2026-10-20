@@ -1084,7 +1084,8 @@ end
 -- that delegate element calls to WJ via __index metatable forwarding.
 -- window:tab() creates ONE Linoria sidebar tab per name.
 -- _mlTabMap persists after the do..end; locals are freed.
-local _mlTabMap = {}
+local _mlTabMap    = {}
+local _mlTabBoxMap = {}   -- maps tab name -> parent tabbox (for UeCrack AddTabbox support)
 do
     -- Fake groupbox: all element method calls (AddToggle, AddSlider, …)
     -- are forwarded to the parent WJ sub-tab via __index.
@@ -1239,42 +1240,96 @@ do
     _mlTabMap["UI"]       = _wjUI
     _mlTabMap["Tools"]    = _wjUI
     _mlTabMap["Settings"] = _wjUI   -- LuaX Settings tab
+
+    -- UeCrack (Unnamed Enhancements - Cracked) tab name aliases
+    -- UeCrack sidebar categories -> nearest UNCODE sub-tab
+    _mlTabMap["Players"]    = _wjAA    -- UE Players section (team/target filter)
+    _mlTabMap["Cosmetics"]  = _wjChams -- UE cosmetics / chams
+    _mlTabMap["Character"]  = _wjMove  -- UE character movement settings
+    _mlTabMap["Utility"]    = _wjUtil  -- UE utility section
+    _mlTabMap["Misc"]       = _wjMisc  -- UE misc / world
+
+    -- _mlTabBoxMap: category name -> tabbox, so UeCrack's
+    --   window:AddTab("Combat"):AddTabbox():AddTab("Aimbot")
+    -- creates new sub-tabs directly inside the existing sidebar tabs.
+    _mlTabBoxMap["Combat"]    = _tbCombat
+    _mlTabBoxMap["HvH"]       = _tbCombat
+    _mlTabBoxMap["PlayerFight"] = _tbCombat
+    _mlTabBoxMap["VoidSpam"]  = _tbVoid
+    _mlTabBoxMap["Void"]      = _tbVoid
+    _mlTabBoxMap["Orbit"]     = _tbVoid
+    _mlTabBoxMap["Prediction"] = _tbVoid
+    _mlTabBoxMap["Player"]    = _tbPlayer
+    _mlTabBoxMap["Players"]   = _tbPlayer
+    _mlTabBoxMap["Character"] = _tbPlayer
+    _mlTabBoxMap["Defense"]   = _tbCombat
+    _mlTabBoxMap["AA"]        = _tbCombat
+    _mlTabBoxMap["World"]     = _tbWorld
+    _mlTabBoxMap["Misc"]      = _tbWorld
+    _mlTabBoxMap["Cosmetics"] = _tbVisual
+    _mlTabBoxMap["Visuals"]   = _tbVisual
+    _mlTabBoxMap["Visual"]    = _tbVisual
+    _mlTabBoxMap["Config"]    = _tbConfig
+    _mlTabBoxMap["Settings"]  = _tbConfig
+    _mlTabBoxMap["Utility"]   = _tbConfig
+    _mlTabBoxMap["UI"]        = _tbConfig
+    _mlTabBoxMap["Tools"]     = _tbConfig
 end
 -- All locals freed; _mlTabMap persists (6 sidebar tabs, mirrors UE structure)
 
--- Fallback no-op tab (returns Obsidian-style API directly; never reaches wrapTab)
+-- Fallback no-op (absorbs any method call chain without errors)
+local function _noopSec()
+    local ns = {}
+    local function _noop(...) return setmetatable({}, {__index=function() return _noop end}) end
+    return setmetatable(ns, {__index = function() return _noop end})
+end
 local function _noopTab()
-    local function _noopSec()
-        local ns = {}
-        local function _noop() return setmetatable({}, {__index=function() return _noop end}) end
-        ns.AddToggle        = _noop
-        ns.AddSlider        = _noop
-        ns.AddDropdown      = _noop
-        ns.AddMultiDropdown = _noop
-        ns.AddLabel         = _noop
-        ns.AddButton        = _noop
-        ns.AddKeybind       = _noop
-        ns.AddColorPicker   = _noop
-        ns.AddKeyPicker     = _noop
-        return ns
+    local nt = {}
+    local function _noopTB()
+        return { AddTab = function() return nt end }
     end
-    return {
-        AddLeftGroupbox  = function(self, name) return _noopSec() end,
-        AddRightGroupbox = function(self, name) return _noopSec() end,
-        AddSection       = function(self, opts) return _noopSec() end,
-    }
+    nt.AddLeftGroupbox  = function() return _noopSec() end
+    nt.AddRightGroupbox = function() return _noopSec() end
+    nt.AddSection       = function() return _noopSec() end
+    nt.AddTabbox        = _noopTB
+    return nt
 end
 
 local Window = {}
 function Window:AddTab(name, _icon)
-    local t = _mlTabMap[name]
-    if not t then
+    local t  = _mlTabMap[name]
+    local tb = _mlTabBoxMap[name]
+
+    if not t and not tb then
         warn("[UNCODE] Window:AddTab — unknown tab name: " .. tostring(name))
         return _noopTab()
     end
-    -- Linoria tabs already have AddLeftGroupbox/AddRightGroupbox natively
-    if t.AddLeftGroupbox then return t end
-    return wrapTab(t)
+
+    -- Build a unified wrapper that supports BOTH call patterns:
+    --   LuaX pattern:    tab:AddLeftGroupbox("Title") -> element section
+    --   UeCrack pattern: tab:AddTabbox():AddTab("Name"):AddLeftGroupbox("Title")
+    local base = t or _noopTab()
+    local wrapper = {}
+
+    -- AddTabbox: returns the real tabbox so UeCrack can call :AddTab("Aimbot")
+    -- which creates a brand-new sub-tab inside the existing sidebar tab.
+    wrapper.AddTabbox = function(_, opts)
+        if tb then return tb end
+        return { AddTab = function(_, n) return base end }
+    end
+
+    -- Direct groupbox calls (LuaX pattern) forward to the default sub-tab
+    wrapper.AddLeftGroupbox = function(_, title)
+        if base.AddLeftGroupbox then return base:AddLeftGroupbox(title) end
+        return _noopSec()
+    end
+    wrapper.AddRightGroupbox = function(_, title)
+        if base.AddRightGroupbox then return base:AddRightGroupbox(title) end
+        return _noopSec()
+    end
+
+    setmetatable(wrapper, {__index = base})
+    return wrapper
 end
 -- Expose Window shim globally so LuaX can route through it
 getgenv()._UNCODE_Window = Window
@@ -93229,8 +93284,16 @@ end)()  -- close outer fn L388
 
 
 -- ============================================================
--- UeCrack engine: Aimbot / ESP / Visuals (game logic only)
--- Runs in background; its own ScreenGui is hidden after load.
+-- UeCrack engine: Aimbot / ESP / Visuals
+-- Integration strategy:
+--   UeCrack's VM sets getgenv().Library = uiLibrary BEFORE
+--   calling uiLibrary:CreateWindow(). We hook __newindex on
+--   getgenv() to catch that assignment and immediately patch
+--   Library.CreateWindow to return UNCODE's Window shim.
+--   Result: all UeCrack AddTab() calls route into UNCODE's
+--   Linoria window via _mlTabMap / _mlTabBoxMap.
+--   Fallback: if the hook fires after CreateWindow, we hide
+--   UeCrack's ScreenGui so only UNCODE's window is visible.
 -- ============================================================
 task.spawn(function()
     task.wait(1.0)
@@ -93250,24 +93313,80 @@ task.spawn(function()
     full = nil
     if not fn then warn("[UNCODE] UeCrack parse: " .. tostring(err)); return end
 
-    -- Snapshot ScreenGuis before load so we can hide the new ones
-    local pg = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    -- Step 1: hook getgenv().__newindex to intercept Library assignment
+    local _genv          = getgenv()
+    local _uncodeWin     = rawget(_genv, '_UNCODE_Window')
+    local _intercepted   = false
+    local _cleanupHook   = nil
+
+    pcall(function()
+        local _origMT  = getmetatable(_genv)
+        local _patchMT = _origMT or {}
+        local _origNI  = _origMT and rawget(_origMT, '__newindex')
+
+        _patchMT.__newindex = function(t, k, v)
+            if k == 'Library' and type(v) == 'table' and _uncodeWin and not _intercepted then
+                -- Patch Library.CreateWindow to return UNCODE's Window shim.
+                -- Since uiLibrary and getgenv().Library are the SAME table,
+                -- this patch also affects the local uiLibrary inside UeCrack's VM.
+                rawset(v, 'CreateWindow', function(self, opts)
+                    _intercepted = true
+                    warn("[UNCODE] UeCrack CreateWindow intercepted -> UNCODE window")
+                    return _uncodeWin
+                end)
+            end
+            if _origNI then
+                return _origNI(t, k, v)
+            else
+                rawset(t, k, v)
+            end
+        end
+
+        if not _origMT then
+            setmetatable(_genv, _patchMT)
+        end
+
+        _cleanupHook = function()
+            pcall(function()
+                local mt = getmetatable(_genv)
+                if mt then rawset(mt, '__newindex', _origNI) end
+            end)
+        end
+    end)
+
+    -- Step 2: snapshot existing ScreenGuis (fallback for if hook misses)
+    local pg   = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
     local snap = {}
     for _, sg in ipairs(pg:GetChildren()) do
         if sg:IsA("ScreenGui") then snap[sg] = true end
     end
 
+    -- Step 3: run UeCrack
     local ok2, err2 = pcall(fn)
-    if not ok2 then warn("[UNCODE] UeCrack runtime: " .. tostring(err2)); return end
 
-    -- Hide UeCrack ScreenGuis (game logic still runs)
+    -- Step 4: clean up hook regardless of result
+    if _cleanupHook then pcall(_cleanupHook) end
+
+    if not ok2 then
+        warn("[UNCODE] UeCrack runtime error: " .. tostring(err2))
+        return
+    end
+
     task.wait(0.5)
-    for _, sg in ipairs(pg:GetChildren()) do
-        if sg:IsA("ScreenGui") and not snap[sg] then
-            pcall(function() sg.Enabled = false end)
+
+    if _intercepted then
+        warn("[UNCODE] UeCrack fully integrated into UNCODE window")
+    else
+        -- Hook fired too late (Library was set after CreateWindow),
+        -- or getgenv() metatable was not patchable.
+        -- Hide UeCrack's ScreenGuis; game logic still runs.
+        warn("[UNCODE] UeCrack hook missed -> hiding ScreenGuis (game logic active)")
+        for _, sg in ipairs(pg:GetChildren()) do
+            if sg:IsA("ScreenGui") and not snap[sg] then
+                pcall(function() sg.Enabled = false end)
+            end
         end
     end
-    warn("[UNCODE] UeCrack engine loaded (UI hidden)")
 end)
 
 -- ============================================================
