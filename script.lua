@@ -3,17 +3,19 @@
 -- Intercepts UE (UeCrack) Linoria Library via __newindex hook on getgenv().
 -- Creates the UNCODE window with 6 sidebar tabs:
 --   Combat  /  HvH  /  ESP  /  Visual  /  Misc  /  Setting
--- Routing tables let UeCrack + LuaX + native feature tabs land here.
+--
+-- UeCrack is the PRIMARY engine.
+-- Two routing tables handle both UE patterns:
+--   mlTabBoxMap  name -> tabbox   (AddTabbox pattern: tab:AddTabbox():AddTab("Aimbot"):...)
+--   mlTabMap     name -> WJ tab   (direct pattern:    tab:AddLeftGroupbox("X"):...)
+-- Both patterns are supported so no UeCrack feature lands in a noop.
 --===========================================================================
 if not game:IsLoaded() then game.Loaded:Wait() end
 
--- ── Routing tables (populated inside onLibraryReady) ─────────────────────────
--- mlTabMap    : tab name -> WJ sub-tab  (for simple :AddLeftGroupbox pattern)
--- mlTabBoxMap : tab name -> tabbox      (for UE :AddTabbox():AddTab() pattern)
 local _mlTabMap    = {}
 local _mlTabBoxMap = {}
 
--- ── Noop helpers ─────────────────────────────────────────────────────────────
+-- noop helpers so missing names silently discard calls
 local function _noopSec()
     local function _noop(...) return setmetatable({}, {__index=function() return _noop end}) end
     return setmetatable({}, {__index=function() return _noop end})
@@ -27,24 +29,25 @@ local function _noopTab()
     return nt
 end
 
--- ── Window shim (wraps UE Linoria window; exposes routing for all engines) ───
+-- Window shim: wraps UE Linoria window, routes all engines to the 6-tab structure
 local Window = {}
 function Window:AddTab(name, _icon)
     local t  = _mlTabMap[name]
     local tb = _mlTabBoxMap[name]
     if not t and not tb then
-        warn("[UNCODE] Window:AddTab — unmapped name: " .. tostring(name))
+        warn("[UNCODE] Window:AddTab unmapped: " .. tostring(name))
         return _noopTab()
     end
     local base = t or _noopTab()
     local wrapper = {}
 
-    -- UeCrack pattern: tab:AddTabbox():AddTab("Aimbot"):AddLeftGroupbox(...)
+    -- UeCrack primary pattern: tab:AddTabbox():AddTab("Aimbot"):AddLeftGroupbox(...)
     wrapper.AddTabbox = function(_, opts)
         if tb then return tb end
         return { AddTab = function(_, n) return base end }
     end
-    -- LuaX pattern: tab:AddLeftGroupbox(...)
+
+    -- LuaX / UeCrack direct pattern: tab:AddLeftGroupbox(...)
     wrapper.AddLeftGroupbox = function(_, title)
         if base.AddLeftGroupbox then return base:AddLeftGroupbox(title) end
         return _noopSec()
@@ -53,16 +56,20 @@ function Window:AddTab(name, _icon)
         if base.AddRightGroupbox then return base:AddRightGroupbox(title) end
         return _noopSec()
     end
+    wrapper.AddSection = function(_, title)
+        if base.AddSection then return base:AddSection(title) end
+        return _noopSec()
+    end
+
     setmetatable(wrapper, { __index = base })
     return wrapper
 end
-getgenv()._UNCODE_Window = Window   -- expose early (LuaX check on startup)
+getgenv()._UNCODE_Window = Window
 
--- ── onLibraryReady: creates UNCODE window the moment UE Library is available ──
+-- ── onLibraryReady: fires when UeCrack VM sets getgenv().Library ─────────────
 local function onLibraryReady(lib)
-    warn("[UNCODE] Library intercepted — creating UNCODE window...")
+    warn("[UNCODE] Library intercepted (UeCrack Linoria) — building window...")
 
-    -- Create the main window via UE Linoria
     local win = lib:CreateWindow({
         Title             = "UNCODE",
         Footer            = "rivals.gg",
@@ -74,7 +81,7 @@ local function onLibraryReady(lib)
         ShowCustomCursor  = true,
     })
 
-    -- ── Sidebar tabs ─────────────────────────────────────────────────────────
+    -- ── 6 sidebar tabs ────────────────────────────────────────────────────────
     local _tabCombat  = win:AddTab("Combat")
     local _tabHvH     = win:AddTab("HvH")
     local _tabESP     = win:AddTab("ESP")
@@ -82,7 +89,7 @@ local function onLibraryReady(lib)
     local _tabMisc    = win:AddTab("Misc")
     local _tabSetting = win:AddTab("Setting")
 
-    -- ── Tabboxes (sub-tab switchers inside each sidebar tab) ──────────────────
+    -- ── Tabboxes for each sidebar tab ─────────────────────────────────────────
     local _tbCombat  = _tabCombat:AddTabbox({ Side = 1 })
     local _tbHvH     = _tabHvH:AddTabbox({ Side = 1 })
     local _tbESP     = _tabESP:AddTabbox({ Side = 1 })
@@ -90,76 +97,94 @@ local function onLibraryReady(lib)
     local _tbMisc    = _tabMisc:AddTabbox({ Side = 1 })
     local _tbSetting = _tabSetting:AddTabbox({ Side = 1 })
 
-    -- ── Pre-create sub-tabs for LuaX and native features ─────────────────────
-    -- HvH sub-tabs (LuaX: VoidSpam / Orbit / Prediction / Defense)
+    -- ── Combat sub-tabs (UeCrack primary; also pre-create for direct-groupbox pattern)
+    -- UeCrack uses AddTabbox pattern for Combat, so it will ADD its own sub-tabs here.
+    -- We also create a "Rage" default sub-tab so direct AddLeftGroupbox("X") on
+    -- window:AddTab("Combat") lands somewhere visible (rare but defensive).
+    local _wjCombatRage   = _tbCombat:AddTab("Rage")
+
+    -- ── HvH sub-tabs (LuaX)
     local _wjVoid  = _tbHvH:AddTab("VoidSpam")
     local _wjOrbit = _tbHvH:AddTab("Orbit")
     local _wjPred  = _tbHvH:AddTab("Prediction")
     local _wjDef   = _tbHvH:AddTab("Defense")
 
-    -- ESP sub-tabs (Kicia)
+    -- ── ESP sub-tabs (Kicia)
     local _wjESP   = _tbESP:AddTab("ESP")
     local _wjWorld = _tbESP:AddTab("World")
 
-    -- Visual sub-tabs
-    local _wjChams = _tbVisual:AddTab("Chams")
-    local _wjFX    = _tbVisual:AddTab("Effects")
+    -- ── Visual sub-tabs (UeCrack Cosmetics + Rivals_Visuals fallback)
+    -- UeCrack will add sub-tabs to _tbVisual via AddTabbox when it handles "Cosmetics".
+    -- We pre-create Chams/Effects for Rivals_Visuals wiring below.
+    local _wjChams   = _tbVisual:AddTab("Chams")
+    local _wjFX      = _tbVisual:AddTab("Effects")
+    -- Pre-create a default sub-tab for "Character" direct groupbox pattern
+    local _wjChar    = _tbVisual:AddTab("Character")
 
-    -- Misc sub-tabs (LuaX: Translocation / Sling / Riot; UE: Players)
+    -- ── Misc sub-tabs (LuaX features + UeCrack Players overflow)
     local _wjTP    = _tbMisc:AddTab("Translocation")
     local _wjSling = _tbMisc:AddTab("Sling")
     local _wjRiot  = _tbMisc:AddTab("Riot")
     local _wjPlyr  = _tbMisc:AddTab("Players")
+    -- Pre-create Target sub-tab for UeCrack's Target HUD features (direct or tabbox)
+    local _wjTarget = _tbMisc:AddTab("Target")
 
-    -- Setting sub-tabs
+    -- ── Setting sub-tabs
     local _wjConf  = _tbSetting:AddTab("Config")
     local _wjUI    = _tbSetting:AddTab("UI")
 
-    -- ── mlTabMap: simple :AddLeftGroupbox pattern (LuaX, native) ─────────────
-    -- LuaX
-    _mlTabMap["VoidSpam"]      = _wjVoid
-    _mlTabMap["Orbit"]         = _wjOrbit
-    _mlTabMap["Prediction"]    = _wjPred
-    _mlTabMap["Defense"]       = _wjDef
-    _mlTabMap["Translocation"] = _wjTP
-    _mlTabMap["Sling Bypass"]  = _wjSling
-    _mlTabMap["Riot"]          = _wjRiot
-    _mlTabMap["Settings"]      = _wjConf
-    -- UE fallback (simple pattern, overridden by tabbox if AddTabbox is called)
-    _mlTabMap["Players"]       = _wjPlyr
-    _mlTabMap["Player"]        = _wjPlyr
-    _mlTabMap["Character"]     = _wjPlyr
-    _mlTabMap["Cosmetics"]     = _wjChams
-    _mlTabMap["Visual"]        = _wjChams
-    _mlTabMap["Visuals"]       = _wjFX
-    _mlTabMap["Utility"]       = _wjConf
-    _mlTabMap["Misc"]          = _wjRiot
-    -- Kicia / native
-    _mlTabMap["ESP"]           = _wjESP
-    _mlTabMap["World"]         = _wjWorld
-    _mlTabMap["Config"]        = _wjConf
-
-    -- ── mlTabBoxMap: UE :AddTabbox():AddTab() pattern ─────────────────────────
-    _mlTabBoxMap["Combat"]    = _tbCombat
-    _mlTabBoxMap["HvH"]       = _tbHvH
-    _mlTabBoxMap["Rage"]      = _tbHvH
+    -- ── mlTabBoxMap: for tab:AddTabbox():AddTab(...) pattern (UeCrack primary) ─
+    -- UeCrack calls window:AddTab(X):AddTabbox():AddTab("Aimbot"):...
+    -- Our wrapper returns the tabbox directly, so UeCrack freely creates sub-tabs.
+    _mlTabBoxMap["Combat"]    = _tbCombat   -- UeCrack: Aimbot / Silent Aim / Triggerbot / Ragebot
+    _mlTabBoxMap["Rage"]      = _tbCombat   -- alias
+    _mlTabBoxMap["Players"]   = _tbMisc     -- UeCrack: Player list / target options
+    _mlTabBoxMap["Player"]    = _tbMisc
+    _mlTabBoxMap["Character"] = _tbVisual   -- UeCrack: sword/cosmetic customization
+    _mlTabBoxMap["Cosmetics"] = _tbVisual   -- UeCrack: cosmetic changer
+    _mlTabBoxMap["Misc"]      = _tbMisc     -- UeCrack: misc toggles
+    _mlTabBoxMap["Utility"]   = _tbSetting  -- UeCrack: config / save manager
+    _mlTabBoxMap["Settings"]  = _tbSetting
+    _mlTabBoxMap["Config"]    = _tbSetting
     _mlTabBoxMap["ESP"]       = _tbESP
     _mlTabBoxMap["World"]     = _tbESP
     _mlTabBoxMap["Visual"]    = _tbVisual
     _mlTabBoxMap["Visuals"]   = _tbVisual
-    _mlTabBoxMap["Misc"]      = _tbMisc
-    _mlTabBoxMap["Player"]    = _tbMisc
-    _mlTabBoxMap["Players"]   = _tbMisc
-    _mlTabBoxMap["Character"] = _tbMisc
-    _mlTabBoxMap["Cosmetics"] = _tbVisual
-    _mlTabBoxMap["Utility"]   = _tbSetting
-    _mlTabBoxMap["Settings"]  = _tbSetting
-    _mlTabBoxMap["Config"]    = _tbSetting
+    _mlTabBoxMap["HvH"]       = _tbHvH
+    _mlTabBoxMap["Target"]    = _tbMisc     -- UeCrack: Target HUD (tabbox pattern)
 
-    -- ── Kicia ESP UI (wired after KiciaRebuild is ready) ─────────────────────
+    -- ── mlTabMap: for direct tab:AddLeftGroupbox(...) pattern ─────────────────
+    -- This handles the rare case where UeCrack (or another engine) calls
+    -- AddLeftGroupbox directly on the tab without going through AddTabbox.
+    -- Points to pre-created WJ sub-tab objects that support AddLeftGroupbox.
+    _mlTabMap["Combat"]       = _wjCombatRage  -- direct groupbox on Combat -> Rage sub-tab
+    _mlTabMap["Rage"]         = _wjCombatRage
+    _mlTabMap["Target"]       = _wjTarget      -- direct groupbox on Target -> Target sub-tab
+    _mlTabMap["Players"]      = _wjPlyr        -- direct groupbox on Players -> Players sub-tab
+    _mlTabMap["Player"]       = _wjPlyr
+    _mlTabMap["Character"]    = _wjChar        -- direct groupbox on Character -> Character sub-tab (Visual)
+    _mlTabMap["Cosmetics"]    = _wjChar        -- direct groupbox on Cosmetics -> Character sub-tab
+    _mlTabMap["Misc"]         = _wjRiot        -- direct groupbox on Misc -> Riot sub-tab
+    _mlTabMap["Utility"]      = _wjConf        -- direct groupbox on Utility -> Config sub-tab
+    _mlTabMap["Settings"]     = _wjConf
+    _mlTabMap["Config"]       = _wjConf
+    _mlTabMap["ESP"]          = _wjESP
+    _mlTabMap["World"]        = _wjWorld
+    _mlTabMap["Visual"]       = _wjChams
+    _mlTabMap["Visuals"]      = _wjFX
+    -- LuaX tab names
+    _mlTabMap["VoidSpam"]     = _wjVoid
+    _mlTabMap["Orbit"]        = _wjOrbit
+    _mlTabMap["Prediction"]   = _wjPred
+    _mlTabMap["Defense"]      = _wjDef
+    _mlTabMap["Translocation"]= _wjTP
+    _mlTabMap["Sling Bypass"] = _wjSling
+    _mlTabMap["Riot"]         = _wjRiot
+
+    -- ── Kicia ESP UI (wired after KiciaRebuild ready) ─────────────────────────
     task.spawn(function()
-        local deadline = tick() + 15
-        repeat task.wait(0.2) until getgenv().KiciaRebuild or tick() > deadline
+        local dl = tick() + 15
+        repeat task.wait(0.2) until getgenv().KiciaRebuild or tick() > dl
         local K = getgenv().KiciaRebuild
         if not K then warn("[UNCODE] KiciaRebuild not found"); return end
         pcall(function()
@@ -172,12 +197,13 @@ local function onLibraryReady(lib)
                 end,
             })
         end)
+        warn("[UNCODE] Kicia ESP wired")
     end)
 
-    -- ── Rivals Visuals UI (wired after _RV_Config is ready) ──────────────────
+    -- ── Rivals Visuals UI (wired after _RV_Config ready) ─────────────────────
     task.spawn(function()
-        local deadline = tick() + 15
-        repeat task.wait(0.2) until getgenv()._RV_Config or tick() > deadline
+        local dl = tick() + 15
+        repeat task.wait(0.2) until getgenv()._RV_Config or tick() > dl
         local rvc = getgenv()._RV_Config
         if not rvc then warn("[UNCODE] _RV_Config not found"); return end
         pcall(function()
@@ -185,24 +211,23 @@ local function onLibraryReady(lib)
             gb:AddToggle("RVChams", {
                 Text    = "Enable Chams",
                 Default = false,
-                Callback = function(v)
-                    if rvc.Chams then rvc.Chams.Enabled = v end
-                end,
+                Callback = function(v) if rvc.Chams then rvc.Chams.Enabled = v end end,
             })
             local gbFX = _wjFX:AddLeftGroupbox("Effects")
             gbFX:AddToggle("RVFog", {
                 Text    = "Fog Remover",
                 Default = false,
-                Callback = function(v)
-                    if rvc.World then rvc.World.FogRemover = v end
-                end,
+                Callback = function(v) if rvc.World then rvc.World.FogRemover = v end end,
             })
         end)
+        warn("[UNCODE] Rivals Visuals wired")
     end)
 
-    -- ── Patch Library.CreateWindow -> return Window shim ─────────────────────
+    -- ── Patch Library.CreateWindow to return UNCODE window shim ──────────────
+    -- UeCrack will call Library:CreateWindow({...}) after our hook.
+    -- We return Window (our shim) so UeCrack builds its full UI here.
     rawset(lib, 'CreateWindow', function(self, opts)
-        warn("[UNCODE] CreateWindow -> UNCODE window shim")
+        warn("[UNCODE] CreateWindow intercepted -> UNCODE window shim")
         return Window
     end)
 
@@ -212,14 +237,16 @@ local function onLibraryReady(lib)
     getgenv().Options  = lib.Options or {}
     getgenv().Toggles  = lib.Toggles or {}
 
-    warn("[UNCODE] Window ready — Combat / HvH / ESP / Visual / Misc / Setting")
+    warn("[UNCODE] Window ready (UeCrack primary) — Combat/HvH/ESP/Visual/Misc/Setting")
 end
 
 -- ── Install __newindex hook on getgenv() ─────────────────────────────────────
--- Fires exactly once when UeCrack VM executes: getgenv().Library = uiLibrary
+-- Fires once when UeCrack VM executes:  getgenv().Library = uiLibrary
+-- At that point we create the UNCODE window and patch Library.CreateWindow BEFORE
+-- UeCrack's VM continues to call Library:CreateWindow({...}).
 pcall(function()
-    local _genv    = getgenv()
-    local _origMT  = getmetatable(_genv)
+    local _genv   = getgenv()
+    local _origMT = getmetatable(_genv)
     local _patchMT = _origMT or {}
     local _origNI  = _origMT and rawget(_origMT, '__newindex')
     local _fired   = false
@@ -236,7 +263,7 @@ pcall(function()
     if not _origMT then setmetatable(_genv, _patchMT) end
 end)
 
-warn("[UNCODE] new_base loaded — Library hook installed")
+warn("[UNCODE] new_base loaded — UeCrack Library hook installed")
 
 
 -- ============================================================
