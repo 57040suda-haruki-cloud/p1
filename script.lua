@@ -7062,7 +7062,8 @@ end
 
 -- ── UE UI: Setting / Misc ─────────────────────────────────────────────────────
 do
-    local gbUESetting = WT.Config:AddLeftGroupbox and WT.Config:AddLeftGroupbox("UE Settings") or nil
+    local gbUESetting = nil
+    pcall(function() gbUESetting = WT.Config:AddLeftGroupbox("UE Settings") end)
     if not gbUESetting then gbUESetting = Window:AddTab("UE"):AddTabbox({Side=1}):AddTab("UE Misc"):AddLeftGroupbox("UE Settings") end
     gbUESetting:AddToggle("UENameSpoofer", { Text = "Name Spoofer", Default = false,
         Callback = function(v)
