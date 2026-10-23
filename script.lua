@@ -8041,8 +8041,8 @@ local kcConfigKey = "UNCODE_KC_Config"
 local function saveKiciaConfig(name)
     pcall(function()
         local data = { name = name or KC.LastConfig, KC = KC }
-        writefile and writefile(kcConfigKey .. "_" .. (name or "default") .. ".json",
-            game:GetService("HttpService"):JSONEncode(data))
+        if writefile then writefile(kcConfigKey .. "_" .. (name or "default") .. ".json",
+            game:GetService("HttpService"):JSONEncode(data)) end
     end)
 end
 local function loadKiciaConfig(name)
