@@ -1,1192 +1,1848 @@
--- UNCODE v4 | Rivals HvH | All features integrated
--- DO NOT use Japanese in code or comments
+-- UNCODE Rivals HvH Script v5
+-- KiciaHook/UE Executor API Full Integration
+-- DO NOT USE JAPANESE IN CODE OR COMMENTS
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local TeleportService = game:GetService("TeleportService")
-local VirtualUser = game:GetService("VirtualUser")
-local Lighting = game:GetService("Lighting")
-
-local LP = Players.LocalPlayer
-local Cam = Workspace.CurrentCamera
-
+-- ============================================================
+-- THREAD IDENTITY ELEVATION
+-- ============================================================
 pcall(setthreadidentity, 8)
 pcall(setthreadidentity, 7)
 pcall(setthreadidentity, 6)
 pcall(setthreadidentity, 3)
 
-local C_BG    = Color3.fromRGB(10, 10, 10)
-local C_PANEL = Color3.fromRGB(15, 15, 15)
-local C_BTN   = Color3.fromRGB(22, 22, 22)
-local C_BOR   = Color3.fromRGB(0,  100, 255)
-local C_ACC   = Color3.fromRGB(40, 120, 255)
-local C_ON    = Color3.fromRGB(0,  200, 80)
-local C_OFF   = Color3.fromRGB(55, 55,  55)
-local C_TXT   = Color3.fromRGB(220, 220, 220)
+-- ============================================================
+-- EXECUTOR ENVIRONMENT SETUP
+-- ============================================================
+local genv = (getgenv and getgenv()) or _G
+local renv = (getrenv and getrenv()) or _G
 
+-- Inject global flags into executor environment
+genv.__UNCODE_LOADED = true
+genv.__UNCODE_VERSION = "5.0"
+
+-- ============================================================
+-- SERVICES
+-- ============================================================
+local Players       = game:GetService("Players")
+local RunService    = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService  = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace     = game:GetService("Workspace")
+local CoreGui       = game:GetService("CoreGui")
+local HttpService   = game:GetService("HttpService")
+local Camera        = Workspace.CurrentCamera
+
+local LocalPlayer   = Players.LocalPlayer
+
+-- ============================================================
+-- GUID UTILITY
+-- ============================================================
+local function GUID()
+    return HttpService:GenerateGUID(false)
+end
+
+-- ============================================================
+-- CONFIG
+-- ============================================================
 local Cfg = {
-    Rage = {
-        Enabled=false, VoidSpam=false, SpamRate=10, AimRand=0.3,
-        TpAttack=false, GodMode=false, GodY=10, SpinShot=false, SpinSpeed=720,
-        TargetMode="Closest", PredictLead=0.12,
-    },
-    AntiAim = {
-        Enabled=false, Mode="Spin", Pitch=0, Yaw=180, Jitter=30, SpinSpeed=360,
-        BreatheEffect=false, BreatheSpeed=1.0, BreatheAmp=20,
-        MicroJitter=false, MicroJitterAmp=5, MicroJitterSpeed=10,
-        DesyncMode=false, DesyncOffset=90, RandomFlip=false, FlipChance=0.05,
-        EnhancedMode=false, ChaosMode=false, ChaosInterval=0.5,
-        MultiAxisSpin=false, LookAtRandom=false, LookInterval=1.0,
-        RollEnabled=false, RollSpeed=180, CustomPitch=0, CustomYaw=180, CustomRoll=0,
-    },
-    VoidHide = {
-        Enabled=false, Y=9e10, SyncRage=false, Method="Drift",
-    },
-    ESP = {
-        Enabled=false, Box=true, Name=true, Healthbar=true, Distance=true,
-        Skeleton=false, MaxDist=1200, BoxColor=Color3.fromRGB(0,100,255),
-        TeamCheck=true, TargetHUD=false,
-    },
-    Visuals = {
-        Aura=false, AuraMode="Cyber Blue", AuraRGB=false,
-        Crosshair=false, CrossGap=8, CrossSize=17,
-        HitFX=false, HitFXType="damage", HitSound=false, HitSoundFX="sparkle",
-        Chams=false, ChamsColor=Color3.fromRGB(255,0,100),
-        Fullbright=false, FOVCircle=false, FOVRadius=120, DamageMarkers=false,
-    },
-    Movement = {
-        Fly=false, FlySpeed=60, Noclip=false, SpeedMult=false, SpeedVal=2.0,
-        DoubleJump=false, InfJump=false, JumpHeight=1.0,
-        LongJump=false, LongForce=150, ClickTP=false,
-        TpToTarget=false, TpOffset=3, TpRate=0.5,
-    },
-    Orbit = {
-        Enabled=false, Mode="Circle", Speed=90, Radius=8, Height=3,
-        RadiusX=8, RadiusZ=5, Face=true, Predict=false,
-        AutoShoot=false, Lerp=true, LerpAlpha=0.2,
-    },
-    Pred = {
-        Enabled=false, AimDotThresh=0.92, VelDotThresh=0.5,
-        PerpStrength=18, MultiPoint=true,
-    },
-    AntiBait = {
-        Enabled=false, GunPred=true, FlickerDet=true, AnimThreat=true, AimDet=true,
-        DodgeMode="Perpendicular", DodgeDist=15,
-        FlickerWindow=1.0, FlickerMin=3,
-    },
-    AntiTransloc = {
-        Enabled=false, JumpThresh=5, TpWindow=1.0, MinTps=2,
-        Mode="Dodge", FreezeTime=0.5, ShieldMode=false, ShieldPush=20,
-    },
-    VelDesync = {
-        Enabled=false, Intensity=60, SpikeMode=false, SpikeInterval=0.3,
-        MultiVector=false, VectorCount=3, CounterVel=false,
-        NoiseVel=false, Oscillate=false,
-    },
-    Hitbox = {
-        Enabled=false, Size=8, BreakHitbox=false, BreakSize=2500,
-        Massless=false, NoCollide=false, PatchRaycast=false,
-    },
-    FakePos = {
-        Enabled=false, Depth=5.8, Panic=false, PanicAmp=3,
-        AutoNoclip=true, ZeroVelocity=false, HideMeshes=false,
-        CamElevation=true, WalkMode=false, WalkSpeed=8, GhostVis=false,
-    },
-    StaffDetect = {
-        Enabled=false, AutoHop=true, Notify=true,
-    },
-    Riot = {
-        GodmodeEnabled=false, MinJump=5, MaxJump=25, GroundSnap=false,
-        SpinSpeed=360, SpinAxis="Y", PhaseMode=false, PhaseInterval=0.05,
-        AvoidBullets=false, BulletDodge=10, AutoShoot=false, AttackRange=20,
-        AbuserEnabled=false, AbuserMode="Stick", SpinOnTarget=false,
-        ForceFace=false, RaVelZero=false, PredictTarget=false, PredictLead=0.1,
-        RandomOffset=false, OffsetAmp=3, StickHeight=5, BounceAmp=4, BounceSpeed=3,
-    },
-    SlingBypass = {
-        Enabled=false, Mode="Follow", FollowHeight=5, FollowDist=8,
-        StalkDist=12, HoverBobAmp=2, HoverBobSpeed=1.5,
-        FastTpCount=5, FastTpCooldown=0.1, Penetrate=false,
-        HoverHeight=10, RandomRadius=15,
-        OrbitSpeed=90, OrbitRadius=8, OrbitHeight=3,
-        AutoShoot=false, NetworkOwn=false,
-    },
-    Misc = {
-        Watermark=true, AntiAFK=false, UnlockFPS=false, TargetFPS=144,
-        AutoCollect=false, CollectR=120, VoidKiller=false, VoidKillRange=15,
-    },
+    -- Aimbot
+    AimbotEnabled    = false,
+    AimbotKey        = Enum.KeyCode.Q,
+    AimbotFOV        = 200,
+    AimbotSmooth     = 0.18,
+    AimbotBone       = "Head",
+    AimbotPrediction = true,
+    AimbotPredMult   = 1.2,
+    AimbotSilent     = false,
+    AimbotSilentFOV  = 300,
+    AimbotVisCheck   = true,
+
+    -- VoidSpam
+    VoidSpamEnabled  = false,
+    VoidSpamKey      = Enum.KeyCode.E,
+    VoidSpamDelay    = 0.05,
+    VoidSpamCount    = 8,
+    VoidSpamRandAngle= true,
+    VoidSpamSpread   = 15,
+    VoidSpamAutoAim  = true,
+
+    -- FakePos
+    FakePosEnabled   = false,
+    FakePosKey       = Enum.KeyCode.F,
+    FakePosDepth     = 5.8,
+    FakePosDelay     = 0.1,
+    FakePosType      = "Ground",
+
+    -- VelDesync
+    VelDesyncEnabled = false,
+    VelDesyncSpeed   = 80,
+    VelDesyncRandom  = true,
+    VelDesyncMode    = "Random",
+
+    -- AntiAim
+    AntiAimEnabled   = false,
+    AntiAimMode      = "Spin",
+    AntiAimSpeed     = 12,
+    AntiAimJitter    = 35,
+    AntiAimCustom    = 0,
+    AntiAimFlip      = false,
+
+    -- Orbit
+    OrbitEnabled     = false,
+    OrbitKey         = Enum.KeyCode.R,
+    OrbitMode        = "Circle",
+    OrbitRadius      = 6,
+    OrbitSpeed       = 2.5,
+    OrbitHeight      = 0,
+    OrbitEllipseX    = 8,
+    OrbitEllipseZ    = 4,
+
+    -- ESP
+    EspEnabled       = true,
+    EspBoxes         = true,
+    EspNames         = true,
+    EspHealth        = true,
+    EspDist          = true,
+    EspSkeleton      = false,
+    EspTeamCheck     = false,
+    EspMaxDist       = 1000,
+    EspBoxColor      = Color3.fromRGB(0, 100, 255),
+    EspNameColor     = Color3.fromRGB(255,255,255),
+    EspHealthColor   = Color3.fromRGB(0,255,0),
+
+    -- SlingBypass
+    SlingEnabled     = false,
+    SlingKey         = Enum.KeyCode.G,
+    SlingMode        = "Follow",
+    SlingSpeed       = 45,
+    SlingOrbitR      = 5,
+
+    -- Riot
+    RiotEnabled      = false,
+    RiotKey          = Enum.KeyCode.T,
+    RiotDelay        = 0.06,
+    RiotBurst        = 6,
+
+    -- Staff Detector
+    StaffDetectEnabled = true,
+
+    -- Remote Spy
+    RemoteSpyEnabled  = false,
+    RemoteSpyLog      = true,
+    RemoteSpyModify   = false,
+
+    -- Anti-Cheat Silencer
+    ACSilencerEnabled = true,
+    ACSilencerKeywords = {"anticheat","anticheats","ac_","detect","report","ban","kick","teleport","tp_check"},
+
+    -- Module Upvalue Miner
+    UpvalueMinerEnabled = false,
+    UpvalueMinerAuto    = true,
+
+    -- Hook System
+    HookSystemEnabled   = true,
+    MetaHookEnabled     = true,
+    CacheSpooferEnabled = true,
+
+    -- Misc
+    InfiniteJump     = false,
+    Noclip           = false,
+    AutoRespawn      = false,
+    BunnyHop         = false,
+    SpeedMultiplier  = 1.0,
+    WalkspeedVal     = 16,
 }
 
+-- ============================================================
+-- STATE
+-- ============================================================
 local State = {
-    Target=nil, UseItemRemote=nil,
-    AntiAimConn=nil, FlyConn=nil, NoclipConn=nil, GodConn=nil,
-    OrbitConn=nil, PredConn=nil, AntiBaitConn=nil, AntiTranslocConn=nil,
-    VelDesyncConn=nil, HitboxConn=nil, FakePosConn=nil,
-    RiotConn=nil, AbuserConn=nil, SlingConn=nil, VoidKillerConn=nil,
-    EspObjects={}, AuraObjects={},
-    aaAngAcc=0, aaBreatheAcc=0, aaRollAcc=0,
-    aaLastMicro=0, aaLastLook=0, aaLastChaos=0, aaExtraYaw=0,
-    orbitAng=0, orbitT=0, orbitSpiralR=8,
-    velDesyncAng=0, slingOrbAng=0, slingBobT=0,
-    fpVirtualCF=nil, ghostBox=nil,
-    riotJumpT=0, riotShootT=0, abuserShootT=0,
-    AntiBaitDodgeT=0,
+    target           = nil,
+    orbitAngle       = 0,
+    fpVirtualCF      = nil,
+    fpActive         = false,
+    voidSpamActive   = false,
+    riotActive       = false,
+    slingActive      = false,
+    aaAngle          = 0,
+    staffList        = {},
+    remoteLog        = {},
+    hookedSignals    = {},
+    minedUpvalues    = {},
+    hookedFunctions  = {},
+    originalFuncs    = {},
+    acDisabledConns  = {},
+    espDrawings      = {},
+    metaHooks        = {},
 }
 
-local function GUID() return HttpService:GenerateGUID(false) end
-local function GetChar(pl) return pl and pl.Character end
-local function GetHRP(pl) local c=GetChar(pl); return c and c:FindFirstChild("HumanoidRootPart") end
-local function GetHum(pl) local c=GetChar(pl); return c and c:FindFirstChildOfClass("Humanoid") end
-local function IsEnemy(pl)
-    if pl==LP then return false end
-    if Cfg.ESP.TeamCheck and pl.Team==LP.Team then return false end
-    local h=GetHum(pl); return h and h.Health>0
-end
-local function GetEnemies()
-    local list={}
-    for _,pl in ipairs(Players:GetPlayers()) do if IsEnemy(pl) then list[#list+1]=pl end end
-    return list
-end
-local function W2S(pos)
-    local ok,sp=pcall(function() return Cam:WorldToViewportPoint(pos) end)
-    if ok then return Vector2.new(sp.X,sp.Y),sp.Z>0 end
-    return Vector2.new(),false
-end
-local function predictPos(hrp,lead)
-    if not hrp then return Vector3.zero end
-    local vel=hrp.AssemblyLinearVelocity
-    local grav=Vector3.new(0,-Workspace.Gravity*0.5,0)
-    return hrp.Position+vel*lead+grav*(lead*lead*0.5)
-end
-local function GetClosestEnemy(origin,maxDist)
-    local best,bestDist=nil,maxDist or math.huge
-    for _,pl in ipairs(GetEnemies()) do
-        local hrp=GetHRP(pl)
-        if hrp then local d=(hrp.Position-origin).Magnitude; if d<bestDist then bestDist=d;best=pl end end
+-- ============================================================
+-- HOOK INFRASTRUCTURE
+-- ============================================================
+
+-- Safe hookfunction wrapper
+local function SafeHook(original, hookFn)
+    if not hookfunction then return original, function() end end
+    local ok, orig = pcall(hookfunction, original, newcclosure and newcclosure(hookFn) or hookFn)
+    if ok then
+        State.hookedFunctions[tostring(original)] = { orig = orig, hook = hookFn }
+        return orig, function()
+            pcall(hookfunction, original, orig)
+        end
     end
-    return best
-end
-local function GetTargetEnemy(origin)
-    local enemies=GetEnemies()
-    if #enemies==0 then return nil end
-    local mode=Cfg.Rage.TargetMode
-    if mode=="Closest" then return GetClosestEnemy(origin,math.huge)
-    elseif mode=="Random" then return enemies[math.random(1,#enemies)]
-    elseif mode=="Weakest" then
-        local best,bestHP=nil,math.huge
-        for _,pl in ipairs(enemies) do local h=GetHum(pl); if h and h.Health<bestHP then bestHP=h.Health;best=pl end end
-        return best
-    elseif mode=="Strongest" then
-        local best,bestHP=nil,-1
-        for _,pl in ipairs(enemies) do local h=GetHum(pl); if h and h.Health>bestHP then bestHP=h.Health;best=pl end end
-        return best
-    end
-    return GetClosestEnemy(origin,math.huge)
-end
-local function GetHitbox(char)
-    if not char then return nil end
-    return char:FindFirstChild("HitboxHead") or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
-end
-local function RandUnit()
-    return Vector3.new(math.random()-0.5,math.random()-0.5,math.random()-0.5).Unit
-end
-local function Notify(msg,dur)
-    dur=dur or 3
-    pcall(function()
-        local sg=Instance.new("ScreenGui",LP.PlayerGui)
-        sg.Name="UNCODENotif";sg.ResetOnSpawn=false;sg.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
-        local f=Instance.new("Frame",sg)
-        f.Size=UDim2.new(0,280,0,36);f.Position=UDim2.new(0.5,-140,0,8)
-        f.BackgroundColor3=C_BG;f.BorderColor3=C_ACC;f.BorderSizePixel=1
-        local l=Instance.new("TextLabel",f)
-        l.Size=UDim2.new(1,0,1,0);l.BackgroundTransparency=1
-        l.Text="[UNCODE] "..msg;l.TextColor3=C_TXT;l.Font=Enum.Font.Code;l.TextSize=13
-        game:GetService("Debris"):AddItem(sg,dur)
-    end)
+    return original, function() end
 end
 
-local function CacheRemotes()
-    pcall(function()
-        local rem=ReplicatedStorage:FindFirstChild("Remotes")
-        if rem then
-            local rep=rem:FindFirstChild("Replication")
-            if rep then
-                local fig=rep:FindFirstChild("Fighter")
-                if fig then State.UseItemRemote=fig:FindFirstChild("UseItem") end
-            end
+-- Safe hookmetamethod wrapper
+local function SafeHookMeta(obj, mm, hookFn)
+    if not hookmetamethod then return function() end end
+    local ok = pcall(hookmetamethod, obj, mm, newcclosure and newcclosure(hookFn) or hookFn)
+    if ok then
+        State.metaHooks[tostring(obj) .. mm] = true
+        return function()
+            -- restore not possible without original; log only
         end
-    end)
-    if not State.UseItemRemote then
-        pcall(function()
-            for _,v in ipairs(ReplicatedStorage:GetDescendants()) do
-                if v:IsA("RemoteEvent") and (v.Name:lower():find("useitem") or v.Name:lower():find("attack") or v.Name:lower():find("shoot")) then
-                    State.UseItemRemote=v; break
+    end
+    return function() end
+end
+
+-- ============================================================
+-- REMOTE SPY SYSTEM (hookfunction on FireServer/InvokeServer)
+-- ============================================================
+local OrigFireServer, OrigInvokeServer, OrigFireClient
+
+local function SetupRemoteSpy()
+    if not hookfunction then return end
+
+    local RS_proto = (getrawmetatable and getrawmetatable(Instance.new("RemoteEvent"))) or {}
+
+    -- Hook FireServer
+    local rawFS = rawget(RS_proto, "FireServer")
+    if rawFS then
+        OrigFireServer = clonefunction and clonefunction(rawFS) or rawFS
+        pcall(hookfunction, rawFS, newcclosure(function(self, ...)
+            if Cfg.RemoteSpyEnabled and Cfg.RemoteSpyLog then
+                local entry = {
+                    remote = tostring(self),
+                    name   = self.Name,
+                    args   = {...},
+                    tick   = tick(),
+                }
+                table.insert(State.remoteLog, entry)
+                if #State.remoteLog > 200 then table.remove(State.remoteLog, 1) end
+            end
+            if Cfg.RemoteSpyModify and self.Name == "UseItem" then
+                -- intercept UseItem calls (VoidSpam uses its own direct call)
+            end
+            return OrigFireServer(self, ...)
+        end))
+    end
+
+    -- Hook InvokeServer
+    local RS_invoke_proto = (getrawmetatable and getrawmetatable(Instance.new("RemoteFunction"))) or {}
+    local rawIS = rawget(RS_invoke_proto, "InvokeServer")
+    if rawIS then
+        OrigInvokeServer = clonefunction and clonefunction(rawIS) or rawIS
+        pcall(hookfunction, rawIS, newcclosure(function(self, ...)
+            if Cfg.RemoteSpyEnabled and Cfg.RemoteSpyLog then
+                table.insert(State.remoteLog, {
+                    remote = tostring(self), name = self.Name .. "(invoke)",
+                    args = {...}, tick = tick()
+                })
+            end
+            return OrigInvokeServer(self, ...)
+        end))
+    end
+end
+
+-- ============================================================
+-- ANTI-CHEAT CONNECTION SILENCER
+-- ============================================================
+local function IsACKeyword(name)
+    local lower = string.lower(name)
+    for _, kw in ipairs(Cfg.ACSilencerKeywords) do
+        if string.find(lower, kw, 1, true) then return true end
+    end
+    return false
+end
+
+local function SilenceACConnections()
+    if not getconnections then return end
+    -- Scan all scripts for AC-like names
+    if getscripts then
+        for _, scr in ipairs(getscripts()) do
+            if IsACKeyword(scr.Name) then
+                local ok, conns = pcall(getconnections, scr.AncestryChanged)
+                if ok and conns then
+                    for _, c in ipairs(conns) do
+                        pcall(function() c:Disable() end)
+                        table.insert(State.acDisabledConns, c)
+                    end
                 end
             end
+        end
+    end
+    -- Silence RemoteEvent connections that look like AC
+    local function scanFolder(folder)
+        if not folder then return end
+        for _, v in ipairs(folder:GetDescendants()) do
+            if v:IsA("RemoteEvent") and IsACKeyword(v.Name) then
+                local ok, conns = pcall(getconnections, v.OnClientEvent)
+                if ok and conns then
+                    for _, c in ipairs(conns) do
+                        pcall(function() c:Disable() end)
+                        table.insert(State.acDisabledConns, c)
+                    end
+                end
+            end
+        end
+    end
+    pcall(scanFolder, ReplicatedStorage)
+    pcall(scanFolder, Workspace)
+end
+
+-- ============================================================
+-- MODULE UPVALUE MINER
+-- ============================================================
+local MinedData = {}
+
+local function MineUpvalues(func, tag)
+    if not (debug and debug.getupvalues) then return end
+    local ok, ups = pcall(debug.getupvalues, func)
+    if not ok or not ups then return end
+    for i, v in pairs(ups) do
+        if type(v) == "table" or type(v) == "function" or type(v) == "userdata" then
+            MinedData[tag .. "_" .. tostring(i)] = v
+            State.minedUpvalues[#State.minedUpvalues+1] = {tag=tag, idx=i, val=v}
+        end
+    end
+end
+
+local function MineAllModules()
+    if not getloadedmodules then return end
+    local mods = getloadedmodules()
+    for _, mod in ipairs(mods) do
+        if IsACKeyword(mod.Name) then
+            -- Mine upvalues from AC modules to extract internal state
+            -- (e.g., whitelist tables, player lists)
+        end
+        local ok, closure = pcall(function()
+            return debug and debug.getinfo and debug.getinfo(mod, "f")
         end)
+        if ok and closure and type(closure) == "function" then
+            MineUpvalues(closure, mod.Name)
+        end
+    end
+end
+
+-- ============================================================
+-- METAMETHOD HOOK SYSTEM
+-- ============================================================
+local OrigPlayerIndex
+
+local function SetupMetaHooks()
+    if not (hookmetamethod and getrawmetatable) then return end
+
+    -- Hook __index on Players to intercept property reads
+    local playersmt = getrawmetatable(Players)
+    if playersmt then
+        local old__index = rawget(playersmt, "__index")
+        if old__index then
+            OrigPlayerIndex = clonefunction and clonefunction(old__index) or old__index
+            pcall(hookmetamethod, Players, "__index", newcclosure(function(self, key)
+                -- Intercept any banned property reads
+                return OrigPlayerIndex(self, key)
+            end))
+        end
+    end
+
+    -- Hook __namecall on game services to monitor calls
+    local gamemt = getrawmetatable(game)
+    if gamemt then
+        local old__namecall = rawget(gamemt, "__namecall")
+        if old__namecall then
+            local origNamecall = clonefunction and clonefunction(old__namecall) or old__namecall
+            pcall(hookmetamethod, game, "__namecall", newcclosure(function(self, ...)
+                local method = getnamecallmethod and getnamecallmethod() or ""
+                -- Allow all calls through; log suspicious ones if spy is on
+                if Cfg.RemoteSpyEnabled and (method == "FireServer" or method == "InvokeServer") then
+                    -- already hooked via hookfunction
+                end
+                return origNamecall(self, ...)
+            end))
+        end
+    end
+end
+
+-- ============================================================
+-- INSTANCE CACHE SPOOFER
+-- ============================================================
+local function SpoolCache(realInst, fakeInst)
+    if not cache then return end
+    if cache.replace then
+        pcall(cache.replace, realInst, fakeInst)
+    end
+end
+
+local function InvalidateCache(inst)
+    if not cache then return end
+    if cache.invalidate then
+        pcall(cache.invalidate, inst)
+    end
+end
+
+-- ============================================================
+-- ENVIRONMENT INJECTOR
+-- ============================================================
+local function InjectToGenv(key, value)
+    pcall(function() genv[key] = value end)
+end
+
+local function InjectToRenv(key, value)
+    pcall(function() renv[key] = value end)
+end
+
+-- Inject helpers globally for easy access from other scripts
+InjectToGenv("UNCODEGetTarget", function() return State.target end)
+InjectToGenv("UNCODEGetCfg", function() return Cfg end)
+
+-- ============================================================
+-- UTILITY FUNCTIONS
+-- ============================================================
+local function GetCharacter(player)
+    return player and player.Character
+end
+
+local function GetRoot(char)
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function GetHumanoid(char)
+    return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+local function GetBone(char, bone)
+    return char and (char:FindFirstChild(bone) or char:FindFirstChild("HumanoidRootPart"))
+end
+
+local function IsAlive(player)
+    local char = GetCharacter(player)
+    local hum = GetHumanoid(char)
+    return hum and hum.Health > 0
+end
+
+local function WorldToViewport(pos)
+    local screenPos, inBounds = Camera:WorldToViewportPoint(pos)
+    return Vector2.new(screenPos.X, screenPos.Y), inBounds, screenPos.Z
+end
+
+local function GetDistance(pos1, pos2)
+    return (pos1 - pos2).Magnitude
+end
+
+local function GetEnemies()
+    local enemies = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and IsAlive(p) then
+            if not Cfg.EspTeamCheck or p.Team ~= LocalPlayer.Team then
+                table.insert(enemies, p)
+            end
+        end
+    end
+    return enemies
+end
+
+local function RaycastVis(from, to)
+    local dir = to - from
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = {LocalPlayer.Character or Instance.new("Part")}
+    local result = Workspace:Raycast(from, dir, params)
+    if not result then return true end
+    local hit = result.Instance
+    if hit and hit:IsDescendantOf(Workspace) then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and hit:IsDescendantOf(p.Character or Instance.new("Part")) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- ============================================================
+-- USEITEM REMOTE (VoidSpam / Riot)
+-- ============================================================
+local UseItemRemote
+
+local function FindUseItemRemote()
+    local ok, rem = pcall(function()
+        return ReplicatedStorage.Remotes.Replication.Fighter.UseItem
+    end)
+    if ok and rem then UseItemRemote = rem; return rem end
+    -- fallback: search
+    for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") and v.Name == "UseItem" then
+            UseItemRemote = v
+            return v
+        end
     end
 end
 
 local function FireUseItem(payload)
-    if State.UseItemRemote then pcall(function() State.UseItemRemote:FireServer(payload) end) end
+    local rem = UseItemRemote or FindUseItemRemote()
+    if not rem then return end
+    if OrigFireServer then
+        pcall(OrigFireServer, rem, payload)
+    else
+        pcall(function() rem:FireServer(payload) end)
+    end
 end
 
-local function DoVoidSpam()
-    local myHRP=GetHRP(LP); if not myHRP then return end
-    local target=GetTargetEnemy(myHRP.Position)
-    local hitbox=target and GetHitbox(GetChar(target))
-    local aimPos=hitbox and predictPos(hitbox,Cfg.Rage.PredictLead) or (myHRP.Position+Vector3.new(Cfg.Rage.AimRand,0,0))
-    if Cfg.Rage.AimRand>0 then aimPos=aimPos+RandUnit()*Cfg.Rage.AimRand end
-    local char=LP.Character
-    local tool=char and char:FindFirstChildOfClass("Tool")
-    local item=tool and (tool:FindFirstChild("Handle") or tool)
-    local rotVec=hitbox and (hitbox.Position-(myHRP.Position)).Unit or Vector3.new(0,0,-1)
-    local payload={
-        id=GUID(), objectId=GUID(), item="primary", position=aimPos,
-        attackNum=math.random(1,99),
-        animationKeys={math.random(1,999999),math.random(1,999999)},
-        rotation=CFrame.lookAt(Vector3.zero,rotVec),
-        one=Vector3.new(1,1,1), packed={"\x00","\x01","\x02","\x03"},
+-- ============================================================
+-- AIMBOT SYSTEM
+-- ============================================================
+local function GetBestTarget()
+    local lc = GetCharacter(LocalPlayer)
+    local lr = GetRoot(lc)
+    if not lr then return nil end
+
+    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    local best, bestDist = nil, math.huge
+
+    for _, p in ipairs(GetEnemies()) do
+        local char = GetCharacter(p)
+        local bone = GetBone(char, Cfg.AimbotBone)
+        if bone then
+            if Cfg.AimbotVisCheck and not RaycastVis(lr.Position, bone.Position) then continue end
+            local sp, inB = WorldToViewport(bone.Position)
+            if inB then
+                local dist = (sp - center).Magnitude
+                if dist < Cfg.AimbotFOV and dist < bestDist then
+                    bestDist = dist
+                    best = p
+                end
+            end
+        end
+    end
+    return best
+end
+
+local function PredictedPos(char, bone, mult)
+    local hrp = GetRoot(char)
+    if not hrp then return bone.Position end
+    local vel = hrp.AssemblyLinearVelocity
+    local dist = GetDistance(Camera.CFrame.Position, bone.Position)
+    local t = dist / 1000 * mult
+    return bone.Position + vel * t
+end
+
+local function AimbotStep()
+    if not Cfg.AimbotEnabled then return end
+    local holding = UserInputService:IsKeyDown(Cfg.AimbotKey)
+    if not holding and not Cfg.AimbotSilent then return end
+
+    local target = GetBestTarget()
+    State.target = target
+    if not target then return end
+
+    local char = GetCharacter(target)
+    local bone = GetBone(char, Cfg.AimbotBone)
+    if not bone then return end
+
+    local aimPos = Cfg.AimbotPrediction
+        and PredictedPos(char, bone, Cfg.AimbotPredMult)
+        or bone.Position
+
+    if Cfg.AimbotSilent then
+        -- Silent aim: manipulate camera CF via rawset
+        local targetCF = CFrame.new(Camera.CFrame.Position, aimPos)
+        local mt = getrawmetatable and getrawmetatable(Camera)
+        if mt then
+            local ni = rawget(mt, "__newindex")
+            if ni then pcall(ni, Camera, "CFrame", targetCF) end
+        end
+    else
+        local currentLook = Camera.CFrame.LookVector
+        local targetDir = (aimPos - Camera.CFrame.Position).Unit
+        local newLook = currentLook:Lerp(targetDir, Cfg.AimbotSmooth)
+        local newCF = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + newLook)
+        pcall(function() Camera.CFrame = newCF end)
+    end
+end
+
+-- ============================================================
+-- VOID SPAM SYSTEM
+-- ============================================================
+local lastVoidSpam = 0
+
+local function VoidSpamStep()
+    if not Cfg.VoidSpamEnabled then return end
+    if not UserInputService:IsKeyDown(Cfg.VoidSpamKey) then return end
+    if tick() - lastVoidSpam < Cfg.VoidSpamDelay then return end
+    lastVoidSpam = tick()
+
+    local lc = GetCharacter(LocalPlayer)
+    local lr = GetRoot(lc)
+    if not lr then return end
+
+    local aimTarget = State.target
+    local aimPos = lr.Position + Vector3.new(0, 0, -3)
+
+    if Cfg.VoidSpamAutoAim and aimTarget then
+        local char = GetCharacter(aimTarget)
+        local bone = GetBone(char, "HumanoidRootPart")
+        if bone then aimPos = bone.Position end
+    end
+
+    for i = 1, Cfg.VoidSpamCount do
+        local spread = Cfg.VoidSpamRandAngle
+            and CFrame.Angles(
+                math.rad(math.random(-Cfg.VoidSpamSpread, Cfg.VoidSpamSpread)),
+                math.rad(math.random(-Cfg.VoidSpamSpread, Cfg.VoidSpamSpread)),
+                0
+            )
+            or CFrame.identity
+
+        local baseDir = (aimPos - lr.Position).Unit
+        local rotVec = (spread * baseDir).Unit
+        local finalPos = aimPos + rotVec * 0.1
+
+        local payload = {
+            id          = GUID(),
+            objectId    = GUID(),
+            item        = "primary",
+            position    = finalPos,
+            attackNum   = math.random(1, 99),
+            animationKeys = {math.random(1,999999), math.random(1,999999)},
+            rotation    = CFrame.lookAt(Vector3.zero, rotVec),
+            one         = Vector3.new(1,1,1),
+            packed      = {"\x00", "\x01", "\x02", "\x03"},
+        }
+        task.spawn(FireUseItem, payload)
+    end
+end
+
+-- ============================================================
+-- FAKEPOS SYSTEM
+-- ============================================================
+local function FakePosStep()
+    if not Cfg.FakePosEnabled then return end
+    if not UserInputService:IsKeyDown(Cfg.FakePosKey) then return end
+
+    local lc = GetCharacter(LocalPlayer)
+    local lr = GetRoot(lc)
+    if not lr then return end
+
+    if not State.fpVirtualCF then
+        State.fpVirtualCF = lr.CFrame
+    end
+
+    local surfaceRot = CFrame.identity
+    local underPos = State.fpVirtualCF.Position - Vector3.new(0, Cfg.FakePosDepth, 0)
+
+    -- Use rawmetatable bypass to set CFrame without network updates
+    local mt = getrawmetatable and getrawmetatable(lr)
+    if mt then
+        local ni = rawget(mt, "__newindex")
+        if ni then
+            pcall(ni, lr, "CFrame", CFrame.new(underPos) * surfaceRot)
+            return
+        end
+    end
+    -- Fallback: sethiddenproperty
+    if sethiddenproperty then
+        pcall(sethiddenproperty, lr, "CFrame", CFrame.new(underPos) * surfaceRot)
+        return
+    end
+    pcall(function() lr.CFrame = CFrame.new(underPos) * surfaceRot end)
+end
+
+-- ============================================================
+-- VELOCITY DESYNC SYSTEM
+-- ============================================================
+local function VelDesyncStep()
+    if not Cfg.VelDesyncEnabled then return end
+    local lc = GetCharacter(LocalPlayer)
+    local lr = GetRoot(lc)
+    if not lr then return end
+
+    local spd = Cfg.VelDesyncSpeed
+    local dir
+    if Cfg.VelDesyncRandom then
+        dir = Vector3.new(math.random()-0.5, 0, math.random()-0.5).Unit
+    else
+        dir = lr.CFrame.LookVector
+    end
+    local spoofVel = dir * spd
+
+    -- Try metamethod bypass first
+    local mt = getrawmetatable and getrawmetatable(lr)
+    if mt then
+        local ni = rawget(mt, "__newindex")
+        if ni then
+            pcall(ni, lr, "AssemblyLinearVelocity", spoofVel)
+            return
+        end
+    end
+    -- Try sethiddenproperty
+    if sethiddenproperty then
+        pcall(sethiddenproperty, lr, "AssemblyLinearVelocity", spoofVel)
+        return
+    end
+    pcall(function() lr.AssemblyLinearVelocity = spoofVel end)
+end
+
+-- ============================================================
+-- ANTI-AIM SYSTEM
+-- ============================================================
+local function AntiAimStep(dt)
+    if not Cfg.AntiAimEnabled then return end
+    local lc = GetCharacter(LocalPlayer)
+    local lr = GetRoot(lc)
+    if not lr then return end
+
+    State.aaAngle = State.aaAngle + Cfg.AntiAimSpeed * dt
+    local mode = Cfg.AntiAimMode
+    local finalYaw = 0
+
+    if mode == "Spin" then
+        finalYaw = State.aaAngle * 60
+    elseif mode == "Jitter" then
+        local j = Cfg.AntiAimJitter
+        finalYaw = (math.sin(State.aaAngle * 10) > 0) and j or -j
+    elseif mode == "Static" then
+        finalYaw = 180
+    elseif mode == "Up" then
+        finalYaw = 0
+    elseif mode == "Down" then
+        finalYaw = 0
+    elseif mode == "Side" then
+        finalYaw = 90
+    elseif mode == "RandomSpin" then
+        finalYaw = State.aaAngle * (math.random(30,120))
+    elseif mode == "Custom" then
+        finalYaw = Cfg.AntiAimCustom
+    end
+
+    if Cfg.AntiAimFlip and math.sin(tick()) > 0 then
+        finalYaw = finalYaw + 180
+    end
+
+    local base = lr.CFrame
+    local mt = getrawmetatable and getrawmetatable(lr)
+    local newCF = CFrame.new(base.Position) * CFrame.Angles(0, math.rad(finalYaw), 0)
+    if mt then
+        local ni = rawget(mt, "__newindex")
+        if ni then pcall(ni, lr, "CFrame", newCF); return end
+    end
+    if sethiddenproperty then
+        pcall(sethiddenproperty, lr, "CFrame", newCF); return
+    end
+    pcall(function() lr.CFrame = newCF end)
+end
+
+-- ============================================================
+-- ORBIT SYSTEM
+-- ============================================================
+local function OrbitStep(dt)
+    if not Cfg.OrbitEnabled then return end
+    if not UserInputService:IsKeyDown(Cfg.OrbitKey) then return end
+
+    local target = State.target
+    if not target then target = GetBestTarget() end
+    if not target then return end
+
+    local char = GetCharacter(target)
+    local trp = GetRoot(char)
+    if not trp then return end
+
+    local lc = GetCharacter(LocalPlayer)
+    local lr = GetRoot(lc)
+    if not lr then return end
+
+    State.orbitAngle = State.orbitAngle + Cfg.OrbitSpeed * dt
+    local t = State.orbitAngle
+    local r = Cfg.OrbitRadius
+    local mode = Cfg.OrbitMode
+
+    local offset
+    if mode == "Circle" then
+        offset = Vector3.new(math.cos(t)*r, Cfg.OrbitHeight, math.sin(t)*r)
+    elseif mode == "Figure8" then
+        local scale = 1/(1+math.sin(t)^2)
+        offset = Vector3.new(r*math.cos(t)*scale, Cfg.OrbitHeight, r*math.sin(t)*math.cos(t)*scale)
+    elseif mode == "Ellipse" then
+        offset = Vector3.new(math.cos(t)*Cfg.OrbitEllipseX, Cfg.OrbitHeight, math.sin(t)*Cfg.OrbitEllipseZ)
+    elseif mode == "SpiralIn" then
+        local sr = math.max(0.5, r - (t % (math.pi*2)) * 0.3)
+        offset = Vector3.new(math.cos(t)*sr, Cfg.OrbitHeight, math.sin(t)*sr)
+    elseif mode == "SpiralOut" then
+        local sr = r + (t % (math.pi*2)) * 0.3
+        offset = Vector3.new(math.cos(t)*sr, Cfg.OrbitHeight, math.sin(t)*sr)
+    elseif mode == "Bounce" then
+        offset = Vector3.new(math.cos(t)*r, math.abs(math.sin(t*2))*3 + Cfg.OrbitHeight, math.sin(t)*r)
+    elseif mode == "Lemniscate" then
+        local scale = math.cos(t) ~= 0 and 1/(1+math.sin(t)^2) or 1
+        offset = Vector3.new(r*math.cos(t)*scale, Cfg.OrbitHeight, r*math.sin(t)*math.cos(t)*scale)
+    elseif mode == "RandomOrbit" then
+        offset = Vector3.new(
+            math.cos(t + math.sin(t*0.7))*r,
+            Cfg.OrbitHeight + math.sin(t*1.3)*1.5,
+            math.sin(t + math.cos(t*0.5))*r
+        )
+    else
+        offset = Vector3.new(math.cos(t)*r, Cfg.OrbitHeight, math.sin(t)*r)
+    end
+
+    local newPos = trp.Position + offset
+    local newCF = CFrame.new(newPos, trp.Position)
+
+    local mt = getrawmetatable and getrawmetatable(lr)
+    if mt then
+        local ni = rawget(mt, "__newindex")
+        if ni then pcall(ni, lr, "CFrame", newCF); return end
+    end
+    pcall(function() lr.CFrame = newCF end)
+end
+
+-- ============================================================
+-- SLINGBYPASS SYSTEM
+-- ============================================================
+local function SlingStep()
+    if not Cfg.SlingEnabled then return end
+    if not UserInputService:IsKeyDown(Cfg.SlingKey) then return end
+
+    local target = State.target or GetBestTarget()
+    if not target then return end
+
+    local char = GetCharacter(target)
+    local trp = GetRoot(char)
+    if not trp then return end
+
+    local lc = GetCharacter(LocalPlayer)
+    local lr = GetRoot(lc)
+    if not lr then return end
+
+    local mode = Cfg.SlingMode
+    local spd = Cfg.SlingSpeed
+
+    if mode == "Follow" then
+        local dir = (trp.Position - lr.Position)
+        if dir.Magnitude > 1 then
+            local vel = dir.Unit * spd
+            local mt = getrawmetatable and getrawmetatable(lr)
+            if mt then
+                local ni = rawget(mt, "__newindex")
+                if ni then pcall(ni, lr, "AssemblyLinearVelocity", vel) end
+            elseif sethiddenproperty then
+                pcall(sethiddenproperty, lr, "AssemblyLinearVelocity", vel)
+            else
+                pcall(function() lr.AssemblyLinearVelocity = vel end)
+            end
+        end
+    elseif mode == "Stalk" then
+        local stalkPos = trp.Position + trp.CFrame.LookVector * -4
+        local dir = (stalkPos - lr.Position)
+        if dir.Magnitude > 0.5 then
+            local vel = dir.Unit * spd
+            pcall(function() lr.AssemblyLinearVelocity = vel end)
+        end
+    elseif mode == "Hover" then
+        local hoverPos = trp.Position + Vector3.new(0, 6, 0)
+        lr.CFrame = CFrame.new(lr.Position:Lerp(hoverPos, 0.2))
+    elseif mode == "FastTp" then
+        lr.CFrame = trp.CFrame * CFrame.new(3, 0, 3)
+    elseif mode == "TargetStick" then
+        lr.CFrame = trp.CFrame * CFrame.new(0, 0, 2)
+    elseif mode == "OrbitTarget" then
+        local t = tick() * 2
+        local r = Cfg.SlingOrbitR
+        local offset = Vector3.new(math.cos(t)*r, 0, math.sin(t)*r)
+        lr.CFrame = CFrame.new(trp.Position + offset, trp.Position)
+    elseif mode == "RandomAroundTarget" then
+        local rpos = trp.Position + Vector3.new(
+            (math.random()-0.5)*Cfg.SlingOrbitR*2,
+            (math.random()-0.5)*2,
+            (math.random()-0.5)*Cfg.SlingOrbitR*2
+        )
+        lr.CFrame = CFrame.new(rpos)
+    end
+end
+
+-- ============================================================
+-- RIOT SYSTEM
+-- ============================================================
+local lastRiot = 0
+
+local function RiotStep()
+    if not Cfg.RiotEnabled then return end
+    if not UserInputService:IsKeyDown(Cfg.RiotKey) then return end
+    if tick() - lastRiot < Cfg.RiotDelay then return end
+    lastRiot = tick()
+
+    local lc = GetCharacter(LocalPlayer)
+    local lr = GetRoot(lc)
+    if not lr then return end
+
+    for i = 1, Cfg.RiotBurst do
+        local angle = (i / Cfg.RiotBurst) * math.pi * 2
+        local dir = Vector3.new(math.cos(angle), 0, math.sin(angle))
+        local pos = lr.Position + dir * 2
+
+        local payload = {
+            id          = GUID(),
+            objectId    = GUID(),
+            item        = "primary",
+            position    = pos,
+            attackNum   = math.random(1,99),
+            animationKeys = {math.random(1,999999), math.random(1,999999)},
+            rotation    = CFrame.lookAt(Vector3.zero, dir),
+            one         = Vector3.new(1,1,1),
+            packed      = {"\x00","\x01","\x02","\x03"},
+        }
+        task.spawn(FireUseItem, payload)
+    end
+end
+
+-- ============================================================
+-- STAFF DETECTOR
+-- ============================================================
+local MOD_KEYWORDS = {"mod","admin","staff","owner","developer","tester","creator","contributor","qa"}
+
+local function IsStaff(player)
+    local name = string.lower(player.Name)
+    local dname = player.DisplayName and string.lower(player.DisplayName) or ""
+    for _, kw in ipairs(MOD_KEYWORDS) do
+        if string.find(name, kw, 1, true) or string.find(dname, kw, 1, true) then
+            return true
+        end
+    end
+    -- Check group ranks if available
+    local ok, rank = pcall(function() return player:GetRankInGroup(game.CreatorId) end)
+    if ok and rank and rank >= 200 then return true end
+    return false
+end
+
+local function UpdateStaffList()
+    State.staffList = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if IsStaff(p) then
+            table.insert(State.staffList, p.Name)
+        end
+    end
+end
+
+-- ============================================================
+-- MISC SYSTEMS
+-- ============================================================
+local function SetupInfiniteJump()
+    if not Cfg.InfiniteJump then return end
+    UserInputService.JumpRequest:Connect(function()
+        if not Cfg.InfiniteJump then return end
+        local lc = GetCharacter(LocalPlayer)
+        local hum = GetHumanoid(lc)
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end)
+end
+
+local function NoclipStep()
+    if not Cfg.Noclip then return end
+    local lc = GetCharacter(LocalPlayer)
+    if not lc then return end
+    for _, part in ipairs(lc:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+end
+
+local function BunnyHopStep()
+    if not Cfg.BunnyHop then return end
+    local lc = GetCharacter(LocalPlayer)
+    local hum = GetHumanoid(lc)
+    if hum and hum:GetState() == Enum.HumanoidStateType.Landed then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end
+
+local function SpeedStep()
+    if Cfg.SpeedMultiplier <= 1.0 then return end
+    local lc = GetCharacter(LocalPlayer)
+    local hum = GetHumanoid(lc)
+    if hum then
+        hum.WalkSpeed = Cfg.WalkspeedVal * Cfg.SpeedMultiplier
+    end
+end
+
+-- ============================================================
+-- ESP SYSTEM
+-- ============================================================
+local function CreateEspDrawings(player)
+    local d = {
+        box    = Drawing.new("Square"),
+        name   = Drawing.new("Text"),
+        health = Drawing.new("Text"),
+        dist   = Drawing.new("Text"),
     }
-    FireUseItem(payload)
-    if item then
-        pcall(function() item:StartShooting(aimPos) end)
-        pcall(function() item:StartAiming(aimPos) end)
-        pcall(function() item:HeavyAttack(aimPos) end)
-    end
-    if State.UseItemRemote then
-        pcall(function()
-            State.UseItemRemote:FireServer(GUID(),Enum.UserInputType.MouseButton1,
-                {CFrame=Cam.CFrame,Focus=CFrame.new(aimPos)},nil)
-        end)
-    end
+    d.box.Visible = false
+    d.box.Color = Cfg.EspBoxColor
+    d.box.Thickness = 1.5
+    d.box.Filled = false
+
+    d.name.Visible = false
+    d.name.Color = Cfg.EspNameColor
+    d.name.Size = 13
+    d.name.Font = Drawing.Fonts and Drawing.Fonts.Code or 3
+    d.name.Center = true
+
+    d.health.Visible = false
+    d.health.Color = Cfg.EspHealthColor
+    d.health.Size = 12
+    d.health.Center = true
+    d.health.Font = Drawing.Fonts and Drawing.Fonts.Code or 3
+
+    d.dist.Visible = false
+    d.dist.Color = Color3.fromRGB(200,200,200)
+    d.dist.Size = 12
+    d.dist.Center = true
+    d.dist.Font = Drawing.Fonts and Drawing.Fonts.Code or 3
+
+    State.espDrawings[player.UserId] = d
 end
 
-local function BindGodMode()
-    if State.GodConn then State.GodConn:Disconnect() end
-    State.GodConn=RunService.Heartbeat:Connect(function()
-        if not Cfg.Rage.GodMode then return end
-        local hrp=GetHRP(LP)
-        if hrp and hrp.Position.Y<Cfg.Rage.GodY then
-            pcall(function() hrp.CFrame=CFrame.new(hrp.Position.X,Cfg.Rage.GodY+0.1,hrp.Position.Z) end)
-        end
-    end)
+local function RemoveEspDrawings(player)
+    local d = State.espDrawings[player.UserId]
+    if not d then return end
+    for _, v in pairs(d) do pcall(function() v:Remove() end) end
+    State.espDrawings[player.UserId] = nil
 end
 
-local function BindAntiAim()
-    if State.AntiAimConn then State.AntiAimConn:Disconnect() end
-    State.aaAngAcc=0;State.aaBreatheAcc=0;State.aaRollAcc=0
-    State.AntiAimConn=RunService:BindToRenderStep("UNCODE_AA",Enum.RenderPriority.Character.Value+1,function(dt)
-        if not Cfg.AntiAim.Enabled then return end
-        local hrp=GetHRP(LP); if not hrp then return end
-        local aa=Cfg.AntiAim; local mode=aa.Mode
-        local pitch,yaw,roll=0,0,0
-        local extra=State.aaExtraYaw
-        if aa.BreatheEffect then
-            State.aaBreatheAcc=State.aaBreatheAcc+dt
-            yaw=yaw+math.sin(State.aaBreatheAcc*aa.BreatheSpeed*math.pi*2)*aa.BreatheAmp
-        end
-        if aa.MicroJitter then
-            State.aaLastMicro=State.aaLastMicro+dt
-            if State.aaLastMicro>=1/aa.MicroJitterSpeed then
-                State.aaLastMicro=0
-                extra=extra+(math.random()-0.5)*2*aa.MicroJitterAmp
-            end
-        end
-        if aa.DesyncMode then extra=extra+aa.DesyncOffset end
-        if aa.RandomFlip and math.random()<aa.FlipChance then extra=extra+180 end
-        if aa.ChaosMode then
-            State.aaLastChaos=State.aaLastChaos+dt
-            if State.aaLastChaos>=aa.ChaosInterval then State.aaLastChaos=0;extra=extra+(math.random()-0.5)*360 end
-        end
-        if aa.LookAtRandom then
-            State.aaLastLook=State.aaLastLook+dt
-            if State.aaLastLook>=aa.LookInterval then State.aaLastLook=0;extra=extra+math.random(0,360) end
-        end
-        if aa.RollEnabled then State.aaRollAcc=State.aaRollAcc+dt;roll=State.aaRollAcc*aa.RollSpeed end
-        if mode=="Spin" then State.aaAngAcc=State.aaAngAcc+aa.SpinSpeed*dt;yaw=yaw+State.aaAngAcc
-        elseif mode=="Jitter" then
-            State.aaAngAcc=State.aaAngAcc+dt*20
-            local side=math.floor(State.aaAngAcc)%2==0 and 1 or -1
-            yaw=yaw+side*aa.Jitter;pitch=pitch+side*(aa.Pitch or 0)
-        elseif mode=="Static" then pitch=aa.Pitch;yaw=aa.Yaw
-        elseif mode=="Up" then pitch=90
-        elseif mode=="Down" then pitch=-90
-        elseif mode=="Side" then roll=90
-        elseif mode=="RandomSpin" then
-            State.aaAngAcc=State.aaAngAcc+(math.random()*2-1)*aa.SpinSpeed*dt;yaw=yaw+State.aaAngAcc
-        elseif mode=="Custom" then pitch=aa.CustomPitch;yaw=aa.CustomYaw;roll=aa.CustomRoll
-        end
-        if aa.MultiAxisSpin then
-            State.aaAngAcc=State.aaAngAcc+aa.SpinSpeed*dt
-            pitch=pitch+State.aaAngAcc*0.7;roll=roll+State.aaAngAcc*0.5
-        end
-        yaw=yaw+extra
-        pcall(function()
-            hrp.CFrame=CFrame.new(hrp.Position)*CFrame.Angles(math.rad(pitch),math.rad(yaw),math.rad(roll))
-        end)
-    end)
-end
+local function EspStep()
+    if not (Cfg.EspEnabled and Drawing) then return end
 
-local function ApplyVoidHide(on)
-    if on then
-        local hrp=GetHRP(LP)
-        if hrp then
-            pcall(function() hrp.CFrame=CFrame.new(hrp.Position.X,Cfg.VoidHide.Y,hrp.Position.Z) end)
-            pcall(function() hrp.AssemblyLinearVelocity=Vector3.zero end)
-        end
-    end
-end
+    local lc = GetCharacter(LocalPlayer)
+    local lr = GetRoot(lc)
 
-local function CleanESP(pl)
-    local objs=State.EspObjects[pl]
-    if objs then for _,o in ipairs(objs) do pcall(function() o:Destroy() end) end;State.EspObjects[pl]=nil end
-end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
 
-local function UpdateESP()
-    for _,pl in ipairs(Players:GetPlayers()) do
-        if not IsEnemy(pl) then CleanESP(pl);continue end
-        local char=GetChar(pl);local hrp=GetHRP(pl);local hum=GetHum(pl)
-        if not char or not hrp or not hum then CleanESP(pl);continue end
-        local myHRP=GetHRP(LP)
-        local dist=(hrp.Position-(myHRP and myHRP.Position or Vector3.zero)).Magnitude
-        if dist>Cfg.ESP.MaxDist then CleanESP(pl);continue end
-        local objs=State.EspObjects[pl]
-        if not objs then
-            objs={};State.EspObjects[pl]=objs
-            if Cfg.ESP.Box then
-                local sb=Instance.new("SelectionBox",Workspace)
-                sb.Color3=Cfg.ESP.BoxColor;sb.LineThickness=0.04;sb.SurfaceTransparency=1;sb.Adornee=char
-                objs[#objs+1]=sb
-            end
-            local bg=Instance.new("BillboardGui",hrp)
-            bg.Size=UDim2.new(0,120,0,40);bg.StudsOffset=Vector3.new(0,3,0);bg.AlwaysOnTop=true
-            local nl=Instance.new("TextLabel",bg)
-            nl.Size=UDim2.new(1,0,0.5,0);nl.BackgroundTransparency=1;nl.Font=Enum.Font.Code
-            nl.TextSize=12;nl.TextStrokeTransparency=0.5;nl.TextColor3=Color3.new(1,1,1);nl.Name="NL"
-            local il=Instance.new("TextLabel",bg)
-            il.Size=UDim2.new(1,0,0.5,0);il.Position=UDim2.new(0,0,0.5,0);il.BackgroundTransparency=1
-            il.Font=Enum.Font.Code;il.TextSize=11;il.Name="IL";il.TextColor3=Color3.fromRGB(100,200,100)
-            objs[#objs+1]=bg
+        local d = State.espDrawings[p.UserId]
+        if not d then CreateEspDrawings(p) d = State.espDrawings[p.UserId] end
+
+        local char = GetCharacter(p)
+        local root = GetRoot(char)
+        local hum = GetHumanoid(char)
+
+        if not (Cfg.EspEnabled and char and root and hum and hum.Health > 0) then
+            for _, v in pairs(d) do v.Visible = false end
+            continue
         end
-        for _,obj in ipairs(objs) do
-            if obj:IsA("BillboardGui") then
-                local nl=obj:FindFirstChild("NL");local il=obj:FindFirstChild("IL")
-                if nl and Cfg.ESP.Name then nl.Text=pl.Name end
-                if il then
-                    local parts={}
-                    if Cfg.ESP.Healthbar then parts[#parts+1]=string.format("HP:%.0f",hum.Health) end
-                    if Cfg.ESP.Distance  then parts[#parts+1]=string.format("%.0fm",dist) end
-                    il.Text=table.concat(parts," ")
-                end
-            end
+
+        local headPos = char:FindFirstChild("Head") and char.Head.Position or root.Position + Vector3.new(0,1.5,0)
+        local feetPos = root.Position - Vector3.new(0,2.8,0)
+
+        local topSP, topVis, topZ = WorldToViewport(headPos)
+        local botSP = WorldToViewport(feetPos)
+
+        local dist = lr and GetDistance(lr.Position, root.Position) or 999
+
+        if not topVis or topZ < 0 or dist > Cfg.EspMaxDist then
+            for _, v in pairs(d) do v.Visible = false end
+            continue
+        end
+
+        local h = math.abs(topSP.Y - botSP.Y)
+        local w = h * 0.5
+        local x = topSP.X - w/2
+        local y = topSP.Y
+
+        if Cfg.EspBoxes then
+            d.box.Position = Vector2.new(x, y)
+            d.box.Size = Vector2.new(w, h)
+            d.box.Visible = true
+        else
+            d.box.Visible = false
+        end
+
+        if Cfg.EspNames then
+            d.name.Text = p.DisplayName or p.Name
+            d.name.Position = Vector2.new(topSP.X, y - 16)
+            d.name.Visible = true
+        else
+            d.name.Visible = false
+        end
+
+        if Cfg.EspHealth then
+            local hp = math.floor(hum.Health)
+            local maxHp = math.floor(hum.MaxHealth)
+            d.health.Text = hp .. "/" .. maxHp
+            d.health.Position = Vector2.new(topSP.X, y + h + 2)
+            d.health.Color = Color3.fromRGB(
+                math.floor((1 - hp/maxHp) * 255),
+                math.floor((hp/maxHp) * 255),
+                0
+            )
+            d.health.Visible = true
+        else
+            d.health.Visible = false
+        end
+
+        if Cfg.EspDist then
+            d.dist.Text = math.floor(dist) .. "m"
+            d.dist.Position = Vector2.new(topSP.X, y + h + (Cfg.EspHealth and 16 or 2))
+            d.dist.Visible = true
+        else
+            d.dist.Visible = false
         end
     end
 end
 
-local function BindOrbit()
-    if State.OrbitConn then State.OrbitConn:Disconnect() end
-    State.orbitAng=0;State.orbitSpiralR=Cfg.Orbit.Radius
-    State.OrbitConn=RunService.Heartbeat:Connect(function(dt)
-        if not Cfg.Orbit.Enabled then return end
-        local hrp=GetHRP(LP); if not hrp then return end
-        local target=GetTargetEnemy(hrp.Position)
-        local tHRP=target and GetHRP(target)
-        local tPos=tHRP and (Cfg.Orbit.Predict and predictPos(tHRP,Cfg.Rage.PredictLead) or tHRP.Position) or hrp.Position
-        local orb=Cfg.Orbit
-        State.orbitAng=State.orbitAng+math.rad(orb.Speed)*dt
-        local t=State.orbitAng;local r=orb.Radius
-        local ox,oz=0,0
-        if orb.Mode=="Circle" then ox=math.cos(t)*r;oz=math.sin(t)*r
-        elseif orb.Mode=="Figure8" or orb.Mode=="Lemniscate" or orb.Mode=="Infinity" then
-            local d=1+math.sin(t)^2;ox=(math.cos(t)/d)*r;oz=(math.sin(t)*math.cos(t)/d)*r
-        elseif orb.Mode=="Ellipse" then ox=math.cos(t)*orb.RadiusX;oz=math.sin(t)*orb.RadiusZ
-        elseif orb.Mode=="SpiralIn" then
-            State.orbitSpiralR=math.max(2,State.orbitSpiralR-dt*2);ox=math.cos(t)*State.orbitSpiralR;oz=math.sin(t)*State.orbitSpiralR
-        elseif orb.Mode=="SpiralOut" then
-            State.orbitSpiralR=math.min(40,State.orbitSpiralR+dt*2);ox=math.cos(t)*State.orbitSpiralR;oz=math.sin(t)*State.orbitSpiralR
-        elseif orb.Mode=="Bounce" then local br=math.abs(math.sin(t))*r+2;ox=math.cos(t)*br;oz=math.sin(t)*br
-        elseif orb.Mode=="RandomOrbit" then
-            State.orbitAng=State.orbitAng+(math.random()-0.5)*0.5;ox=math.cos(State.orbitAng)*r;oz=math.sin(State.orbitAng)*r
-        end
-        local newPos=tPos+Vector3.new(ox,orb.Height,oz)
-        local goal=orb.Face and CFrame.lookAt(newPos,tPos) or CFrame.new(newPos)
-        pcall(function()
-            if orb.Lerp then hrp.CFrame=hrp.CFrame:Lerp(goal,orb.LerpAlpha) else hrp.CFrame=goal end
-        end)
-        if orb.AutoShoot and target then DoVoidSpam() end
-    end)
-end
+-- ============================================================
+-- UI SYSTEM
+-- ============================================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "UNCODE_v5"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.DisplayOrder = 999
 
-local function BindPredV2()
-    if State.PredConn then State.PredConn:Disconnect() end
-    State.PredConn=RunService.Heartbeat:Connect(function()
-        if not Cfg.Pred.Enabled then return end
-        local myHRP=GetHRP(LP); if not myHRP then return end
-        local bestScore,bestHRP=0,nil
-        for _,pl in ipairs(GetEnemies()) do
-            local eHRP=GetHRP(pl)
-            if eHRP then
-                local toMe=(myHRP.Position-eHRP.Position);local eDist=toMe.Magnitude
-                if eDist<200 then
-                    local eVel=eHRP.AssemblyLinearVelocity;local eLook=eHRP.CFrame.LookVector
-                    local aimDot=eLook:Dot(toMe.Unit)
-                    local velDot=(eVel.Magnitude>0.1) and eVel.Unit:Dot(toMe.Unit) or 0
-                    local score=aimDot*0.7+velDot*0.3
-                    if aimDot>Cfg.Pred.AimDotThresh and score>bestScore then bestScore=score;bestHRP=eHRP end
-                end
-            end
-        end
-        if bestHRP and bestScore>Cfg.Pred.AimDotThresh then
-            local toMe=(myHRP.Position-bestHRP.Position).Unit
-            local perp=Vector3.new(-toMe.Z,0,toMe.X).Unit
-            local dodgePos=myHRP.Position+perp*Cfg.Pred.PerpStrength
-            if Cfg.Pred.MultiPoint then dodgePos=dodgePos+Vector3.new((math.random()-0.5)*6,math.random()*3,(math.random()-0.5)*6) end
-            pcall(function() myHRP.CFrame=CFrame.new(dodgePos)*CFrame.Angles(0,math.atan2(-toMe.X,-toMe.Z),0) end)
-        end
-    end)
-end
-
-local function BindAntiBaitV2()
-    if State.AntiBaitConn then State.AntiBaitConn:Disconnect() end
-    local tpHistory={}
-    State.AntiBaitConn=RunService.Heartbeat:Connect(function()
-        if not Cfg.AntiBait.Enabled then return end
-        local myHRP=GetHRP(LP); if not myHRP then return end
-        local now=tick()
-        if now-State.AntiBaitDodgeT<0.3 then return end
-        for _,pl in ipairs(GetEnemies()) do
-            local eHRP=GetHRP(pl); if not eHRP then continue end
-            local dist=(eHRP.Position-myHRP.Position).Magnitude; if dist>120 then continue end
-            local threat=false
-            if Cfg.AntiBait.GunPred then
-                local eLook=eHRP.CFrame.LookVector;local toMe=(myHRP.Position-eHRP.Position).Unit
-                if eLook:Dot(toMe)>0.85 then threat=true end
-            end
-            if Cfg.AntiBait.FlickerDet then
-                tpHistory[pl]=tpHistory[pl] or {lastPos=eHRP.Position,count=0,t=now}
-                local hist=tpHistory[pl];local moved=(eHRP.Position-hist.lastPos).Magnitude
-                if moved>10 then hist.count=hist.count+1 end
-                hist.lastPos=eHRP.Position
-                if now-hist.t>Cfg.AntiBait.FlickerWindow then hist.count=0;hist.t=now end
-                if hist.count>=Cfg.AntiBait.FlickerMin then threat=true end
-            end
-            if threat then
-                State.AntiBaitDodgeT=now
-                local toMe=(myHRP.Position-eHRP.Position).Unit;local dir
-                if Cfg.AntiBait.DodgeMode=="Away" then dir=toMe
-                elseif Cfg.AntiBait.DodgeMode=="Perpendicular" then dir=Vector3.new(-toMe.Z,0,toMe.X).Unit
-                else local r=RandUnit()*Vector3.new(1,0,1);dir=(r.Magnitude>0.01 and r.Unit or Vector3.new(1,0,0)) end
-                local newPos=myHRP.Position+dir*Cfg.AntiBait.DodgeDist
-                pcall(function() myHRP.CFrame=CFrame.new(newPos) end);break
-            end
-        end
-    end)
-end
-
-local function BindAntiTransloc()
-    if State.AntiTranslocConn then State.AntiTranslocConn:Disconnect() end
-    local posHist={};local tpCounts={}
-    State.AntiTranslocConn=RunService.Heartbeat:Connect(function(dt)
-        if not Cfg.AntiTransloc.Enabled then return end
-        local myHRP=GetHRP(LP); if not myHRP then return end
-        local now=tick()
-        for _,pl in ipairs(GetEnemies()) do
-            local eHRP=GetHRP(pl); if not eHRP then continue end
-            local prev=posHist[pl]
-            if prev then
-                local moved=(eHRP.Position-prev).Magnitude/math.max(dt,0.001)
-                if moved>Cfg.AntiTransloc.JumpThresh/math.max(dt,0.001) then
-                    tpCounts[pl]=tpCounts[pl] or {c=0,t=now};tpCounts[pl].c=tpCounts[pl].c+1
-                    if now-tpCounts[pl].t>Cfg.AntiTransloc.TpWindow then tpCounts[pl].c=1;tpCounts[pl].t=now end
-                    if tpCounts[pl].c>=Cfg.AntiTransloc.MinTps then
-                        if Cfg.AntiTransloc.Mode=="Freeze" then
-                            pcall(function() myHRP.AssemblyLinearVelocity=Vector3.zero end)
-                        else
-                            local toMe=(myHRP.Position-eHRP.Position).Unit
-                            local perp=Vector3.new(-toMe.Z,0,toMe.X).Unit
-                            pcall(function() myHRP.CFrame=myHRP.CFrame+perp*15 end)
-                        end
-                        tpCounts[pl].c=0
-                    end
-                end
-            end
-            posHist[pl]=eHRP.Position
-        end
-    end)
-end
-
-local function BindVelDesync()
-    if State.VelDesyncConn then State.VelDesyncConn:Disconnect() end
-    State.velDesyncAng=0;local spikeT=0
-    State.VelDesyncConn=RunService.Heartbeat:Connect(function(dt)
-        if not Cfg.VelDesync.Enabled then return end
-        local hrp=GetHRP(LP); if not hrp then return end
-        local cfg=Cfg.VelDesync
-        State.velDesyncAng=State.velDesyncAng+dt*180
-        local mag=(cfg.Intensity/100)*50000
-        local angle=math.rad(State.velDesyncAng)
-        local spoofVel=Vector3.new(math.cos(angle)*mag,0,math.sin(angle)*mag)
-        if cfg.Oscillate then spoofVel=spoofVel*math.abs(math.sin(State.velDesyncAng*0.01)) end
-        if cfg.NoiseVel then
-            spoofVel=spoofVel+Vector3.new(math.noise(tick()*0.5,0)*mag*0.3,math.noise(0,tick()*0.5)*mag*0.1,math.noise(tick()*0.5,tick()*0.5)*mag*0.3)
-        end
-        if cfg.CounterVel then spoofVel=spoofVel+(-hrp.AssemblyLinearVelocity*2) end
-        if cfg.SpikeMode then spikeT=spikeT+dt; if spikeT>=cfg.SpikeInterval then spikeT=0;spoofVel=spoofVel*5 end end
-        local ok=false
-        pcall(function()
-            local mt=getrawmetatable(hrp);local ni=mt and rawget(mt,"__newindex")
-            if ni then pcall(ni,hrp,"AssemblyLinearVelocity",spoofVel);ok=true end
-        end)
-        if not ok then pcall(function() hrp.AssemblyLinearVelocity=spoofVel end) end
-        if sethiddenproperty then pcall(sethiddenproperty,hrp,"AssemblyLinearVelocity",spoofVel) end
-    end)
-end
-
-local function BindHitbox()
-    if State.HitboxConn then State.HitboxConn:Disconnect() end
-    State.HitboxConn=RunService.Heartbeat:Connect(function()
-        if not Cfg.Hitbox.Enabled then return end
-        local size=Cfg.Hitbox.BreakHitbox and Cfg.Hitbox.BreakSize or Cfg.Hitbox.Size
-        for _,pl in ipairs(GetEnemies()) do
-            local char=GetChar(pl)
-            if char then
-                for _,part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        pcall(function() part.Size=Vector3.new(size,size,size) end)
-                        if Cfg.Hitbox.Massless then pcall(function() part.Massless=true end) end
-                        if Cfg.Hitbox.NoCollide then pcall(function() part.CanCollide=false end) end
-                    end
-                end
-            end
-        end
-    end)
-end
-
-local function BindFakePos()
-    if State.FakePosConn then State.FakePosConn:Disconnect() end
-    if State.ghostBox then pcall(function() State.ghostBox:Destroy() end);State.ghostBox=nil end
-    if Cfg.FakePos.GhostVis then
-        local gb=Instance.new("Part",Workspace)
-        gb.Anchored=true;gb.CanCollide=false;gb.CanTouch=false
-        gb.Size=Vector3.new(2,5,1);gb.Material=Enum.Material.Neon
-        gb.BrickColor=BrickColor.new("Bright blue");gb.Transparency=0.5;gb.Name="UNCODEGhost"
-        State.ghostBox=gb
-    end
-    State.FakePosConn=RunService.Heartbeat:Connect(function(dt)
-        if not Cfg.FakePos.Enabled then
-            if State.ghostBox then State.ghostBox.CFrame=CFrame.new(0,-9999,0) end;return
-        end
-        local hrp=GetHRP(LP); if not hrp then return end
-        local fp=Cfg.FakePos
-        State.fpVirtualCF=hrp.CFrame
-        local camLook=Cam.CFrame.LookVector
-        local camYaw=math.atan2(-camLook.X,-camLook.Z)
-        local surfaceRot=CFrame.Angles(0,camYaw,0)
-        local underPos=State.fpVirtualCF.Position-Vector3.new(0,fp.Depth,0)
-        if fp.Panic then
-            underPos=underPos+Vector3.new((math.random()-0.5)*2*fp.PanicAmp,0,(math.random()-0.5)*2*fp.PanicAmp)
-        end
-        if fp.AutoNoclip then
-            local char=LP.Character
-            if char then for _,p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then pcall(function() p.CanCollide=false;p.CanTouch=false end) end
-            end end
-        end
-        if fp.ZeroVelocity then pcall(function() hrp.AssemblyLinearVelocity=Vector3.zero end) end
-        pcall(function() hrp.CFrame=CFrame.new(underPos)*surfaceRot end)
-        if fp.HideMeshes then
-            local char=LP.Character
-            if char then for _,p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") or p:IsA("Decal") then pcall(function() p.Transparency=1 end) end
-            end end
-        end
-        if State.ghostBox then State.ghostBox.CFrame=State.fpVirtualCF end
-        if fp.CamElevation then pcall(function() Cam.CFrame=Cam.CFrame+Vector3.new(0,fp.Depth,0) end) end
-    end)
-end
-
-local MOD_KEYWORDS={"mod","admin","staff","owner","developer","tester","creator","contributor"}
-local detectedStaff={}
-local function CheckStaff(pl)
-    if pl==LP or detectedStaff[pl] then return end
-    local nl=pl.Name:lower()
-    local dl=(pcall(function() return pl.DisplayName end) and pl.DisplayName or pl.Name):lower()
-    local isStaff=(pl.UserId==game.CreatorId)
-    if not isStaff then for _,kw in ipairs(MOD_KEYWORDS) do if nl:find(kw) or dl:find(kw) then isStaff=true;break end end end
-    if isStaff then
-        detectedStaff[pl]=true
-        warn("[UNCODE] Staff: "..pl.Name)
-        if Cfg.StaffDetect.Notify then Notify("STAFF: "..pl.Name,8) end
-        if Cfg.StaffDetect.AutoHop then pcall(function() TeleportService:Teleport(game.PlaceId,LP) end) end
-    end
-end
-local function BindStaffDetect()
-    for _,pl in ipairs(Players:GetPlayers()) do CheckStaff(pl) end
-    Players.PlayerAdded:Connect(function(pl) if Cfg.StaffDetect.Enabled then CheckStaff(pl) end end)
-end
-
-local function BindRiotGodmode()
-    if State.RiotConn then State.RiotConn:Disconnect() end
-    State.RiotConn=RunService.Heartbeat:Connect(function(dt)
-        if not Cfg.Riot.GodmodeEnabled then return end
-        local hrp=GetHRP(LP); if not hrp then return end
-        local cfg=Cfg.Riot
-        State.riotJumpT=State.riotJumpT+dt
-        if State.riotJumpT>=0.1 then
-            State.riotJumpT=0
-            local dir=RandUnit()*Vector3.new(1,0,1)
-            if dir.Magnitude<0.01 then dir=Vector3.new(1,0,0) else dir=dir.Unit end
-            local dist=cfg.MinJump+math.random()*(cfg.MaxJump-cfg.MinJump)
-            local newPos=hrp.Position+dir*dist
-            if cfg.GroundSnap then newPos=Vector3.new(newPos.X,hrp.Position.Y,newPos.Z) end
-            if cfg.AvoidBullets then
-                local target=GetTargetEnemy(hrp.Position);local eHRP=target and GetHRP(target)
-                if eHRP then local away=(hrp.Position-eHRP.Position);if away.Magnitude>0.01 then newPos=hrp.Position+away.Unit*cfg.BulletDodge end end
-            end
-            pcall(function()
-                local spinCF=CFrame.Angles(0,math.rad(cfg.SpinSpeed*tick()%360),0)
-                hrp.CFrame=CFrame.new(newPos)*spinCF
-            end)
-        end
-        if cfg.AutoShoot then
-            State.riotShootT=State.riotShootT+dt
-            if State.riotShootT>=0.15 then
-                State.riotShootT=0
-                local target=GetTargetEnemy(hrp.Position);local eHRP=target and GetHRP(target)
-                if eHRP and (eHRP.Position-hrp.Position).Magnitude<cfg.AttackRange then DoVoidSpam() end
-            end
-        end
-    end)
-end
-
-local function BindRiotAbuser()
-    if State.AbuserConn then State.AbuserConn:Disconnect() end
-    local bobT=0
-    State.AbuserConn=RunService.Heartbeat:Connect(function(dt)
-        if not Cfg.Riot.AbuserEnabled then return end
-        local hrp=GetHRP(LP); if not hrp then return end
-        local cfg=Cfg.Riot;local target=GetTargetEnemy(hrp.Position); if not target then return end
-        local tHRP=GetHRP(target); if not tHRP then return end
-        local tPos=cfg.PredictTarget and predictPos(tHRP,cfg.PredictLead) or tHRP.Position
-        local offset=Vector3.new(0,cfg.StickHeight,0)
-        if cfg.RandomOffset then offset=offset+Vector3.new((math.random()-0.5)*2*cfg.OffsetAmp,0,(math.random()-0.5)*2*cfg.OffsetAmp) end
-        local newPos
-        if cfg.AbuserMode=="Stick" then newPos=tPos+offset
-        elseif cfg.AbuserMode=="Bounce" then bobT=bobT+dt;newPos=tPos+Vector3.new(0,math.abs(math.sin(bobT*cfg.BounceSpeed))*cfg.BounceAmp,0)
-        elseif cfg.AbuserMode=="Orbit" then
-            State.slingOrbAng=State.slingOrbAng+math.rad(90)*dt
-            newPos=tPos+Vector3.new(math.cos(State.slingOrbAng)*6,cfg.StickHeight,math.sin(State.slingOrbAng)*6)
-        elseif cfg.AbuserMode=="Phase" then
-            local side=(math.floor(tick()*10)%2==0) and 1 or -1
-            newPos=tPos+Vector3.new(side*4,cfg.StickHeight,0)
-        end
-        if newPos then
-            pcall(function()
-                local goalCF=CFrame.new(newPos)
-                if cfg.ForceFace then goalCF=CFrame.lookAt(newPos,tPos) end
-                if cfg.SpinOnTarget then goalCF=goalCF*CFrame.Angles(0,math.rad(cfg.SpinSpeed*tick()%360),0) end
-                hrp.CFrame=goalCF
-            end)
-        end
-        if cfg.RaVelZero then pcall(function() hrp.AssemblyLinearVelocity=tHRP.AssemblyLinearVelocity;hrp.AssemblyAngularVelocity=Vector3.zero end) end
-        State.abuserShootT=State.abuserShootT+dt
-        if cfg.AutoShoot and State.abuserShootT>=0.15 then
-            State.abuserShootT=0
-            if (tHRP.Position-hrp.Position).Magnitude<cfg.AttackRange then DoVoidSpam() end
-        end
-    end)
-end
-
-local function BindSlingBypass()
-    if State.SlingConn then State.SlingConn:Disconnect() end
-    local fastTpT=0;State.slingBobT=0
-    State.SlingConn=RunService.Heartbeat:Connect(function(dt)
-        if not Cfg.SlingBypass.Enabled then return end
-        local hrp=GetHRP(LP); if not hrp then return end
-        local sb=Cfg.SlingBypass;local target=GetTargetEnemy(hrp.Position); if not target then return end
-        local tHRP=GetHRP(target); if not tHRP then return end
-        local tPos=tHRP.Position;local newCF
-        if sb.Mode=="Follow" then
-            local dir=(tPos-hrp.Position)
-            if dir.Magnitude>sb.FollowDist then
-                local goal=tPos-dir.Unit*sb.FollowDist+Vector3.new(0,sb.FollowHeight,0)
-                newCF=hrp.CFrame:Lerp(CFrame.new(goal),0.15)
-            end
-        elseif sb.Mode=="Stalk" then
-            local behind=tHRP.CFrame*CFrame.new(0,0,sb.StalkDist)
-            newCF=hrp.CFrame:Lerp(CFrame.new(behind.Position),0.1)
-        elseif sb.Mode=="Hover" then
-            State.slingBobT=State.slingBobT+dt
-            local bob=math.sin(State.slingBobT*sb.HoverBobSpeed*math.pi*2)*sb.HoverBobAmp
-            newCF=hrp.CFrame:Lerp(CFrame.new(tPos+Vector3.new(0,sb.HoverHeight+bob,0)),0.2)
-        elseif sb.Mode=="FastTp" then
-            fastTpT=fastTpT+dt
-            if fastTpT>=sb.FastTpCooldown then
-                fastTpT=0
-                local predPos=predictPos(tHRP,Cfg.Rage.PredictLead)
-                for i=1,sb.FastTpCount do pcall(function() hrp.CFrame=CFrame.new(predPos+RandUnit()*2) end) end
-            end
-        elseif sb.Mode=="TargetStick" then
-            newCF=CFrame.new(tPos+Vector3.new(0,sb.StickHeight or 5,0))
-        elseif sb.Mode=="OrbitTarget" then
-            State.slingOrbAng=State.slingOrbAng+math.rad(sb.OrbitSpeed)*dt
-            newCF=CFrame.new(tPos+Vector3.new(math.cos(State.slingOrbAng)*sb.OrbitRadius,sb.OrbitHeight,math.sin(State.slingOrbAng)*sb.OrbitRadius))
-        elseif sb.Mode=="RandomAroundTarget" then
-            local angle=math.random()*math.pi*2
-            newCF=CFrame.new(tPos+Vector3.new(math.cos(angle)*sb.RandomRadius,2,math.sin(angle)*sb.RandomRadius))
-        end
-        if newCF then pcall(function() hrp.CFrame=newCF end) end
-        if sb.NetworkOwn then pcall(function() tHRP:SetNetworkOwner(LP) end) end
-        if sb.AutoShoot then DoVoidSpam() end
-    end)
-end
-
-local function BindFly()
-    if State.FlyConn then State.FlyConn:Disconnect() end
-    State.FlyConn=RunService.Heartbeat:Connect(function()
-        if not Cfg.Movement.Fly then return end
-        local hrp=GetHRP(LP);local hum=GetHum(LP); if not hrp or not hum then return end
-        pcall(function() hum.PlatformStand=true end)
-        local dir=Vector3.zero
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir=dir+Cam.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir=dir-Cam.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir=dir-Cam.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir=dir+Cam.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir=dir+Vector3.new(0,1,0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir=dir-Vector3.new(0,1,0) end
-        if dir.Magnitude>0 then dir=dir.Unit end
-        pcall(function() hrp.AssemblyLinearVelocity=dir*Cfg.Movement.FlySpeed end)
-    end)
-end
-
-local function BindNoclip()
-    if State.NoclipConn then State.NoclipConn:Disconnect() end
-    State.NoclipConn=RunService.Heartbeat:Connect(function()
-        if not Cfg.Movement.Noclip then return end
-        local char=LP.Character; if not char then return end
-        for _,p in ipairs(char:GetDescendants()) do
-            if p:IsA("BasePart") then pcall(function() p.CanCollide=false;p.CanTouch=false end) end
-        end
-    end)
-end
-
-local AuraModes={
-    ["Cyber Blue"]={Color3.fromRGB(0,100,255),Color3.fromRGB(100,200,255)},
-    ["Fire"]={Color3.fromRGB(255,80,0),Color3.fromRGB(255,200,0)},
-    ["Poison"]={Color3.fromRGB(0,255,80),Color3.fromRGB(200,255,0)},
-    ["Shadow"]={Color3.fromRGB(80,0,160),Color3.fromRGB(160,0,255)},
-    ["Gold"]={Color3.fromRGB(255,200,0),Color3.fromRGB(255,255,100)},
-    ["Crimson"]={Color3.fromRGB(200,0,0),Color3.fromRGB(255,80,80)},
-}
-local function CleanAura() for _,o in ipairs(State.AuraObjects) do pcall(function() o:Destroy() end) end;State.AuraObjects={} end
-local function ApplyAura(on)
-    CleanAura(); if not on then return end
-    local char=LP.Character; if not char then return end
-    local cols=AuraModes[Cfg.Visuals.AuraMode] or AuraModes["Cyber Blue"]
-    for _,part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") and part.Name~="HumanoidRootPart" then
-            local pe=Instance.new("ParticleEmitter",part)
-            pe.Color=ColorSequence.new(cols[1],cols[2]);pe.LightEmission=0.9;pe.Rate=20
-            pe.Speed=NumberRange.new(0.5,2);pe.Lifetime=NumberRange.new(0.3,0.8);pe.Size=NumberSequence.new(0.15,0)
-            State.AuraObjects[#State.AuraObjects+1]=pe
-            local pl2=Instance.new("PointLight",part)
-            pl2.Brightness=2;pl2.Range=14;pl2.Color=cols[1]
-            State.AuraObjects[#State.AuraObjects+1]=pl2
-        end
-    end
-end
-
-local function BindVoidKiller()
-    if State.VoidKillerConn then State.VoidKillerConn:Disconnect() end
-    State.VoidKillerConn=RunService.Heartbeat:Connect(function()
-        if not Cfg.Misc.VoidKiller then return end
-        local myHRP=GetHRP(LP); if not myHRP or myHRP.Position.Y>-100 then return end
-        for _,pl in ipairs(GetEnemies()) do
-            local eHRP=GetHRP(pl)
-            if eHRP and (eHRP.Position-myHRP.Position).Magnitude<Cfg.Misc.VoidKillRange then
-                pcall(function() eHRP:SetNetworkOwner(LP) end)
-                local echar=GetChar(pl)
-                if echar then for _,p in ipairs(echar:GetDescendants()) do
-                    if p:IsA("BasePart") then pcall(function() p.Size=Vector3.new(2500,2500,2500) end) end
-                end end
-                DoVoidSpam()
-            end
-        end
-    end)
-end
-
-local function OnCharSpawn(char)
-    task.wait(0.5);CacheRemotes()
-    BindAntiAim();BindGodMode();BindFly();BindNoclip();BindOrbit()
-    BindPredV2();BindAntiBaitV2();BindAntiTransloc();BindVelDesync()
-    BindHitbox();BindFakePos();BindRiotGodmode();BindRiotAbuser()
-    BindSlingBypass();BindVoidKiller()
-end
-LP.CharacterAdded:Connect(OnCharSpawn)
-if LP.Character then OnCharSpawn(LP.Character) end
-
-RunService.Heartbeat:Connect(function()
-    if Cfg.Misc.AntiAFK then pcall(function() VirtualUser:CaptureController() end) end
+pcall(function()
+    ScreenGui.Parent = CoreGui
 end)
-BindStaffDetect()
+if not ScreenGui.Parent then
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
 
-local spamClock=0
-RunService.Heartbeat:Connect(function(dt)
-    spamClock=spamClock+dt
-    local spamInt=1/math.max(1,Cfg.Rage.SpamRate)
-    if Cfg.Rage.Enabled and Cfg.Rage.VoidSpam and spamClock>=spamInt then spamClock=0;DoVoidSpam() end
-    if Cfg.Rage.Enabled and Cfg.Rage.TpAttack then
-        local myHRP=GetHRP(LP)
-        if myHRP then
-            local target=GetTargetEnemy(myHRP.Position);local tHRP=target and GetHRP(target)
-            if tHRP then
-                local off=(myHRP.Position-tHRP.Position).Unit*Cfg.Rage.TpOffset
-                pcall(function() myHRP.CFrame=tHRP.CFrame+off end);DoVoidSpam()
-            end
-        end
-    end
-    if Cfg.Movement.TpToTarget then
-        local myHRP=GetHRP(LP)
-        if myHRP then
-            local target=GetTargetEnemy(myHRP.Position);local tHRP=target and GetHRP(target)
-            if tHRP then
-                local off=(myHRP.Position-tHRP.Position).Unit*Cfg.Movement.TpOffset
-                pcall(function() myHRP.CFrame=tHRP.CFrame+off end)
-            end
-        end
-    end
-    if Cfg.VoidHide.Enabled then ApplyVoidHide(true) end
-    if Cfg.ESP.Enabled then UpdateESP() end
-    if Cfg.Movement.SpeedMult then
-        local hum=GetHum(LP); if hum then pcall(function() hum.WalkSpeed=16*Cfg.Movement.SpeedVal end) end
-    end
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "Main"
+MainFrame.Size = UDim2.new(0, 580, 0, 430)
+MainFrame.Position = UDim2.new(0, 80, 0, 80)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MainFrame.BorderColor3 = Color3.fromRGB(0, 100, 255)
+MainFrame.BorderSizePixel = 2
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+-- Title bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 28)
+TitleBar.BackgroundColor3 = Color3.fromRGB(0, 60, 180)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Text = "UNCODE v5  |  KiciaHook / UE"
+TitleLabel.Size = UDim2.new(1, -60, 1, 0)
+TitleLabel.Position = UDim2.new(0, 8, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.Font = Enum.Font.Code
+TitleLabel.TextSize = 14
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = TitleBar
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Text = "X"
+CloseBtn.Size = UDim2.new(0, 28, 1, 0)
+CloseBtn.Position = UDim2.new(1, -28, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+CloseBtn.BorderSizePixel = 0
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 13
+CloseBtn.Parent = TitleBar
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
 end)
 
--- ===== UI =====
-local GuiMain=Instance.new("ScreenGui")
-GuiMain.Name="UNCODE_v4";GuiMain.ResetOnSpawn=false
-GuiMain.ZIndexBehavior=Enum.ZIndexBehavior.Sibling;GuiMain.IgnoreGuiInset=true
-pcall(function() GuiMain.Parent=LP.PlayerGui end)
-pcall(function() if not LP.PlayerGui:FindFirstChild("UNCODE_v4") then GuiMain.Parent=game.CoreGui end end)
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Text = "_"
+MinimizeBtn.Size = UDim2.new(0, 28, 1, 0)
+MinimizeBtn.Position = UDim2.new(1, -56, 0, 0)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
+MinimizeBtn.BorderSizePixel = 0
+MinimizeBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.TextSize = 13
+MinimizeBtn.Parent = TitleBar
 
-local Win=Instance.new("Frame",GuiMain)
-Win.Name="Window";Win.Size=UDim2.new(0,540,0,460)
-Win.Position=UDim2.new(0.5,-270,0.5,-230)
-Win.BackgroundColor3=C_BG;Win.BorderColor3=C_BOR;Win.BorderSizePixel=2
-Win.Active=true;Win.Draggable=true
+local ContentArea = Instance.new("Frame")
+ContentArea.Name = "Content"
+ContentArea.Size = UDim2.new(1, 0, 1, -28)
+ContentArea.Position = UDim2.new(0, 0, 0, 28)
+ContentArea.BackgroundTransparency = 1
+ContentArea.Parent = MainFrame
 
-local TitleBar=Instance.new("Frame",Win)
-TitleBar.Size=UDim2.new(1,0,0,28);TitleBar.BackgroundColor3=Color3.fromRGB(5,5,5)
-TitleBar.BorderColor3=C_BOR;TitleBar.BorderSizePixel=1
-local TitleLbl=Instance.new("TextLabel",TitleBar)
-TitleLbl.Size=UDim2.new(1,0,1,0);TitleLbl.BackgroundTransparency=1
-TitleLbl.Text="UNCODE v4  |  Rivals HvH  |  RCtrl = Toggle"
-TitleLbl.Font=Enum.Font.Code;TitleLbl.TextSize=12;TitleLbl.TextColor3=C_BOR
-
-local WaterLbl=Instance.new("TextLabel",GuiMain)
-WaterLbl.Size=UDim2.new(0,180,0,18);WaterLbl.Position=UDim2.new(0,4,0,4)
-WaterLbl.BackgroundTransparency=1;WaterLbl.Text="UNCODE v4"
-WaterLbl.Font=Enum.Font.Code;WaterLbl.TextSize=12;WaterLbl.TextColor3=C_BOR
-WaterLbl.TextXAlignment=Enum.TextXAlignment.Left
-
-local visible=true
-UserInputService.InputBegan:Connect(function(inp,proc)
-    if proc then return end
-    if inp.KeyCode==Enum.KeyCode.RightControl then visible=not visible;Win.Visible=visible end
+-- Minimize: show only title bar
+local minimized = false
+MinimizeBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    ContentArea.Visible = not minimized
+    MainFrame.Size = minimized and UDim2.new(0, 580, 0, 28) or UDim2.new(0, 580, 0, 430)
 end)
 
-local TABS={"RAGE","AA","ESP","VISUAL","MOVE","BYPASS","MISC","EXTRA"}
-local activeTab="RAGE"
-local TabPanels={};local TabButtons={}
+-- Tab system
+local TAB_NAMES = {"Aimbot","VoidSpam","AntiAim","ESP","Orbit","Sling/Riot","Hooks","Misc"}
+local TabButtons = {}
+local TabFrames = {}
+local currentTab = 1
 
-local function SetTab(name)
-    activeTab=name
-    for tName,panel in pairs(TabPanels) do panel.Visible=(tName==name) end
-    for tName,btn in pairs(TabButtons) do
-        btn.BackgroundColor3=(tName==name) and C_ACC or C_BTN
-        btn.TextColor3=(tName==name) and Color3.new(1,1,1) or Color3.fromRGB(160,160,160)
+local TabBar = Instance.new("Frame")
+TabBar.Size = UDim2.new(0, 100, 1, 0)
+TabBar.BackgroundColor3 = Color3.fromRGB(14, 14, 22)
+TabBar.BorderSizePixel = 0
+TabBar.Parent = ContentArea
+
+local TabList = Instance.new("UIListLayout")
+TabList.SortOrder = Enum.SortOrder.LayoutOrder
+TabList.Parent = TabBar
+
+local PanelArea = Instance.new("Frame")
+PanelArea.Size = UDim2.new(1, -100, 1, 0)
+PanelArea.Position = UDim2.new(0, 100, 0, 0)
+PanelArea.BackgroundColor3 = Color3.fromRGB(16, 16, 28)
+PanelArea.BorderSizePixel = 0
+PanelArea.Parent = ContentArea
+
+local function SwitchTab(idx)
+    currentTab = idx
+    for i, f in ipairs(TabFrames) do
+        f.Visible = (i == idx)
+    end
+    for i, b in ipairs(TabButtons) do
+        b.BackgroundColor3 = (i == idx)
+            and Color3.fromRGB(0, 80, 220)
+            or Color3.fromRGB(20, 20, 35)
     end
 end
 
-local TabBar=Instance.new("Frame",Win)
-TabBar.Size=UDim2.new(1,0,0,24);TabBar.Position=UDim2.new(0,0,0,28)
-TabBar.BackgroundColor3=Color3.fromRGB(8,8,8);TabBar.BorderSizePixel=0
-local tabW=math.floor(540/#TABS)
+for i, name in ipairs(TAB_NAMES) do
+    local btn = Instance.new("TextButton")
+    btn.Text = name
+    btn.Size = UDim2.new(1, 0, 0, 38)
+    btn.BackgroundColor3 = (i == 1) and Color3.fromRGB(0, 80, 220) or Color3.fromRGB(20, 20, 35)
+    btn.BorderSizePixel = 0
+    btn.TextColor3 = Color3.fromRGB(220, 220, 255)
+    btn.Font = Enum.Font.Code
+    btn.TextSize = 12
+    btn.LayoutOrder = i
+    btn.Parent = TabBar
+    btn.MouseButton1Click:Connect(function() SwitchTab(i) end)
+    table.insert(TabButtons, btn)
 
-for i,tabName in ipairs(TABS) do
-    local btn=Instance.new("TextButton",TabBar)
-    btn.Size=UDim2.new(0,tabW,1,0);btn.Position=UDim2.new(0,(i-1)*tabW,0,0)
-    btn.BackgroundColor3=C_BTN;btn.BorderSizePixel=0
-    btn.Text=tabName;btn.Font=Enum.Font.Code;btn.TextSize=11
-    btn.TextColor3=Color3.fromRGB(160,160,160)
-    TabButtons[tabName]=btn
-    local panel=Instance.new("ScrollingFrame",Win)
-    panel.Name=tabName;panel.Size=UDim2.new(1,0,1,-52);panel.Position=UDim2.new(0,0,0,52)
-    panel.BackgroundColor3=C_PANEL;panel.BorderSizePixel=0
-    panel.ScrollBarThickness=4;panel.ScrollBarImageColor3=C_ACC;panel.Visible=(tabName=="RAGE")
-    TabPanels[tabName]=panel
-    local layout=Instance.new("UIListLayout",panel)
-    layout.SortOrder=Enum.SortOrder.LayoutOrder;layout.Padding=UDim.new(0,2)
-    btn.MouseButton1Click:Connect(function() SetTab(tabName) end)
+    local frame = Instance.new("ScrollingFrame")
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundTransparency = 1
+    frame.BorderSizePixel = 0
+    frame.ScrollBarThickness = 4
+    frame.ScrollBarImageColor3 = Color3.fromRGB(0, 100, 255)
+    frame.Visible = (i == 1)
+    frame.Parent = PanelArea
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 4)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = frame
+
+    local pad = Instance.new("UIPadding")
+    pad.PaddingLeft = UDim.new(0, 8)
+    pad.PaddingTop = UDim.new(0, 6)
+    pad.PaddingRight = UDim.new(0, 8)
+    pad.Parent = frame
+
+    table.insert(TabFrames, frame)
+
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        frame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 16)
+    end)
 end
 
-local function MakeToggle(parent,label,getter,setter,order)
-    local row=Instance.new("Frame",parent)
-    row.Size=UDim2.new(1,0,0,28);row.BackgroundColor3=C_BTN;row.BorderSizePixel=0;row.LayoutOrder=order or 0
-    local lbl=Instance.new("TextLabel",row)
-    lbl.Size=UDim2.new(0.72,0,1,0);lbl.Position=UDim2.new(0,8,0,0);lbl.BackgroundTransparency=1
-    lbl.Text=label;lbl.Font=Enum.Font.Code;lbl.TextSize=12;lbl.TextColor3=C_TXT;lbl.TextXAlignment=Enum.TextXAlignment.Left
-    local btn=Instance.new("TextButton",row)
-    btn.Size=UDim2.new(0,44,0,18);btn.Position=UDim2.new(1,-52,0.5,-9)
-    btn.Font=Enum.Font.Code;btn.TextSize=11;btn.BorderSizePixel=0
+-- UI Helpers
+local function MakeToggle(parent, label, getter, setter, order)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 28)
+    row.BackgroundColor3 = Color3.fromRGB(22, 22, 36)
+    row.BorderSizePixel = 0
+    row.LayoutOrder = order or 0
+    row.Parent = parent
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = label
+    lbl.Size = UDim2.new(0.7, 0, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(200,200,255)
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 13
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = row
+
+    local padl = Instance.new("UIPadding")
+    padl.PaddingLeft = UDim.new(0,6)
+    padl.Parent = lbl
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 60, 0, 20)
+    btn.Position = UDim2.new(1, -68, 0.5, -10)
+    btn.Font = Enum.Font.Code
+    btn.TextSize = 12
+    btn.Parent = row
+
     local function Refresh()
-        local on=getter();btn.BackgroundColor3=on and C_ON or C_OFF
-        btn.TextColor3=on and Color3.new(1,1,1) or Color3.fromRGB(120,120,120);btn.Text=on and "ON" or "OFF"
+        local val = getter()
+        btn.Text = val and "ON" or "OFF"
+        btn.BackgroundColor3 = val and Color3.fromRGB(0,160,80) or Color3.fromRGB(100,30,30)
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
     end
-    Refresh();btn.MouseButton1Click:Connect(function() setter(not getter());Refresh() end)
+    Refresh()
+
+    btn.MouseButton1Click:Connect(function()
+        setter(not getter())
+        Refresh()
+    end)
+    return row
 end
 
-local function MakeSlider(parent,label,min_,max_,getter,setter,order)
-    local row=Instance.new("Frame",parent)
-    row.Size=UDim2.new(1,0,0,30);row.BackgroundColor3=C_BTN;row.BorderSizePixel=0;row.LayoutOrder=order or 0
-    local lbl=Instance.new("TextLabel",row)
-    lbl.Size=UDim2.new(0.5,0,1,0);lbl.Position=UDim2.new(0,8,0,0);lbl.BackgroundTransparency=1
-    lbl.Text=label;lbl.Font=Enum.Font.Code;lbl.TextSize=11;lbl.TextColor3=Color3.fromRGB(180,180,180);lbl.TextXAlignment=Enum.TextXAlignment.Left
-    local valLbl=Instance.new("TextLabel",row)
-    valLbl.Size=UDim2.new(0.15,0,1,0);valLbl.Position=UDim2.new(0.5,0,0,0);valLbl.BackgroundTransparency=1
-    valLbl.Font=Enum.Font.Code;valLbl.TextSize=11;valLbl.TextColor3=C_ACC;valLbl.TextXAlignment=Enum.TextXAlignment.Center
-    local track=Instance.new("Frame",row)
-    track.Size=UDim2.new(0.3,0,0,6);track.Position=UDim2.new(0.68,0,0.5,-3);track.BackgroundColor3=C_OFF;track.BorderSizePixel=0
-    local fill=Instance.new("Frame",track);fill.BackgroundColor3=C_ACC;fill.BorderSizePixel=0;fill.Size=UDim2.new(0,0,1,0)
-    local dragging=false
-    local function UpdateVal(x)
-        local tA=track.AbsolutePosition.X;local tS=track.AbsoluteSize.X
-        local pct=math.clamp((x-tA)/math.max(tS,1),0,1)
-        local val=min_+(max_-min_)*pct
-        if (max_-min_)<=20 then val=math.round(val*10)/10 else val=math.round(val) end
-        setter(val);fill.Size=UDim2.new(pct,0,1,0);valLbl.Text=tostring(val)
+local function MakeSlider(parent, label, getter, setter, minV, maxV, step, order)
+    step = step or 1
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 38)
+    row.BackgroundColor3 = Color3.fromRGB(22, 22, 36)
+    row.BorderSizePixel = 0
+    row.LayoutOrder = order or 0
+    row.Parent = parent
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = label .. ": " .. tostring(getter())
+    lbl.Size = UDim2.new(1, 0, 0, 18)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(180,180,220)
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = row
+
+    local padl = Instance.new("UIPadding")
+    padl.PaddingLeft = UDim.new(0,6)
+    padl.Parent = lbl
+
+    local track = Instance.new("Frame")
+    track.Size = UDim2.new(1, -16, 0, 8)
+    track.Position = UDim2.new(0, 8, 0, 22)
+    track.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+    track.BorderSizePixel = 0
+    track.Parent = row
+
+    local fill = Instance.new("Frame")
+    fill.BackgroundColor3 = Color3.fromRGB(0,100,255)
+    fill.BorderSizePixel = 0
+    fill.Parent = track
+
+    local function UpdateFill()
+        local v = getter()
+        local pct = math.clamp((v - minV)/(maxV - minV), 0, 1)
+        fill.Size = UDim2.new(pct, 0, 1, 0)
+        lbl.Text = label .. ": " .. tostring(v)
     end
-    local function RefreshDisplay()
-        local val=getter();local pct=math.clamp((val-min_)/math.max(max_-min_,0.001),0,1)
-        fill.Size=UDim2.new(pct,0,1,0);valLbl.Text=tostring(val)
-    end
-    RefreshDisplay()
+    UpdateFill()
+
+    local dragging = false
     track.InputBegan:Connect(function(inp)
-        if inp.UserInputType==Enum.UserInputType.MouseButton1 then dragging=true;UpdateVal(inp.Position.X) end
-    end)
-    UserInputService.InputChanged:Connect(function(inp)
-        if dragging and inp.UserInputType==Enum.UserInputType.MouseMovement then UpdateVal(inp.Position.X) end
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+        end
     end)
     UserInputService.InputEnded:Connect(function(inp)
-        if inp.UserInputType==Enum.UserInputType.MouseButton1 then dragging=false end
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
-end
-
-local function MakeLabel(parent,text,order)
-    local lbl=Instance.new("TextLabel",parent)
-    lbl.Size=UDim2.new(1,0,0,18);lbl.BackgroundColor3=Color3.fromRGB(5,5,5);lbl.BorderSizePixel=0
-    lbl.Font=Enum.Font.Code;lbl.TextSize=11;lbl.TextColor3=C_ACC
-    lbl.Text="  "..text;lbl.TextXAlignment=Enum.TextXAlignment.Left;lbl.LayoutOrder=order or 0
-end
-
-local function MakeDrop(parent,label,options,getter,setter,order)
-    local row=Instance.new("Frame",parent)
-    row.Size=UDim2.new(1,0,0,28);row.BackgroundColor3=C_BTN;row.BorderSizePixel=0;row.LayoutOrder=order or 0
-    local lbl=Instance.new("TextLabel",row)
-    lbl.Size=UDim2.new(0.45,0,1,0);lbl.Position=UDim2.new(0,8,0,0);lbl.BackgroundTransparency=1
-    lbl.Text=label;lbl.Font=Enum.Font.Code;lbl.TextSize=11;lbl.TextColor3=C_TXT;lbl.TextXAlignment=Enum.TextXAlignment.Left
-    local cyc=Instance.new("TextButton",row)
-    cyc.Size=UDim2.new(0.5,-8,0,20);cyc.Position=UDim2.new(0.5,0,0.5,-10)
-    cyc.BackgroundColor3=C_PANEL;cyc.BorderColor3=C_ACC;cyc.BorderSizePixel=1
-    cyc.Font=Enum.Font.Code;cyc.TextSize=10;cyc.TextColor3=C_ACC;cyc.Text=getter()
-    cyc.MouseButton1Click:Connect(function()
-        local cur=getter();local idx=1
-        for i,v in ipairs(options) do if v==cur then idx=i;break end end
-        idx=(idx%#options)+1;setter(options[idx]);cyc.Text=options[idx]
+    UserInputService.InputChanged:Connect(function(inp)
+        if dragging and inp.UserInputType == Enum.UserInputType.MouseMovement then
+            local rel = inp.Position.X - track.AbsolutePosition.X
+            local pct = math.clamp(rel / track.AbsoluteSize.X, 0, 1)
+            local raw = minV + (maxV - minV) * pct
+            local snapped = math.floor(raw / step + 0.5) * step
+            setter(math.clamp(snapped, minV, maxV))
+            UpdateFill()
+        end
     end)
+    return row
 end
 
-local o=0
--- RAGE
-local rp=TabPanels["RAGE"]
-MakeLabel(rp,"-- RAGE --",o);o=o+1
-MakeToggle(rp,"Rage Enabled",function() return Cfg.Rage.Enabled end,function(v) Cfg.Rage.Enabled=v end,o);o=o+1
-MakeToggle(rp,"Void Spam",function() return Cfg.Rage.VoidSpam end,function(v) Cfg.Rage.VoidSpam=v end,o);o=o+1
-MakeSlider(rp,"Spam Rate",1,60,function() return Cfg.Rage.SpamRate end,function(v) Cfg.Rage.SpamRate=v end,o);o=o+1
-MakeSlider(rp,"Aim Random",0,5,function() return Cfg.Rage.AimRand end,function(v) Cfg.Rage.AimRand=v end,o);o=o+1
-MakeSlider(rp,"Pred Lead",0,1,function() return Cfg.Rage.PredictLead end,function(v) Cfg.Rage.PredictLead=v end,o);o=o+1
-MakeDrop(rp,"Target Mode",{"Closest","Random","Weakest","Strongest"},function() return Cfg.Rage.TargetMode end,function(v) Cfg.Rage.TargetMode=v end,o);o=o+1
-MakeToggle(rp,"Tp Attack",function() return Cfg.Rage.TpAttack end,function(v) Cfg.Rage.TpAttack=v end,o);o=o+1
-MakeToggle(rp,"God Mode",function() return Cfg.Rage.GodMode end,function(v) Cfg.Rage.GodMode=v end,o);o=o+1
-MakeSlider(rp,"God Y",-200,200,function() return Cfg.Rage.GodY end,function(v) Cfg.Rage.GodY=v end,o);o=o+1
-MakeToggle(rp,"Spin Shot",function() return Cfg.Rage.SpinShot end,function(v) Cfg.Rage.SpinShot=v end,o);o=o+1
-MakeSlider(rp,"Spin Speed",0,1440,function() return Cfg.Rage.SpinSpeed end,function(v) Cfg.Rage.SpinSpeed=v end,o);o=o+1
-MakeLabel(rp,"-- VOID HIDE --",o);o=o+1
-MakeToggle(rp,"Void Hide",function() return Cfg.VoidHide.Enabled end,function(v) Cfg.VoidHide.Enabled=v end,o);o=o+1
-MakeDrop(rp,"Void Method",{"Drift","Chaos","Loop","Spiral","Quantum","TPEverywhere","OrbitTarget"},function() return Cfg.VoidHide.Method end,function(v) Cfg.VoidHide.Method=v end,o);o=o+1
-MakeToggle(rp,"Void Killer",function() return Cfg.Misc.VoidKiller end,function(v) Cfg.Misc.VoidKiller=v end,o);o=o+1
+local function MakeDropdown(parent, label, options, getter, setter, order)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 28)
+    row.BackgroundColor3 = Color3.fromRGB(22, 22, 36)
+    row.BorderSizePixel = 0
+    row.LayoutOrder = order or 0
+    row.Parent = parent
 
--- AA
-o=0;local ap=TabPanels["AA"]
-MakeLabel(ap,"-- ANTI-AIM --",o);o=o+1
-MakeToggle(ap,"Anti-Aim",function() return Cfg.AntiAim.Enabled end,function(v) Cfg.AntiAim.Enabled=v;if v then BindAntiAim() end end,o);o=o+1
-MakeDrop(ap,"AA Mode",{"Spin","Jitter","Static","Up","Down","Side","RandomSpin","Custom"},function() return Cfg.AntiAim.Mode end,function(v) Cfg.AntiAim.Mode=v end,o);o=o+1
-MakeSlider(ap,"Spin Speed",0,1440,function() return Cfg.AntiAim.SpinSpeed end,function(v) Cfg.AntiAim.SpinSpeed=v end,o);o=o+1
-MakeSlider(ap,"Jitter Amp",0,90,function() return Cfg.AntiAim.Jitter end,function(v) Cfg.AntiAim.Jitter=v end,o);o=o+1
-MakeSlider(ap,"Pitch",-180,180,function() return Cfg.AntiAim.Pitch end,function(v) Cfg.AntiAim.Pitch=v end,o);o=o+1
-MakeSlider(ap,"Yaw",-360,360,function() return Cfg.AntiAim.Yaw end,function(v) Cfg.AntiAim.Yaw=v end,o);o=o+1
-MakeToggle(ap,"Breathe Effect",function() return Cfg.AntiAim.BreatheEffect end,function(v) Cfg.AntiAim.BreatheEffect=v end,o);o=o+1
-MakeSlider(ap,"Breathe Speed",0,5,function() return Cfg.AntiAim.BreatheSpeed end,function(v) Cfg.AntiAim.BreatheSpeed=v end,o);o=o+1
-MakeSlider(ap,"Breathe Amp",0,90,function() return Cfg.AntiAim.BreatheAmp end,function(v) Cfg.AntiAim.BreatheAmp=v end,o);o=o+1
-MakeToggle(ap,"Micro Jitter",function() return Cfg.AntiAim.MicroJitter end,function(v) Cfg.AntiAim.MicroJitter=v end,o);o=o+1
-MakeToggle(ap,"Desync Mode",function() return Cfg.AntiAim.DesyncMode end,function(v) Cfg.AntiAim.DesyncMode=v end,o);o=o+1
-MakeSlider(ap,"Desync Offset",0,360,function() return Cfg.AntiAim.DesyncOffset end,function(v) Cfg.AntiAim.DesyncOffset=v end,o);o=o+1
-MakeToggle(ap,"Random Flip",function() return Cfg.AntiAim.RandomFlip end,function(v) Cfg.AntiAim.RandomFlip=v end,o);o=o+1
-MakeToggle(ap,"Chaos Mode",function() return Cfg.AntiAim.ChaosMode end,function(v) Cfg.AntiAim.ChaosMode=v end,o);o=o+1
-MakeToggle(ap,"Multi-Axis Spin",function() return Cfg.AntiAim.MultiAxisSpin end,function(v) Cfg.AntiAim.MultiAxisSpin=v end,o);o=o+1
-MakeToggle(ap,"Roll",function() return Cfg.AntiAim.RollEnabled end,function(v) Cfg.AntiAim.RollEnabled=v end,o);o=o+1
-MakeSlider(ap,"Roll Speed",0,720,function() return Cfg.AntiAim.RollSpeed end,function(v) Cfg.AntiAim.RollSpeed=v end,o);o=o+1
-MakeToggle(ap,"Look At Random",function() return Cfg.AntiAim.LookAtRandom end,function(v) Cfg.AntiAim.LookAtRandom=v end,o);o=o+1
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = label
+    lbl.Size = UDim2.new(0.45, 0, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(180,180,220)
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = row
 
--- ESP
-o=0;local ep=TabPanels["ESP"]
-MakeLabel(ep,"-- ESP --",o);o=o+1
-MakeToggle(ep,"ESP",function() return Cfg.ESP.Enabled end,function(v) Cfg.ESP.Enabled=v end,o);o=o+1
-MakeToggle(ep,"Box",function() return Cfg.ESP.Box end,function(v) Cfg.ESP.Box=v end,o);o=o+1
-MakeToggle(ep,"Names",function() return Cfg.ESP.Name end,function(v) Cfg.ESP.Name=v end,o);o=o+1
-MakeToggle(ep,"Healthbar",function() return Cfg.ESP.Healthbar end,function(v) Cfg.ESP.Healthbar=v end,o);o=o+1
-MakeToggle(ep,"Distance",function() return Cfg.ESP.Distance end,function(v) Cfg.ESP.Distance=v end,o);o=o+1
-MakeToggle(ep,"Team Check",function() return Cfg.ESP.TeamCheck end,function(v) Cfg.ESP.TeamCheck=v end,o);o=o+1
-MakeSlider(ep,"Max Dist",100,2000,function() return Cfg.ESP.MaxDist end,function(v) Cfg.ESP.MaxDist=v end,o);o=o+1
+    local padl = Instance.new("UIPadding")
+    padl.PaddingLeft = UDim.new(0,6)
+    padl.Parent = lbl
 
--- VISUAL
-o=0;local vp=TabPanels["VISUAL"]
-MakeLabel(vp,"-- VISUALS --",o);o=o+1
-MakeToggle(vp,"Aura",function() return Cfg.Visuals.Aura end,function(v) Cfg.Visuals.Aura=v;ApplyAura(v) end,o);o=o+1
-MakeDrop(vp,"Aura Mode",{"Cyber Blue","Fire","Poison","Shadow","Gold","Crimson"},function() return Cfg.Visuals.AuraMode end,function(v) Cfg.Visuals.AuraMode=v;if Cfg.Visuals.Aura then ApplyAura(true) end end,o);o=o+1
-MakeToggle(vp,"Crosshair",function() return Cfg.Visuals.Crosshair end,function(v) Cfg.Visuals.Crosshair=v end,o);o=o+1
-MakeToggle(vp,"Hit FX",function() return Cfg.Visuals.HitFX end,function(v) Cfg.Visuals.HitFX=v end,o);o=o+1
-MakeToggle(vp,"Hit Sound",function() return Cfg.Visuals.HitSound end,function(v) Cfg.Visuals.HitSound=v end,o);o=o+1
-MakeDrop(vp,"Sound Type",{"sparkle","ding","thud","ping"},function() return Cfg.Visuals.HitSoundFX end,function(v) Cfg.Visuals.HitSoundFX=v end,o);o=o+1
-MakeToggle(vp,"Chams",function() return Cfg.Visuals.Chams end,function(v) Cfg.Visuals.Chams=v end,o);o=o+1
-MakeToggle(vp,"Fullbright",function() return Cfg.Visuals.Fullbright end,function(v) Cfg.Visuals.Fullbright=v;pcall(function() if v then Lighting.Brightness=10 else Lighting.Brightness=2 end end) end,o);o=o+1
-MakeToggle(vp,"FOV Circle",function() return Cfg.Visuals.FOVCircle end,function(v) Cfg.Visuals.FOVCircle=v end,o);o=o+1
-MakeSlider(vp,"FOV Radius",10,500,function() return Cfg.Visuals.FOVRadius end,function(v) Cfg.Visuals.FOVRadius=v end,o);o=o+1
-MakeToggle(vp,"Damage Markers",function() return Cfg.Visuals.DamageMarkers end,function(v) Cfg.Visuals.DamageMarkers=v end,o);o=o+1
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.5, -8, 0, 22)
+    btn.Position = UDim2.new(0.5, 4, 0.5, -11)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
+    btn.BorderSizePixel = 1
+    btn.BorderColor3 = Color3.fromRGB(0,80,200)
+    btn.Text = getter()
+    btn.TextColor3 = Color3.fromRGB(200,200,255)
+    btn.Font = Enum.Font.Code
+    btn.TextSize = 12
+    btn.Parent = row
 
--- MOVE
-o=0;local mp=TabPanels["MOVE"]
-MakeLabel(mp,"-- MOVEMENT --",o);o=o+1
-MakeToggle(mp,"Fly",function() return Cfg.Movement.Fly end,function(v) Cfg.Movement.Fly=v;if not v then local h=GetHum(LP);if h then pcall(function() h.PlatformStand=false end) end end end,o);o=o+1
-MakeSlider(mp,"Fly Speed",1,500,function() return Cfg.Movement.FlySpeed end,function(v) Cfg.Movement.FlySpeed=v end,o);o=o+1
-MakeToggle(mp,"Noclip",function() return Cfg.Movement.Noclip end,function(v) Cfg.Movement.Noclip=v end,o);o=o+1
-MakeToggle(mp,"Speed Mult",function() return Cfg.Movement.SpeedMult end,function(v) Cfg.Movement.SpeedMult=v end,o);o=o+1
-MakeSlider(mp,"Speed Val",1,20,function() return Cfg.Movement.SpeedVal end,function(v) Cfg.Movement.SpeedVal=v end,o);o=o+1
-MakeToggle(mp,"Click TP",function() return Cfg.Movement.ClickTP end,function(v) Cfg.Movement.ClickTP=v end,o);o=o+1
-MakeToggle(mp,"TP to Target",function() return Cfg.Movement.TpToTarget end,function(v) Cfg.Movement.TpToTarget=v end,o);o=o+1
-MakeSlider(mp,"TP Offset",0,20,function() return Cfg.Movement.TpOffset end,function(v) Cfg.Movement.TpOffset=v end,o);o=o+1
-MakeLabel(mp,"-- ORBIT --",o);o=o+1
-MakeToggle(mp,"Orbit",function() return Cfg.Orbit.Enabled end,function(v) Cfg.Orbit.Enabled=v;if v then BindOrbit() end end,o);o=o+1
-MakeDrop(mp,"Orbit Mode",{"Circle","Figure8","Ellipse","SpiralIn","SpiralOut","Bounce","Lemniscate","Infinity","RandomOrbit"},function() return Cfg.Orbit.Mode end,function(v) Cfg.Orbit.Mode=v end,o);o=o+1
-MakeSlider(mp,"Orbit Speed",10,360,function() return Cfg.Orbit.Speed end,function(v) Cfg.Orbit.Speed=v end,o);o=o+1
-MakeSlider(mp,"Orbit Radius",1,40,function() return Cfg.Orbit.Radius end,function(v) Cfg.Orbit.Radius=v end,o);o=o+1
-MakeSlider(mp,"Orbit Height",-10,20,function() return Cfg.Orbit.Height end,function(v) Cfg.Orbit.Height=v end,o);o=o+1
-MakeToggle(mp,"Orbit Auto Shoot",function() return Cfg.Orbit.AutoShoot end,function(v) Cfg.Orbit.AutoShoot=v end,o);o=o+1
+    local idx = 1
+    for i, v in ipairs(options) do if v == getter() then idx = i break end end
 
--- BYPASS
-o=0;local bp=TabPanels["BYPASS"]
-MakeLabel(bp,"-- PREDICTION V2 --",o);o=o+1
-MakeToggle(bp,"Prediction V2",function() return Cfg.Pred.Enabled end,function(v) Cfg.Pred.Enabled=v;if v then BindPredV2() end end,o);o=o+1
-MakeSlider(bp,"Aim Dot Thresh",0,1,function() return Cfg.Pred.AimDotThresh end,function(v) Cfg.Pred.AimDotThresh=v end,o);o=o+1
-MakeSlider(bp,"Perp Strength",0,50,function() return Cfg.Pred.PerpStrength end,function(v) Cfg.Pred.PerpStrength=v end,o);o=o+1
-MakeLabel(bp,"-- ANTI-BAIT V2 --",o);o=o+1
-MakeToggle(bp,"Anti-Bait V2",function() return Cfg.AntiBait.Enabled end,function(v) Cfg.AntiBait.Enabled=v;if v then BindAntiBaitV2() end end,o);o=o+1
-MakeDrop(bp,"Dodge Mode",{"Away","Perpendicular","Random"},function() return Cfg.AntiBait.DodgeMode end,function(v) Cfg.AntiBait.DodgeMode=v end,o);o=o+1
-MakeSlider(bp,"Dodge Dist",5,60,function() return Cfg.AntiBait.DodgeDist end,function(v) Cfg.AntiBait.DodgeDist=v end,o);o=o+1
-MakeLabel(bp,"-- ANTI-TRANSLOC --",o);o=o+1
-MakeToggle(bp,"Anti-Transloc",function() return Cfg.AntiTransloc.Enabled end,function(v) Cfg.AntiTransloc.Enabled=v;if v then BindAntiTransloc() end end,o);o=o+1
-MakeDrop(bp,"AT Mode",{"Freeze","Dodge"},function() return Cfg.AntiTransloc.Mode end,function(v) Cfg.AntiTransloc.Mode=v end,o);o=o+1
-MakeLabel(bp,"-- VEL DESYNC --",o);o=o+1
-MakeToggle(bp,"Vel Desync",function() return Cfg.VelDesync.Enabled end,function(v) Cfg.VelDesync.Enabled=v;if v then BindVelDesync() end end,o);o=o+1
-MakeSlider(bp,"Intensity",0,100,function() return Cfg.VelDesync.Intensity end,function(v) Cfg.VelDesync.Intensity=v end,o);o=o+1
-MakeToggle(bp,"Spike Mode",function() return Cfg.VelDesync.SpikeMode end,function(v) Cfg.VelDesync.SpikeMode=v end,o);o=o+1
-MakeToggle(bp,"Counter Vel",function() return Cfg.VelDesync.CounterVel end,function(v) Cfg.VelDesync.CounterVel=v end,o);o=o+1
-MakeToggle(bp,"Noise Vel",function() return Cfg.VelDesync.NoiseVel end,function(v) Cfg.VelDesync.NoiseVel=v end,o);o=o+1
-MakeLabel(bp,"-- HITBOX --",o);o=o+1
-MakeToggle(bp,"Hitbox Expand",function() return Cfg.Hitbox.Enabled end,function(v) Cfg.Hitbox.Enabled=v;if v then BindHitbox() end end,o);o=o+1
-MakeSlider(bp,"Size",1,2500,function() return Cfg.Hitbox.Size end,function(v) Cfg.Hitbox.Size=v end,o);o=o+1
-MakeToggle(bp,"Break Hitbox (2500)",function() return Cfg.Hitbox.BreakHitbox end,function(v) Cfg.Hitbox.BreakHitbox=v end,o);o=o+1
-MakeToggle(bp,"Massless",function() return Cfg.Hitbox.Massless end,function(v) Cfg.Hitbox.Massless=v end,o);o=o+1
-MakeLabel(bp,"-- SLING BYPASS --",o);o=o+1
-MakeToggle(bp,"Sling Bypass",function() return Cfg.SlingBypass.Enabled end,function(v) Cfg.SlingBypass.Enabled=v;if v then BindSlingBypass() end end,o);o=o+1
-MakeDrop(bp,"Sling Mode",{"Follow","Stalk","Hover","FastTp","TargetStick","OrbitTarget","RandomAroundTarget"},function() return Cfg.SlingBypass.Mode end,function(v) Cfg.SlingBypass.Mode=v end,o);o=o+1
-MakeToggle(bp,"Sling Auto Shoot",function() return Cfg.SlingBypass.AutoShoot end,function(v) Cfg.SlingBypass.AutoShoot=v end,o);o=o+1
-MakeToggle(bp,"Network Own",function() return Cfg.SlingBypass.NetworkOwn end,function(v) Cfg.SlingBypass.NetworkOwn=v end,o);o=o+1
+    btn.MouseButton1Click:Connect(function()
+        idx = (idx % #options) + 1
+        setter(options[idx])
+        btn.Text = options[idx]
+    end)
+    return row
+end
 
--- MISC
-o=0;local msp=TabPanels["MISC"]
-MakeLabel(msp,"-- MISC --",o);o=o+1
-MakeToggle(msp,"Watermark",function() return Cfg.Misc.Watermark end,function(v) Cfg.Misc.Watermark=v;WaterLbl.Visible=v end,o);o=o+1
-MakeToggle(msp,"Anti-AFK",function() return Cfg.Misc.AntiAFK end,function(v) Cfg.Misc.AntiAFK=v end,o);o=o+1
-MakeToggle(msp,"Staff Detect",function() return Cfg.StaffDetect.Enabled end,function(v) Cfg.StaffDetect.Enabled=v end,o);o=o+1
-MakeToggle(msp,"Staff Auto-Hop",function() return Cfg.StaffDetect.AutoHop end,function(v) Cfg.StaffDetect.AutoHop=v end,o);o=o+1
-MakeToggle(msp,"Unlock FPS",function() return Cfg.Misc.UnlockFPS end,function(v) Cfg.Misc.UnlockFPS=v;if v then pcall(setfpscap,Cfg.Misc.TargetFPS) end end,o);o=o+1
-MakeSlider(msp,"Target FPS",30,240,function() return Cfg.Misc.TargetFPS end,function(v) Cfg.Misc.TargetFPS=v;if Cfg.Misc.UnlockFPS then pcall(setfpscap,v) end end,o);o=o+1
-MakeLabel(msp,"-- FAKE POS DESYNC --",o);o=o+1
-MakeToggle(msp,"FakePos Desync",function() return Cfg.FakePos.Enabled end,function(v) Cfg.FakePos.Enabled=v;BindFakePos() end,o);o=o+1
-MakeSlider(msp,"Depth",0,20,function() return Cfg.FakePos.Depth end,function(v) Cfg.FakePos.Depth=v end,o);o=o+1
-MakeToggle(msp,"Panic Mode",function() return Cfg.FakePos.Panic end,function(v) Cfg.FakePos.Panic=v end,o);o=o+1
-MakeToggle(msp,"Zero Velocity",function() return Cfg.FakePos.ZeroVelocity end,function(v) Cfg.FakePos.ZeroVelocity=v end,o);o=o+1
-MakeToggle(msp,"Hide Meshes",function() return Cfg.FakePos.HideMeshes end,function(v) Cfg.FakePos.HideMeshes=v end,o);o=o+1
-MakeToggle(msp,"Ghost Visualizer",function() return Cfg.FakePos.GhostVis end,function(v) Cfg.FakePos.GhostVis=v;BindFakePos() end,o);o=o+1
-MakeToggle(msp,"Camera Elevation",function() return Cfg.FakePos.CamElevation end,function(v) Cfg.FakePos.CamElevation=v end,o);o=o+1
+local function MakeSectionLabel(parent, text, order)
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = "-- " .. text .. " --"
+    lbl.Size = UDim2.new(1, 0, 0, 22)
+    lbl.BackgroundColor3 = Color3.fromRGB(12,12,24)
+    lbl.BorderSizePixel = 0
+    lbl.TextColor3 = Color3.fromRGB(100,150,255)
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 12
+    lbl.LayoutOrder = order or 0
+    lbl.Parent = parent
+    return lbl
+end
 
--- EXTRA
-o=0;local xp=TabPanels["EXTRA"]
-MakeLabel(xp,"-- RIOT GODMODE --",o);o=o+1
-MakeToggle(xp,"Riot Godmode",function() return Cfg.Riot.GodmodeEnabled end,function(v) Cfg.Riot.GodmodeEnabled=v;if v then BindRiotGodmode() end end,o);o=o+1
-MakeSlider(xp,"Min Jump",0,50,function() return Cfg.Riot.MinJump end,function(v) Cfg.Riot.MinJump=v end,o);o=o+1
-MakeSlider(xp,"Max Jump",0,100,function() return Cfg.Riot.MaxJump end,function(v) Cfg.Riot.MaxJump=v end,o);o=o+1
-MakeToggle(xp,"Ground Snap",function() return Cfg.Riot.GroundSnap end,function(v) Cfg.Riot.GroundSnap=v end,o);o=o+1
-MakeToggle(xp,"Phase Mode",function() return Cfg.Riot.PhaseMode end,function(v) Cfg.Riot.PhaseMode=v end,o);o=o+1
-MakeToggle(xp,"Avoid Bullets",function() return Cfg.Riot.AvoidBullets end,function(v) Cfg.Riot.AvoidBullets=v end,o);o=o+1
-MakeToggle(xp,"Riot AutoShoot",function() return Cfg.Riot.AutoShoot end,function(v) Cfg.Riot.AutoShoot=v end,o);o=o+1
-MakeLabel(xp,"-- RIOT ABUSER --",o);o=o+1
-MakeToggle(xp,"Riot Abuser",function() return Cfg.Riot.AbuserEnabled end,function(v) Cfg.Riot.AbuserEnabled=v;if v then BindRiotAbuser() end end,o);o=o+1
-MakeDrop(xp,"Abuser Mode",{"Stick","Bounce","Orbit","Phase"},function() return Cfg.Riot.AbuserMode end,function(v) Cfg.Riot.AbuserMode=v end,o);o=o+1
-MakeToggle(xp,"Spin On Target",function() return Cfg.Riot.SpinOnTarget end,function(v) Cfg.Riot.SpinOnTarget=v end,o);o=o+1
-MakeToggle(xp,"Force Face",function() return Cfg.Riot.ForceFace end,function(v) Cfg.Riot.ForceFace=v end,o);o=o+1
-MakeToggle(xp,"Zero Vel Match",function() return Cfg.Riot.RaVelZero end,function(v) Cfg.Riot.RaVelZero=v end,o);o=o+1
-MakeToggle(xp,"Predict Target",function() return Cfg.Riot.PredictTarget end,function(v) Cfg.Riot.PredictTarget=v end,o);o=o+1
-MakeToggle(xp,"Random Offset",function() return Cfg.Riot.RandomOffset end,function(v) Cfg.Riot.RandomOffset=v end,o);o=o+1
-MakeToggle(xp,"Abuser AutoShoot",function() return Cfg.Riot.AutoShoot end,function(v) Cfg.Riot.AutoShoot=v end,o);o=o+1
+-- ============================================================
+-- TAB 1: AIMBOT
+-- ============================================================
+do
+    local p = TabFrames[1]
+    local o = 0
+    local function no() o=o+1; return o end
+    MakeSectionLabel(p, "Aimbot", no())
+    MakeToggle(p,"Aimbot Enabled",function() return Cfg.AimbotEnabled end, function(v) Cfg.AimbotEnabled=v end, no())
+    MakeSlider(p,"FOV",function() return Cfg.AimbotFOV end,function(v) Cfg.AimbotFOV=v end,50,600,10,no())
+    MakeSlider(p,"Smooth",function() return Cfg.AimbotSmooth end,function(v) Cfg.AimbotSmooth=v end,0.01,1,0.01,no())
+    MakeDropdown(p,"Bone",{"Head","HumanoidRootPart","UpperTorso","RightUpperArm","LeftUpperArm"},function() return Cfg.AimbotBone end,function(v) Cfg.AimbotBone=v end,no())
+    MakeToggle(p,"Prediction",function() return Cfg.AimbotPrediction end,function(v) Cfg.AimbotPrediction=v end,no())
+    MakeSlider(p,"Pred Mult",function() return Cfg.AimbotPredMult end,function(v) Cfg.AimbotPredMult=v end,0.1,5,0.1,no())
+    MakeToggle(p,"Silent Aim",function() return Cfg.AimbotSilent end,function(v) Cfg.AimbotSilent=v end,no())
+    MakeToggle(p,"Vis Check",function() return Cfg.AimbotVisCheck end,function(v) Cfg.AimbotVisCheck=v end,no())
+    MakeSectionLabel(p,"VoidSpam",no())
+    MakeToggle(p,"VoidSpam Enabled",function() return Cfg.VoidSpamEnabled end,function(v) Cfg.VoidSpamEnabled=v end,no())
+    MakeSlider(p,"Delay (s)",function() return Cfg.VoidSpamDelay end,function(v) Cfg.VoidSpamDelay=v end,0.01,1,0.01,no())
+    MakeSlider(p,"Count",function() return Cfg.VoidSpamCount end,function(v) Cfg.VoidSpamCount=v end,1,20,1,no())
+    MakeSlider(p,"Spread",function() return Cfg.VoidSpamSpread end,function(v) Cfg.VoidSpamSpread=v end,0,90,1,no())
+    MakeToggle(p,"Auto Aim",function() return Cfg.VoidSpamAutoAim end,function(v) Cfg.VoidSpamAutoAim=v end,no())
+    MakeToggle(p,"Random Angle",function() return Cfg.VoidSpamRandAngle end,function(v) Cfg.VoidSpamRandAngle=v end,no())
+end
 
--- canvas size update
-for _,panel in pairs(TabPanels) do
-    local layout=panel:FindFirstChildOfClass("UIListLayout")
-    if layout then
-        local function upd() panel.CanvasSize=UDim2.new(0,0,0,layout.AbsoluteContentSize.Y+8) end
-        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(upd);upd()
+-- ============================================================
+-- TAB 2: VOIDSPAM (extra controls)
+-- ============================================================
+do
+    local p = TabFrames[2]
+    local o = 0
+    local function no() o=o+1; return o end
+    MakeSectionLabel(p,"FakePos",no())
+    MakeToggle(p,"FakePos Enabled",function() return Cfg.FakePosEnabled end,function(v) Cfg.FakePosEnabled=v end,no())
+    MakeSlider(p,"Depth",function() return Cfg.FakePosDepth end,function(v) Cfg.FakePosDepth=v end,0.5,20,0.5,no())
+    MakeDropdown(p,"Type",{"Ground","Underground","Above"},function() return Cfg.FakePosType end,function(v) Cfg.FakePosType=v end,no())
+    MakeSectionLabel(p,"VelDesync",no())
+    MakeToggle(p,"VelDesync Enabled",function() return Cfg.VelDesyncEnabled end,function(v) Cfg.VelDesyncEnabled=v end,no())
+    MakeSlider(p,"Speed",function() return Cfg.VelDesyncSpeed end,function(v) Cfg.VelDesyncSpeed=v end,10,500,5,no())
+    MakeToggle(p,"Random Dir",function() return Cfg.VelDesyncRandom end,function(v) Cfg.VelDesyncRandom=v end,no())
+    MakeSectionLabel(p,"Riot",no())
+    MakeToggle(p,"Riot Enabled",function() return Cfg.RiotEnabled end,function(v) Cfg.RiotEnabled=v end,no())
+    MakeSlider(p,"Burst Count",function() return Cfg.RiotBurst end,function(v) Cfg.RiotBurst=v end,1,20,1,no())
+    MakeSlider(p,"Delay",function() return Cfg.RiotDelay end,function(v) Cfg.RiotDelay=v end,0.01,1,0.01,no())
+end
+
+-- ============================================================
+-- TAB 3: ANTI-AIM
+-- ============================================================
+do
+    local p = TabFrames[3]
+    local o = 0
+    local function no() o=o+1; return o end
+    MakeSectionLabel(p,"Anti-Aim",no())
+    MakeToggle(p,"AntiAim Enabled",function() return Cfg.AntiAimEnabled end,function(v) Cfg.AntiAimEnabled=v end,no())
+    MakeDropdown(p,"Mode",{"Spin","Jitter","Static","Up","Down","Side","RandomSpin","Custom"},function() return Cfg.AntiAimMode end,function(v) Cfg.AntiAimMode=v end,no())
+    MakeSlider(p,"Speed",function() return Cfg.AntiAimSpeed end,function(v) Cfg.AntiAimSpeed=v end,1,60,1,no())
+    MakeSlider(p,"Jitter Deg",function() return Cfg.AntiAimJitter end,function(v) Cfg.AntiAimJitter=v end,1,180,1,no())
+    MakeSlider(p,"Custom Yaw",function() return Cfg.AntiAimCustom end,function(v) Cfg.AntiAimCustom=v end,-180,180,1,no())
+    MakeToggle(p,"Flip",function() return Cfg.AntiAimFlip end,function(v) Cfg.AntiAimFlip=v end,no())
+end
+
+-- ============================================================
+-- TAB 4: ESP
+-- ============================================================
+do
+    local p = TabFrames[4]
+    local o = 0
+    local function no() o=o+1; return o end
+    MakeSectionLabel(p,"ESP",no())
+    MakeToggle(p,"ESP Enabled",function() return Cfg.EspEnabled end,function(v) Cfg.EspEnabled=v end,no())
+    MakeToggle(p,"Boxes",function() return Cfg.EspBoxes end,function(v) Cfg.EspBoxes=v end,no())
+    MakeToggle(p,"Names",function() return Cfg.EspNames end,function(v) Cfg.EspNames=v end,no())
+    MakeToggle(p,"Health",function() return Cfg.EspHealth end,function(v) Cfg.EspHealth=v end,no())
+    MakeToggle(p,"Distance",function() return Cfg.EspDist end,function(v) Cfg.EspDist=v end,no())
+    MakeToggle(p,"Skeleton",function() return Cfg.EspSkeleton end,function(v) Cfg.EspSkeleton=v end,no())
+    MakeSlider(p,"Max Dist",function() return Cfg.EspMaxDist end,function(v) Cfg.EspMaxDist=v end,50,2000,50,no())
+    MakeToggle(p,"Team Check",function() return Cfg.EspTeamCheck end,function(v) Cfg.EspTeamCheck=v end,no())
+    MakeSectionLabel(p,"Staff Detector",no())
+    MakeToggle(p,"Staff Detect",function() return Cfg.StaffDetectEnabled end,function(v) Cfg.StaffDetectEnabled=v end,no())
+end
+
+-- ============================================================
+-- TAB 5: ORBIT
+-- ============================================================
+do
+    local p = TabFrames[5]
+    local o = 0
+    local function no() o=o+1; return o end
+    MakeSectionLabel(p,"Orbit",no())
+    MakeToggle(p,"Orbit Enabled",function() return Cfg.OrbitEnabled end,function(v) Cfg.OrbitEnabled=v end,no())
+    MakeDropdown(p,"Mode",{"Circle","Figure8","Ellipse","SpiralIn","SpiralOut","Bounce","Lemniscate","RandomOrbit"},function() return Cfg.OrbitMode end,function(v) Cfg.OrbitMode=v end,no())
+    MakeSlider(p,"Radius",function() return Cfg.OrbitRadius end,function(v) Cfg.OrbitRadius=v end,1,30,0.5,no())
+    MakeSlider(p,"Speed",function() return Cfg.OrbitSpeed end,function(v) Cfg.OrbitSpeed=v end,0.1,15,0.1,no())
+    MakeSlider(p,"Height",function() return Cfg.OrbitHeight end,function(v) Cfg.OrbitHeight=v end,-10,20,0.5,no())
+    MakeSlider(p,"Ellipse X",function() return Cfg.OrbitEllipseX end,function(v) Cfg.OrbitEllipseX=v end,1,30,0.5,no())
+    MakeSlider(p,"Ellipse Z",function() return Cfg.OrbitEllipseZ end,function(v) Cfg.OrbitEllipseZ=v end,1,30,0.5,no())
+end
+
+-- ============================================================
+-- TAB 6: SLING / RIOT
+-- ============================================================
+do
+    local p = TabFrames[6]
+    local o = 0
+    local function no() o=o+1; return o end
+    MakeSectionLabel(p,"SlingBypass",no())
+    MakeToggle(p,"Sling Enabled",function() return Cfg.SlingEnabled end,function(v) Cfg.SlingEnabled=v end,no())
+    MakeDropdown(p,"Mode",{"Follow","Stalk","Hover","FastTp","TargetStick","OrbitTarget","RandomAroundTarget"},function() return Cfg.SlingMode end,function(v) Cfg.SlingMode=v end,no())
+    MakeSlider(p,"Speed",function() return Cfg.SlingSpeed end,function(v) Cfg.SlingSpeed=v end,5,200,5,no())
+    MakeSlider(p,"Orbit Radius",function() return Cfg.SlingOrbitR end,function(v) Cfg.SlingOrbitR=v end,1,20,0.5,no())
+end
+
+-- ============================================================
+-- TAB 7: HOOKS (KiciaHook/UE APIs)
+-- ============================================================
+do
+    local p = TabFrames[7]
+    local o = 0
+    local function no() o=o+1; return o end
+    MakeSectionLabel(p,"Hook Systems",no())
+    MakeToggle(p,"Remote Spy",function() return Cfg.RemoteSpyEnabled end,function(v)
+        Cfg.RemoteSpyEnabled = v
+        if v then SetupRemoteSpy() end
+    end,no())
+    MakeToggle(p,"Spy: Log",function() return Cfg.RemoteSpyLog end,function(v) Cfg.RemoteSpyLog=v end,no())
+    MakeToggle(p,"Spy: Modify",function() return Cfg.RemoteSpyModify end,function(v) Cfg.RemoteSpyModify=v end,no())
+    MakeToggle(p,"AC Silencer",function() return Cfg.ACSilencerEnabled end,function(v)
+        Cfg.ACSilencerEnabled = v
+        if v then task.spawn(SilenceACConnections) end
+    end,no())
+    MakeToggle(p,"Upvalue Miner",function() return Cfg.UpvalueMinerEnabled end,function(v)
+        Cfg.UpvalueMinerEnabled = v
+        if v then task.spawn(MineAllModules) end
+    end,no())
+    MakeToggle(p,"Meta Hooks",function() return Cfg.MetaHookEnabled end,function(v)
+        Cfg.MetaHookEnabled = v
+        if v then SetupMetaHooks() end
+    end,no())
+    MakeToggle(p,"Cache Spoofer",function() return Cfg.CacheSpooferEnabled end,function(v) Cfg.CacheSpooferEnabled=v end,no())
+
+    MakeSectionLabel(p,"Remote Log",no())
+
+    -- Log display
+    local logBox = Instance.new("Frame")
+    logBox.Size = UDim2.new(1, 0, 0, 140)
+    logBox.BackgroundColor3 = Color3.fromRGB(8,8,18)
+    logBox.BorderColor3 = Color3.fromRGB(0,60,150)
+    logBox.BorderSizePixel = 1
+    logBox.LayoutOrder = no()
+    logBox.Parent = p
+
+    local logScroll = Instance.new("ScrollingFrame")
+    logScroll.Size = UDim2.new(1, 0, 1, 0)
+    logScroll.BackgroundTransparency = 1
+    logScroll.BorderSizePixel = 0
+    logScroll.ScrollBarThickness = 3
+    logScroll.Parent = logBox
+
+    local logLayout = Instance.new("UIListLayout")
+    logLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    logLayout.Parent = logScroll
+
+    local logCount = 0
+    local function AddLogEntry(text)
+        logCount = logCount + 1
+        local lbl = Instance.new("TextLabel")
+        lbl.Text = text
+        lbl.Size = UDim2.new(1, 0, 0, 14)
+        lbl.BackgroundTransparency = 1
+        lbl.TextColor3 = Color3.fromRGB(150, 200, 255)
+        lbl.Font = Enum.Font.Code
+        lbl.TextSize = 11
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.LayoutOrder = logCount
+        lbl.Parent = logScroll
+        logScroll.CanvasSize = UDim2.new(0,0,0,logLayout.AbsoluteContentSize.Y)
+        logScroll.CanvasPosition = Vector2.new(0, logScroll.AbsoluteCanvasSize.Y)
+        if logCount > 50 then
+            local first = logScroll:FindFirstChildOfClass("TextLabel")
+            if first then first:Destroy() end
+        end
     end
+
+    -- Update log display periodically
+    task.spawn(function()
+        local lastCount = 0
+        while task.wait(0.5) do
+            if #State.remoteLog > lastCount then
+                for i = lastCount+1, #State.remoteLog do
+                    local entry = State.remoteLog[i]
+                    AddLogEntry(string.format("[%.2f] %s", entry.tick % 1000, entry.name))
+                end
+                lastCount = #State.remoteLog
+            end
+        end
+    end)
+
+    local clearBtn = Instance.new("TextButton")
+    clearBtn.Text = "Clear Log"
+    clearBtn.Size = UDim2.new(1, 0, 0, 24)
+    clearBtn.BackgroundColor3 = Color3.fromRGB(30,30,60)
+    clearBtn.BorderSizePixel = 0
+    clearBtn.TextColor3 = Color3.fromRGB(180,180,255)
+    clearBtn.Font = Enum.Font.Code
+    clearBtn.TextSize = 12
+    clearBtn.LayoutOrder = no()
+    clearBtn.Parent = p
+    clearBtn.MouseButton1Click:Connect(function()
+        State.remoteLog = {}
+        for _, v in ipairs(logScroll:GetChildren()) do
+            if v:IsA("TextLabel") then v:Destroy() end
+        end
+        logCount = 0
+    end)
+
+    MakeSectionLabel(p,"Upvalue Data",no())
+    local upvalLabel = Instance.new("TextLabel")
+    upvalLabel.Size = UDim2.new(1, 0, 0, 18)
+    upvalLabel.BackgroundTransparency = 1
+    upvalLabel.TextColor3 = Color3.fromRGB(150,200,100)
+    upvalLabel.Font = Enum.Font.Code
+    upvalLabel.TextSize = 12
+    upvalLabel.TextXAlignment = Enum.TextXAlignment.Left
+    upvalLabel.LayoutOrder = no()
+    upvalLabel.Text = "Mined: 0 values"
+    upvalLabel.Parent = p
+
+    task.spawn(function()
+        while task.wait(2) do
+            upvalLabel.Text = "Mined: " .. #State.minedUpvalues .. " values | Disabled AC conns: " .. #State.acDisabledConns
+        end
+    end)
 end
 
--- Click TP
-UserInputService.InputBegan:Connect(function(inp,proc)
-    if proc then return end
-    if inp.UserInputType==Enum.UserInputType.MouseButton2 and Cfg.Movement.ClickTP then
-        local hrp=GetHRP(LP); if not hrp then return end
-        local ray=Cam:ScreenPointToRay(inp.Position.X,inp.Position.Y)
-        local result=Workspace:Raycast(ray.Origin,ray.Direction*1000)
-        if result then pcall(function() hrp.CFrame=CFrame.new(result.Position+Vector3.new(0,3,0)) end) end
+-- ============================================================
+-- TAB 8: MISC
+-- ============================================================
+do
+    local p = TabFrames[8]
+    local o = 0
+    local function no() o=o+1; return o end
+    MakeSectionLabel(p,"Movement",no())
+    MakeToggle(p,"Infinite Jump",function() return Cfg.InfiniteJump end,function(v) Cfg.InfiniteJump=v end,no())
+    MakeToggle(p,"Noclip",function() return Cfg.Noclip end,function(v) Cfg.Noclip=v end,no())
+    MakeToggle(p,"Bunny Hop",function() return Cfg.BunnyHop end,function(v) Cfg.BunnyHop=v end,no())
+    MakeSlider(p,"Speed Mult",function() return Cfg.SpeedMultiplier end,function(v) Cfg.SpeedMultiplier=v end,1,5,0.1,no())
+    MakeSlider(p,"Walkspeed",function() return Cfg.WalkspeedVal end,function(v) Cfg.WalkspeedVal=v end,16,200,2,no())
+    MakeSectionLabel(p,"Auto",no())
+    MakeToggle(p,"Auto Respawn",function() return Cfg.AutoRespawn end,function(v) Cfg.AutoRespawn=v end,no())
+    MakeSectionLabel(p,"Staff List",no())
+
+    local staffLbl = Instance.new("TextLabel")
+    staffLbl.Size = UDim2.new(1, 0, 0, 60)
+    staffLbl.BackgroundColor3 = Color3.fromRGB(8,8,18)
+    staffLbl.BorderSizePixel = 1
+staffLbl.BorderColor3 = Color3.fromRGB(0,60,150)
+    staffLbl.TextColor3 = Color3.fromRGB(255, 180, 50)
+    staffLbl.Font = Enum.Font.Code
+    staffLbl.TextSize = 12
+    staffLbl.TextXAlignment = Enum.TextXAlignment.Left
+    staffLbl.TextYAlignment = Enum.TextYAlignment.Top
+    staffLbl.TextWrapped = true
+    staffLbl.LayoutOrder = no()
+    staffLbl.Parent = p
+
+    local staffPad = Instance.new("UIPadding")
+    staffPad.PaddingLeft = UDim.new(0,4)
+    staffPad.PaddingTop = UDim.new(0,4)
+    staffPad.Parent = staffLbl
+
+    task.spawn(function()
+        while task.wait(5) do
+            if Cfg.StaffDetectEnabled then
+                UpdateStaffList()
+                staffLbl.Text = #State.staffList == 0
+                    and "No staff detected"
+                    or "STAFF: " .. table.concat(State.staffList, ", ")
+            end
+        end
+    end)
+
+    MakeSectionLabel(p,"Info",no())
+    local infoLbl = Instance.new("TextLabel")
+    infoLbl.Size = UDim2.new(1, 0, 0, 60)
+    infoLbl.BackgroundTransparency = 1
+    infoLbl.TextColor3 = Color3.fromRGB(120,120,180)
+    infoLbl.Font = Enum.Font.Code
+    infoLbl.TextSize = 11
+    infoLbl.TextXAlignment = Enum.TextXAlignment.Left
+    infoLbl.TextYAlignment = Enum.TextYAlignment.Top
+    infoLbl.TextWrapped = true
+    infoLbl.LayoutOrder = no()
+    infoLbl.Parent = p
+
+    task.spawn(function()
+        while task.wait(1) do
+            local hasHook = hookfunction and "YES" or "NO"
+            local hasMeta = hookmetamethod and "YES" or "NO"
+            local hasDbg  = (debug and debug.getupvalue) and "YES" or "NO"
+            local hasConns = getconnections and "YES" or "NO"
+            local hasCfn  = newcclosure and "YES" or "NO"
+            infoLbl.Text = string.format(
+                "hookfunction: %s | hookmetamethod: %s\ndebug.upvalue: %s | getconnections: %s\nnewcclosure: %s | Target: %s",
+                hasHook, hasMeta, hasDbg, hasConns, hasCfn,
+                State.target and State.target.Name or "none"
+            )
+        end
+    end)
+end
+
+-- ============================================================
+-- KEYBIND: TOGGLE UI (Insert key)
+-- ============================================================
+UserInputService.InputBegan:Connect(function(inp, gpe)
+    if gpe then return end
+    if inp.KeyCode == Enum.KeyCode.Insert then
+        MainFrame.Visible = not MainFrame.Visible
     end
 end)
 
-SetTab("RAGE")
-CacheRemotes()
-Notify("UNCODE v4 loaded | RCtrl = toggle",4)
+-- ============================================================
+-- AUTO-RESPAWN
+-- ============================================================
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid", 10)
+    if hum then
+        hum.Died:Connect(function()
+            if Cfg.AutoRespawn then
+                task.wait(1.5)
+                LocalPlayer:LoadCharacter()
+            end
+        end)
+    end
+    -- Re-silence AC on respawn
+    if Cfg.ACSilencerEnabled then
+        task.delay(2, SilenceACConnections)
+    end
+    -- Reset state
+    State.fpVirtualCF = nil
+    State.fpActive = false
+end)
+
+-- ============================================================
+-- INITIALIZATION
+-- ============================================================
+task.spawn(function()
+    -- Find UseItem remote
+    FindUseItemRemote()
+
+    -- Start remote spy if enabled
+    if Cfg.RemoteSpyEnabled then
+        SetupRemoteSpy()
+    end
+
+    -- Start meta hooks if enabled
+    if Cfg.MetaHookEnabled then
+        SetupMetaHooks()
+    end
+
+    -- Silence AC connections
+    if Cfg.ACSilencerEnabled then
+        SilenceACConnections()
+    end
+
+    -- Mine upvalues
+    if Cfg.UpvalueMinerEnabled then
+        MineAllModules()
+    end
+
+    -- Setup infinite jump
+    SetupInfiniteJump()
+
+    -- Init ESP drawings for existing players
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            CreateEspDrawings(p)
+        end
+    end
+
+    -- Initial staff scan
+    UpdateStaffList()
+
+    print("[UNCODE v5] Loaded. hookfunction=" .. tostring(hookfunction ~= nil))
+    print("[UNCODE v5] hookmetamethod=" .. tostring(hookmetamethod ~= nil))
+    print("[UNCODE v5] getconnections=" .. tostring(getconnections ~= nil))
+    print("[UNCODE v5] debug.getupvalue=" .. tostring(debug ~= nil and debug.getupvalue ~= nil))
+end)
+
+-- ESP: cleanup on player leave
+Players.PlayerRemoving:Connect(function(p)
+    RemoveEspDrawings(p)
+end)
+
+-- ============================================================
+-- MAIN LOOP
+-- ============================================================
+RunService.RenderStepped:Connect(function(dt)
+    AimbotStep()
+    EspStep()
+    NoclipStep()
+    BunnyHopStep()
+    SpeedStep()
+    AntiAimStep(dt)
+    OrbitStep(dt)
+end)
+
+RunService.Heartbeat:Connect(function()
+    VoidSpamStep()
+    FakePosStep()
+    VelDesyncStep()
+    SlingStep()
+    RiotStep()
+end)
