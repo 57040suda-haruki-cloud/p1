@@ -1,4 +1,14 @@
--- UNCODE Loader
--- UI: UE Linoria  |  Tabs: Combat / HvH / ESP / Visual / Misc / Setting
--- Engines: UeCrack (aimbot/silentaim/triggerbot) + Kicia (ESP) + LuaX (Void/Orbit) + Yabjin
-loadstring(game:HttpGet("https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/script.lua", true))()
+local src = game:HttpGet("https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/script.lua")
+print("[LOADER] src length: " .. #src)
+local fn, err = loadstring(src)
+if not fn then
+    warn("[LOADER] PARSE ERROR: " .. tostring(err))
+else
+    print("[LOADER] loadstring OK, calling...")
+    local ok2, err2 = pcall(fn)
+    if not ok2 then
+        warn("[LOADER] RUNTIME ERROR: " .. tostring(err2))
+    else
+        print("[LOADER] Script finished OK")
+    end
+end
