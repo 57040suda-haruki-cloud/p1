@@ -753,85 +753,77 @@ local function clearShaders()
     if origLighting then for k,v in pairs(origLighting) do pcall(function() Lighting[k]=v end) end end
 end
 
--- World Changer system
-local wcSkyObj=nil
-local wcAtmObj=nil
-local wcBackup=nil
+-- Kicia World Changer (extracted from Kicia EnvironmentID internal system)
+-- Uses CollectionService RaycastWhitelist tags + EnvironmentID attribute, same as Kicia
+local _WC_CS = cloneref(game:GetService("CollectionService"))
+local _wcActive = false
+local _wcTargetEnvId = nil
+local _wcAvailableWorlds = {}
 
-local function wcCapture()
-    if wcBackup then return end
-    wcBackup={
-        Brightness=Lighting.Brightness,
-        ClockTime=Lighting.ClockTime,
-        Ambient=Lighting.Ambient,
-        OutdoorAmbient=Lighting.OutdoorAmbient,
-        FogEnd=Lighting.FogEnd,
-        FogStart=Lighting.FogStart,
-        FogColor=Lighting.FogColor,
-        ExposureCompensation=Lighting.ExposureCompensation,
-        GlobalShadows=Lighting.GlobalShadows,
-    }
-end
-
-local WORLDS = {
-    ["Default"]      = {Brt=1,   Clock=14,  Amb=Color3.fromRGB(127,127,127), OAmb=Color3.fromRGB(127,127,127), Exp=0,    FogE=100000, FogS=0,    FogC=Color3.fromRGB(191,191,191), Shadows=true,  AtmDen=0.395, AtmOff=0.1, AtmC=Color3.fromRGB(199,170,140), AtmGl=0.25, AtmHz=0},
-    ["Void"]         = {Brt=0,   Clock=0,   Amb=Color3.new(0,0,0),           OAmb=Color3.new(0,0,0),           Exp=-5,   FogE=30,     FogS=0,    FogC=Color3.new(0,0,0),           Shadows=false, AtmDen=1,     AtmOff=0,   AtmC=Color3.new(0,0,0),           AtmGl=0,    AtmHz=0},
-    ["Cyber Night"]  = {Brt=1.8, Clock=0,   Amb=Color3.fromRGB(40,0,80),     OAmb=Color3.fromRGB(20,0,60),     Exp=0.4,  FogE=800,    FogS=0,    FogC=Color3.fromRGB(80,40,180),   Shadows=false, AtmDen=0.8,   AtmOff=0,   AtmC=Color3.fromRGB(80,40,180),   AtmGl=0.5,  AtmHz=2.2},
-    ["Deep Space"]   = {Brt=0.2, Clock=0,   Amb=Color3.fromRGB(5,5,20),      OAmb=Color3.new(0,0,0),           Exp=-2,   FogE=99999,  FogS=0,    FogC=Color3.fromRGB(0,0,10),      Shadows=false, AtmDen=0,     AtmOff=0,   AtmC=Color3.fromRGB(0,0,20),      AtmGl=0,    AtmHz=0},
-    ["Sunset"]       = {Brt=2.2, Clock=18,  Amb=Color3.fromRGB(200,100,60),  OAmb=Color3.fromRGB(220,140,80),  Exp=0.3,  FogE=4000,   FogS=200,  FogC=Color3.fromRGB(220,120,80),  Shadows=true,  AtmDen=0.6,   AtmOff=0.1, AtmC=Color3.fromRGB(220,130,80),  AtmGl=0.6,  AtmHz=1.8},
-    ["Arctic"]       = {Brt=2.8, Clock=13,  Amb=Color3.fromRGB(160,195,255), OAmb=Color3.fromRGB(185,215,255), Exp=1,    FogE=500,    FogS=0,    FogC=Color3.fromRGB(200,225,255), Shadows=true,  AtmDen=0.9,   AtmOff=0,   AtmC=Color3.fromRGB(185,210,255), AtmGl=0.1,  AtmHz=3},
-    ["Hellfire"]     = {Brt=3.2, Clock=17,  Amb=Color3.fromRGB(200,50,0),    OAmb=Color3.fromRGB(180,40,0),    Exp=0.6,  FogE=250,    FogS=0,    FogC=Color3.fromRGB(200,80,20),   Shadows=true,  AtmDen=0.85,  AtmOff=0,   AtmC=Color3.fromRGB(200,60,10),   AtmGl=0.4,  AtmHz=2},
-    ["Underwater"]   = {Brt=1.1, Clock=14,  Amb=Color3.fromRGB(20,80,120),   OAmb=Color3.fromRGB(30,100,150),  Exp=-0.6, FogE=180,    FogS=0,    FogC=Color3.fromRGB(30,90,140),   Shadows=false, AtmDen=0.95,  AtmOff=0,   AtmC=Color3.fromRGB(20,80,130),   AtmGl=0,    AtmHz=4},
-    ["Pastel Dream"] = {Brt=2,   Clock=15,  Amb=Color3.fromRGB(220,180,255), OAmb=Color3.fromRGB(240,200,255), Exp=0.5,  FogE=3000,   FogS=500,  FogC=Color3.fromRGB(230,210,255), Shadows=true,  AtmDen=0.45,  AtmOff=0.1, AtmC=Color3.fromRGB(220,190,255), AtmGl=0.3,  AtmHz=1},
-    ["Golden Hour"]  = {Brt=2.4, Clock=17.5,Amb=Color3.fromRGB(220,160,90),  OAmb=Color3.fromRGB(240,180,100), Exp=0.3,  FogE=5000,   FogS=400,  FogC=Color3.fromRGB(220,160,80),  Shadows=true,  AtmDen=0.55,  AtmOff=0.1, AtmC=Color3.fromRGB(220,160,90),  AtmGl=0.5,  AtmHz=1.2},
-    ["Midnight"]     = {Brt=0.3, Clock=1,   Amb=Color3.fromRGB(10,10,30),    OAmb=Color3.fromRGB(5,5,20),      Exp=-1.5, FogE=350,    FogS=0,    FogC=Color3.fromRGB(10,10,40),    Shadows=false, AtmDen=0.7,   AtmOff=0,   AtmC=Color3.fromRGB(10,10,50),    AtmGl=0,    AtmHz=1.5},
-    ["Foggy Dawn"]   = {Brt=1.5, Clock=6,   Amb=Color3.fromRGB(200,190,220), OAmb=Color3.fromRGB(215,205,235), Exp=0.2,  FogE=100,    FogS=0,    FogC=Color3.fromRGB(200,190,220), Shadows=true,  AtmDen=0.98,  AtmOff=0,   AtmC=Color3.fromRGB(190,185,215), AtmGl=0.1,  AtmHz=5},
-    ["Toxic Swamp"]  = {Brt=1.3, Clock=12,  Amb=Color3.fromRGB(50,80,20),    OAmb=Color3.fromRGB(60,90,25),    Exp=-0.3, FogE=220,    FogS=0,    FogC=Color3.fromRGB(60,90,20),    Shadows=false, AtmDen=0.9,   AtmOff=0,   AtmC=Color3.fromRGB(60,90,20),    AtmGl=0.2,  AtmHz=3},
-    ["Crimson Sky"]  = {Brt=2,   Clock=10,  Amb=Color3.fromRGB(180,30,30),   OAmb=Color3.fromRGB(200,40,40),   Exp=0.2,  FogE=2000,   FogS=100,  FogC=Color3.fromRGB(180,30,30),   Shadows=true,  AtmDen=0.5,   AtmOff=0.05,AtmC=Color3.fromRGB(180,30,30),   AtmGl=0.3,  AtmHz=1},
-    ["Neon Paradise"]= {Brt=2.5, Clock=22,  Amb=Color3.fromRGB(0,200,180),   OAmb=Color3.fromRGB(0,180,160),   Exp=0.6,  FogE=600,    FogS=0,    FogC=Color3.fromRGB(0,150,200),   Shadows=false, AtmDen=0.7,   AtmOff=0,   AtmC=Color3.fromRGB(0,180,200),   AtmGl=0.8,  AtmHz=2},
-}
-
-local function applyWorld(name)
-    local w=WORLDS[name]; if not w then return end
-    wcCapture()
-    pcall(function()
-        Lighting.Brightness           = w.Brt
-        Lighting.ClockTime            = w.Clock
-        Lighting.Ambient              = w.Amb
-        Lighting.OutdoorAmbient       = w.OAmb
-        Lighting.ExposureCompensation = w.Exp
-        Lighting.FogEnd               = w.FogE
-        Lighting.FogStart             = w.FogS
-        Lighting.FogColor             = w.FogC
-        Lighting.GlobalShadows        = w.Shadows
-    end)
-    -- Remove old atmosphere
-    if wcAtmObj and wcAtmObj.Parent then wcAtmObj:Destroy(); wcAtmObj=nil end
-    -- Apply atmosphere
-    pcall(function()
-        local atm=Instance.new("Atmosphere")
-        atm.Density=w.AtmDen; atm.Offset=w.AtmOff; atm.Color=w.AtmC
-        atm.Glare=w.AtmGl; atm.Haze=w.AtmHz; atm.Name="UC_WorldAtm"
-        atm.Parent=Lighting; wcAtmObj=atm
-        -- Remove any existing Atmosphere that isn't ours
-        for _,c in ipairs(Lighting:GetChildren()) do
-            if c:IsA("Atmosphere") and c~=atm then c.Enabled=false end
+-- Mirror of Kicia _ResolveModel: walks up from tagged instance to find root Model with matching EnvironmentID
+local function wcResolveModel(environmentId)
+    local tagged = _WC_CS:GetTagged("RaycastWhitelist" .. tostring(environmentId))
+    local parent = tagged[1]
+    if parent == nil then return nil end
+    while true do
+        if parent.ClassName == "Model" and parent:GetAttribute("EnvironmentID") == environmentId then
+            break
         end
-    end)
-end
-
-local function clearWorld()
-    if wcAtmObj and wcAtmObj.Parent then wcAtmObj:Destroy(); wcAtmObj=nil end
-    if wcBackup then
-        for k,v in pairs(wcBackup) do pcall(function() Lighting[k]=v end) end
-        wcBackup=nil
+        parent = parent.Parent
+        if parent == nil or parent == workspace then return nil end
     end
-    -- Re-enable original atmospheres
-    pcall(function()
-        for _,c in ipairs(Lighting:GetChildren()) do
-            if c:IsA("Atmosphere") and c.Name~="UC_WorldAtm" then c.Enabled=true end
+    return parent
+end
+
+-- Scan workspace for all models that have the EnvironmentID attribute (Kicia world list)
+local function wcScanWorlds()
+    local found = {}
+    local seen = {}
+    for _, inst in ipairs(workspace:GetDescendants()) do
+        local envId = inst:GetAttribute("EnvironmentID")
+        if envId ~= nil and not seen[envId] then
+            seen[envId] = true
+            table.insert(found, envId)
         end
+    end
+    table.sort(found, function(a, b)
+        local na, nb = tonumber(a), tonumber(b)
+        if na and nb then return na < nb end
+        return tostring(a) < tostring(b)
     end)
+    _wcAvailableWorlds = found
+    return found
+end
+
+-- Force player into target world using Kicia EnvironmentID mechanism
+local function wcSwitchToWorld(environmentId)
+    local char = LP.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    -- Find the target map model via Kicia RaycastWhitelist tag system
+    local model = wcResolveModel(environmentId)
+    if model then
+        -- Teleport to world pivot (same as Kicia GetAnchor)
+        pcall(function() root.CFrame = model:GetPivot() end)
+    end
+
+    -- Force EnvironmentID attribute on character so Kicia FighterState detects the switch
+    pcall(function() char:SetAttribute("EnvironmentID", environmentId) end)
+    pcall(function() sethiddenproperty(char, "EnvironmentID", environmentId) end)
+
+    _wcActive = true
+    _wcTargetEnvId = environmentId
+end
+
+local function wcReset()
+    if LP.Character then
+        pcall(function() LP.Character:SetAttribute("EnvironmentID", nil) end)
+        pcall(function() sethiddenproperty(LP.Character, "EnvironmentID", nil) end)
+    end
+    _wcActive = false
+    _wcTargetEnvId = nil
 end
 
 local function applyShader(nm)
@@ -1320,32 +1312,45 @@ pcall(function()
     BT(SL,"ESP_Dist","Show Distance",true)
 
     local SL2=Tabs.Visuals:AddLeftGroupbox("World Changer"); _ucBoxes.visWorld=SL2
-    local wcNames={}; for k in pairs(WORLDS) do table.insert(wcNames,k) end; table.sort(wcNames)
+    -- Scan worlds at load time using Kicia EnvironmentID system
+    local wcInitWorlds = wcScanWorlds()
+    local wcDropValues = {}
+    for _, envId in ipairs(wcInitWorlds) do table.insert(wcDropValues, tostring(envId)) end
+    if #wcDropValues == 0 then wcDropValues = {"(none found)"} end
     BT(SL2,"WC_On","Enable World Changer",false,function(v)
         if v then
-            applyWorld(Options.WC_World and Options.WC_World.Value or "Default")
+            local raw = Options.WC_World and Options.WC_World.Value or wcDropValues[1]
+            local envId = tonumber(raw) or raw
+            wcSwitchToWorld(envId)
         else
-            clearWorld()
+            wcReset()
         end
     end)
-    SL2:AddDropdown("WC_World",{Text="World",Default="Void",Values=wcNames,
-        Callback=function(v) if Toggles.WC_On and Toggles.WC_On.Value then applyWorld(v) end end})
-    SL2:AddButton("Apply World",function()
+    SL2:AddDropdown("WC_World",{Text="World (EnvironmentID)",Default=wcDropValues[1],Values=wcDropValues,
+        Callback=function(v)
+            if Toggles.WC_On and Toggles.WC_On.Value then
+                local envId = tonumber(v) or v
+                wcSwitchToWorld(envId)
+            end
+        end})
+    SL2:AddButton("Scan Worlds",function()
+        local worlds = wcScanWorlds()
+        local vals = {}
+        for _, envId in ipairs(worlds) do table.insert(vals, tostring(envId)) end
+        if #vals == 0 then vals = {"(none found)"} end
+        pcall(function() if Options.WC_World then Options.WC_World:SetValues(vals) end end)
+        Notify("Found "..#worlds.." EnvironmentIDs",3)
+    end)
+    SL2:AddButton("Teleport to World",function()
         if Toggles.WC_On and Toggles.WC_On.Value then
-            applyWorld(Options.WC_World and Options.WC_World.Value or "Void"); Notify("World applied",2)
+            local raw = Options.WC_World and Options.WC_World.Value or wcDropValues[1]
+            local envId = tonumber(raw) or raw
+            wcSwitchToWorld(envId)
+            Notify("Switched to world "..tostring(envId),2)
         else Notify("Enable World Changer first",2) end
     end)
     SL2:AddDivider()
-    SL2:AddLabel("Fine Tune")
-    SL2:AddSlider("WC_Bright",{Text="Brightness",Default=20,Min=0,Max=50,Rounding=0,
-        Callback=function(v) pcall(function() Lighting.Brightness=v*0.1 end) end})
-    SL2:AddSlider("WC_Clock",{Text="Time of Day (h)",Default=14,Min=0,Max=24,Rounding=0,
-        Callback=function(v) pcall(function() Lighting.ClockTime=v end) end})
-    SL2:AddSlider("WC_Fog",{Text="Fog Distance",Default=100,Min=10,Max=1000,Rounding=0,
-        Callback=function(v) pcall(function() Lighting.FogEnd=v*10 end) end})
-    SL2:AddSlider("WC_Exp",{Text="Exposure",Default=10,Min=0,Max=20,Rounding=0,
-        Callback=function(v) pcall(function() Lighting.ExposureCompensation=(v-10)*0.2 end) end})
-    SL2:AddButton("Reset World",function() clearWorld(); Notify("World reset",2) end)
+    SL2:AddButton("Reset World",function() wcReset(); Notify("World reset",2) end)
 
     local SR=Tabs.Visuals:AddRightGroupbox("World / Shaders"); _ucBoxes.visRight=SR
     BT(SR,"Fullbright","Full Bright",false)
@@ -1554,7 +1559,7 @@ Library:OnUnload(function()
     GE.UC4_Loaded=nil; pcall(function() _G.UC4_Loaded=nil end)
     for _,bb in pairs(ESPs) do pcall(bb.Destroy,bb) end
     clearShaders()
-    clearWorld()
+    wcReset()
     pcall(function() if _fovCircle then _fovCircle:Remove() end end)
     pcall(function() if nsLoopConn then task.cancel(nsLoopConn) end end)
     pcall(function() if RV then RV:Destroy() end end)
