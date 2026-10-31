@@ -70839,6 +70839,19 @@ end
 --    tbl17.bG() returns the singleton store with :Set({path}, value) API.
 getgenv()._UNC_KiciaStore = tbl17.bG()
 
+-- Force Ragebot OFF in the store BEFORE Kicia boots.
+-- ObserveEnabledKeybind fires immediately during _Initialize (inside the boot call below).
+-- If the store still holds Ragebot.Enabled=true from a previous run it would call
+-- SetEnabled(true) right then, bypassing every Obsidian-level guard we have.
+-- Clearing both Enabled and Keybind.State here ensures that first fire sees false.
+do
+    local _ks = getgenv()._UNC_KiciaStore
+    if _ks then
+        pcall(function() _ks:Set({"Ragebot","Enabled"}, false) end)
+        pcall(function() _ks:Set({"Ragebot","Keybind","State"}, false) end)
+    end
+end
+
 -- 2. Patch tbl17.jf (the function that creates "KiciaHook | Rivals | Premium Build" window).
 --    tbl17.j1()(boot) will call tbl17.jf()(bootData) internally.
 --    We replace tbl17.jf to return a no-op inner function → no window, all combat runs.
