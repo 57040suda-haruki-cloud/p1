@@ -4078,9 +4078,6 @@ HvHL2:AddToggle("RbEnabled", {
     Default = false,
     Tooltip = "Automated combat AI for HvH.",
     Callback = function(v)
-        -- Block auto-restore from SaveManager: only act after the user has had
-        -- a chance to see the UI (i.e. after LoadAutoloadConfig has run).
-        if v == true and not _autoLoadDone then return end
         _kSet({"Ragebot","Enabled"}, v)
         _kSet({"Ragebot","Keybind","State"}, v)
         task.spawn(function()
@@ -70876,6 +70873,7 @@ do
         -- Ragebot
         _off({"Ragebot","Enabled"})
         _off({"Ragebot","Keybind","State"})
+        pcall(function() _ks:Set({"Ragebot","ShootFrames"}, 1) end)
         local _rb = getgenv()._UNC_Ragebot
         if _rb then pcall(function() _rb:SetEnabled(false) end) end
         -- Movement exploits
@@ -71101,7 +71099,23 @@ SaveManager:SetFolder("UNCODE/configs")
 SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
 pcall(function() SaveManager:LoadAutoloadConfig() end)
--- From this point on the user is in control; allow Ragebot toggle to take effect.
+-- SaveManager may fire callbacks that re-enable Ragebot; force it back off.
+do
+    local _ks = getgenv()._UNC_KiciaStore
+    if _ks then
+        pcall(function() _ks:Set({"Ragebot","Enabled"}, false) end)
+        pcall(function() _ks:Set({"Ragebot","Keybind","State"}, false) end)
+        pcall(function() _ks:Set({"Ragebot","ShootFrames"}, 1) end)
+    end
+    local _rb = getgenv()._UNC_Ragebot
+    if _rb then pcall(function() _rb:SetEnabled(false) end) end
+    if Toggles.RbEnabled then
+        pcall(function() Toggles.RbEnabled:SetValue(false) end)
+    end
+    if Toggles.RbRapidFire then
+        pcall(function() Toggles.RbRapidFire:SetValue(false) end)
+    end
+end
 _autoLoadDone = true
 
 Library:Notify({ Title = "UNCODE v1", Description = "Rivals HvH — powered by Kicia Rebuild engine", Time = 4 })
