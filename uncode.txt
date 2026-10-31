@@ -4072,7 +4072,12 @@ HvHL2:AddToggle("RbEnabled", {
     Callback = function(v)
         _kSet({"Ragebot","Enabled"}, v)
         _kSet({"Ragebot","Keybind","State"}, v)
-        task.defer(function()
+        getgenv()._UNC_RagebotEnabled = v
+        task.spawn(function()
+            local deadline = os.clock() + 30
+            while os.clock() < deadline and not getgenv()._UNC_Ragebot do
+                task.wait(0.5)
+            end
             local rb = getgenv()._UNC_Ragebot
             if rb then
                 pcall(function() rb:SetEnabled(v) end)
@@ -4080,7 +4085,7 @@ HvHL2:AddToggle("RbEnabled", {
                     .. ") | _enabled=" .. tostring(rb._enabled)
                     .. " | hasCtx=" .. tostring(rb._innerContext ~= nil))
             else
-                warn("[UNCODE] Ragebot instance not yet available in getgenv")
+                warn("[UNCODE] Ragebot: boot timed out or failed")
             end
             local f = getgenv()._UNC_Fighters
             warn("[UNCODE] Fighters.LocalState=" .. tostring(f and f.LocalState ~= nil))
@@ -4255,14 +4260,7 @@ HvHL4:AddToggle("FovCircleEnabled", {
         _fovCFG.enabled = v
     end
 })
-HvHL4:AddColorPicker("FovCircleColor", {
-    Text    = "FOV Color",
-    Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v)
-        _fovCFG.color = v
-        updateFovCircle()
-    end
-})
+-- FOV color picker not supported by this Obsidian build; color stays white
 HvHL4:AddSlider("FovCircleThickness", {
     Text     = "FOV Thickness",
     Default  = 1,
@@ -70564,6 +70562,9 @@ local v226 = v147:Add(v160.new())
 local v227 = v147:Add(tbl17.jO().new(v190, playerTags, v199, v222, v210))
 getgenv()._UNC_Ragebot  = v227
 getgenv()._UNC_Fighters = v190
+if getgenv()._UNC_RagebotEnabled ~= nil then
+    pcall(function() v227:SetEnabled(getgenv()._UNC_RagebotEnabled) end)
+end
 local v228 = v147:Add(v177.new(v199, v190, v201))
 local v229 = v147:Add(v116.new(v199, v190))
 local v230 = v147:Add(v141.new(v190, playerIdentities, v212))
