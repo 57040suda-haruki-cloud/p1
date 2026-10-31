@@ -58,6 +58,10 @@ end
 
 waitForLoadingScreen()
 
+-- Clear stale getgenv state so Ragebot does not auto-enable on re-run
+getgenv()._UNC_Ragebot  = nil
+getgenv()._UNC_Fighters = nil
+
 do
     local function safeNewcclosure(fn)
         return newcclosure and newcclosure(fn) or fn
@@ -4072,7 +4076,6 @@ HvHL2:AddToggle("RbEnabled", {
     Callback = function(v)
         _kSet({"Ragebot","Enabled"}, v)
         _kSet({"Ragebot","Keybind","State"}, v)
-        getgenv()._UNC_RagebotEnabled = v
         task.spawn(function()
             local deadline = os.clock() + 30
             while os.clock() < deadline and not getgenv()._UNC_Ragebot do
@@ -4090,6 +4093,14 @@ HvHL2:AddToggle("RbEnabled", {
             local f = getgenv()._UNC_Fighters
             warn("[UNCODE] Fighters.LocalState=" .. tostring(f and f.LocalState ~= nil))
         end)
+    end
+})
+HvHL2:AddToggle("RbRapidFire", {
+    Text = "Rapid Fire",
+    Default = false,
+    Tooltip = "Zero the shoot-frame lock so Ragebot fires every eligible frame.",
+    Callback = function(v)
+        _kSet({"Ragebot","ShootFrames"}, v and 0 or 1)
     end
 })
 HvHL2:AddToggle("RbHackers", {
@@ -70562,9 +70573,6 @@ local v226 = v147:Add(v160.new())
 local v227 = v147:Add(tbl17.jO().new(v190, playerTags, v199, v222, v210))
 getgenv()._UNC_Ragebot  = v227
 getgenv()._UNC_Fighters = v190
-if getgenv()._UNC_RagebotEnabled ~= nil then
-    pcall(function() v227:SetEnabled(getgenv()._UNC_RagebotEnabled) end)
-end
 local v228 = v147:Add(v177.new(v199, v190, v201))
 local v229 = v147:Add(v116.new(v199, v190))
 local v230 = v147:Add(v141.new(v190, playerIdentities, v212))
