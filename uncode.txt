@@ -70839,19 +70839,6 @@ end
 --    tbl17.bG() returns the singleton store with :Set({path}, value) API.
 getgenv()._UNC_KiciaStore = tbl17.bG()
 
--- Force Ragebot OFF in the store BEFORE Kicia boots.
--- ObserveEnabledKeybind fires immediately during _Initialize (inside the boot call below).
--- If the store still holds Ragebot.Enabled=true from a previous run it would call
--- SetEnabled(true) right then, bypassing every Obsidian-level guard we have.
--- Clearing both Enabled and Keybind.State here ensures that first fire sees false.
-do
-    local _ks = getgenv()._UNC_KiciaStore
-    if _ks then
-        pcall(function() _ks:Set({"Ragebot","Enabled"}, false) end)
-        pcall(function() _ks:Set({"Ragebot","Keybind","State"}, false) end)
-    end
-end
-
 -- 2. Patch tbl17.jf (the function that creates "KiciaHook | Rivals | Premium Build" window).
 --    tbl17.j1()(boot) will call tbl17.jf()(bootData) internally.
 --    We replace tbl17.jf to return a no-op inner function → no window, all combat runs.
@@ -70871,6 +70858,51 @@ end
 local _bootOk, _bootErr = pcall(function() tbl17.j1()(boot) end)
 if not _bootOk then
     warn("[UNCODE] Kicia boot failed: " .. tostring(_bootErr))
+end
+
+-- 4. Post-boot force-all-off.
+--    Every module has now registered its ObserveEnabledKeybind observer.
+--    Writing false into the store triggers each observer, which calls
+--    the module's own SetEnabled(false) -- the correct, safe code path.
+--    This erases any store state left over from a previous executor run
+--    so nothing auto-enables on next boot, while leaving the user free to
+--    enable features normally through the UI after the script finishes loading.
+do
+    local _ks = getgenv()._UNC_KiciaStore
+    if _ks then
+        local function _off(path)
+            pcall(function() _ks:Set(path, false) end)
+        end
+        -- Ragebot
+        _off({"Ragebot","Enabled"})
+        _off({"Ragebot","Keybind","State"})
+        local _rb = getgenv()._UNC_Ragebot
+        if _rb then pcall(function() _rb:SetEnabled(false) end) end
+        -- Movement exploits
+        _off({"Movement","Noclip","Enabled"})
+        _off({"Movement","Noclip","Keybind","State"})
+        _off({"Movement","Flight","Enabled"})
+        _off({"Movement","Flight","Keybind","State"})
+        _off({"Movement","WalkSpeed","Enabled"})
+        _off({"Movement","WalkSpeed","Keybind","State"})
+        _off({"Movement","JumpPower","Enabled"})
+        _off({"Movement","JumpPower","Keybind","State"})
+        _off({"Movement","Sliding","Enabled"})
+        _off({"Movement","Sliding","Keybind","State"})
+        _off({"Movement","AutoStrafe","Enabled"})
+        _off({"Movement","AutoStrafe","Keybind","State"})
+        _off({"Movement","LongJump","Enabled"})
+        _off({"Movement","LongJump","Keybind","State"})
+        -- Other combat systems
+        _off({"Aimbot","Enabled"})
+        _off({"SilentAim","Enabled"})
+        _off({"Triggerbot","Enabled"})
+        _off({"Triggerbot","Keybind","State"})
+        _off({"Flickbot","Enabled"})
+        _off({"Flickbot","Keybind","State"})
+        _off({"ThirdPerson","Enabled"})
+        _off({"ThirdPerson","Keybind","State"})
+    end
 end
 end)()
 local MenuG = Tabs.Settings:AddRightGroupbox("Server Tools")
