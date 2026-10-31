@@ -3966,6 +3966,10 @@ local HvHR2    = Tabs.HvH:AddRightGroupbox("Rage Config")
 local HvHL3    = Tabs.HvH:AddLeftGroupbox("Triggerbot / Flickbot")
 local HvHR3    = Tabs.HvH:AddRightGroupbox("Flickbot Config")
 
+-- Set to true after SaveManager:LoadAutoloadConfig() finishes.
+-- Prevents the auto-restore of saved toggle state from enabling Ragebot.
+local _autoLoadDone = false
+
 -- Helper: write a value to the Kicia ReactiveStore.
 -- getgenv()._UNC_KiciaStore is set just before Kicia's boot call below.
 local function _kSet(path, value)
@@ -4074,6 +4078,9 @@ HvHL2:AddToggle("RbEnabled", {
     Default = false,
     Tooltip = "Automated combat AI for HvH.",
     Callback = function(v)
+        -- Block auto-restore from SaveManager: only act after the user has had
+        -- a chance to see the UI (i.e. after LoadAutoloadConfig has run).
+        if v == true and not _autoLoadDone then return end
         _kSet({"Ragebot","Enabled"}, v)
         _kSet({"Ragebot","Keybind","State"}, v)
         task.spawn(function()
@@ -71049,6 +71056,8 @@ SaveManager:SetFolder("UNCODE/configs")
 SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
 pcall(function() SaveManager:LoadAutoloadConfig() end)
+-- From this point on the user is in control; allow Ragebot toggle to take effect.
+_autoLoadDone = true
 
 Library:Notify({ Title = "UNCODE v1", Description = "Rivals HvH — powered by Kicia Rebuild engine", Time = 4 })
 end)()
