@@ -71043,7 +71043,7 @@ end -- FPS Boost scope
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({"MenuKeybind"})
+SaveManager:SetIgnoreIndexes({"MenuKeybind", "RbEnabled", "RbRapidFire"})
 ThemeManager:SetFolder("UNCODE")
 SaveManager:SetFolder("UNCODE/configs")
 SaveManager:BuildConfigSection(Tabs.Settings)
