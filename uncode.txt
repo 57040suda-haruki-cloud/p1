@@ -4409,6 +4409,299 @@ end)
 end)
 -- ── END WORLD CHANGER UI ─────────────────────────────────────────────────
 
+-- ── LIGHTING OVERRIDE & POST PROCESSING UI ───────────────────────────────
+pcall(function()
+
+local LT = cloneref(game:GetService("Lighting"))
+
+-- Saved original Lighting values restored when override is disabled
+local _ltOrig = nil
+local _ppOrig = {}
+
+local function _saveLtOrig()
+    if _ltOrig then return end
+    _ltOrig = {
+        ClockTime              = LT.ClockTime,
+        GeographicLatitude     = LT.GeographicLatitude,
+        Brightness             = LT.Brightness,
+        ExposureCompensation   = LT.ExposureCompensation,
+        GlobalShadows          = LT.GlobalShadows,
+        ShadowSoftness         = LT.ShadowSoftness,
+        Ambient                = LT.Ambient,
+        OutdoorAmbient         = LT.OutdoorAmbient,
+        ColorShift_Top         = LT.ColorShift_Top,
+        ColorShift_Bottom      = LT.ColorShift_Bottom,
+        EnvironmentDiffuseScale  = LT.EnvironmentDiffuseScale,
+        EnvironmentSpecularScale = LT.EnvironmentSpecularScale,
+        FogColor               = LT.FogColor,
+        FogStart               = LT.FogStart,
+        FogEnd                 = LT.FogEnd,
+        Technology             = LT.Technology,
+    }
+    for _, cls in ipairs({"BloomEffect","ColorCorrectionEffect","DepthOfFieldEffect","SunRaysEffect"}) do
+        local eff = LT:FindFirstChildOfClass(cls)
+        _ppOrig[cls] = eff and { Enabled = eff.Enabled } or { Enabled = false }
+    end
+    local atm = LT:FindFirstChildOfClass("Atmosphere")
+    _ppOrig["Atmosphere"] = atm and {
+        existed = true,
+        Color   = atm.Color,
+        Decay   = atm.Decay,
+        Density = atm.Density,
+        Offset  = atm.Offset,
+        Glare   = atm.Glare,
+        Haze    = atm.Haze,
+    } or { existed = false }
+end
+
+local function _restoreLt()
+    if not _ltOrig then return end
+    pcall(function()
+        LT.ClockTime               = _ltOrig.ClockTime
+        LT.GeographicLatitude      = _ltOrig.GeographicLatitude
+        LT.Brightness              = _ltOrig.Brightness
+        LT.ExposureCompensation    = _ltOrig.ExposureCompensation
+        LT.GlobalShadows           = _ltOrig.GlobalShadows
+        LT.ShadowSoftness          = _ltOrig.ShadowSoftness
+        LT.Ambient                 = _ltOrig.Ambient
+        LT.OutdoorAmbient          = _ltOrig.OutdoorAmbient
+        LT.ColorShift_Top          = _ltOrig.ColorShift_Top
+        LT.ColorShift_Bottom       = _ltOrig.ColorShift_Bottom
+        LT.EnvironmentDiffuseScale  = _ltOrig.EnvironmentDiffuseScale
+        LT.EnvironmentSpecularScale = _ltOrig.EnvironmentSpecularScale
+        LT.FogColor                = _ltOrig.FogColor
+        LT.FogStart                = _ltOrig.FogStart
+        LT.FogEnd                  = _ltOrig.FogEnd
+        LT.Technology              = _ltOrig.Technology
+    end)
+    for _, cls in ipairs({"BloomEffect","ColorCorrectionEffect","DepthOfFieldEffect","SunRaysEffect"}) do
+        local orig = _ppOrig[cls]
+        if orig then
+            local eff = LT:FindFirstChildOfClass(cls)
+            if eff then pcall(function() eff.Enabled = orig.Enabled end) end
+        end
+    end
+    local atmOrig = _ppOrig["Atmosphere"]
+    if atmOrig then
+        local atm = LT:FindFirstChildOfClass("Atmosphere")
+        if not atmOrig.existed and atm then
+            pcall(function() atm:Destroy() end)
+        elseif atmOrig.existed and atm then
+            pcall(function()
+                atm.Color   = atmOrig.Color
+                atm.Decay   = atmOrig.Decay
+                atm.Density = atmOrig.Density
+                atm.Offset  = atmOrig.Offset
+                atm.Glare   = atmOrig.Glare
+                atm.Haze    = atmOrig.Haze
+            end)
+        end
+    end
+    _ltOrig = nil
+    _ppOrig = {}
+end
+
+local function _getOrCreateFX(className)
+    local eff = LT:FindFirstChildOfClass(className)
+    if not eff then
+        eff = Instance.new(className)
+        eff.Parent = LT
+    end
+    return eff
+end
+
+-- Current override state table
+local WL = {
+    enabled  = false,
+    clock    = { on = false, v = 14 },
+    geo      = { on = false, v = 41 },
+    bright   = { on = false, v = 2 },
+    expo     = { on = false, v = 0 },
+    noShad   = false,
+    shadSoft = { on = false, v = 0.5 },
+    prioLit  = false,
+    ambient  = { on = false, indoor = Color3.fromRGB(75, 75, 75), outdoor = Color3.fromRGB(140, 140, 140) },
+    cshift   = { on = false, top = Color3.new(1, 1, 1), bot = Color3.new(1, 1, 1) },
+    envDiff  = { on = false, v = 1 },
+    envSpec  = { on = false, v = 1 },
+    fog      = { on = false, color = Color3.fromRGB(128, 128, 128), s = 0, e = 1000 },
+    bloom    = { on = false, intensity = 0.4, size = 24, threshold = 0.95 },
+    cc       = { on = false, tint = Color3.new(1, 1, 1), sat = 0, bright = 0, contrast = 0 },
+    dof      = { on = false, far = 0, focus = 50, inRadius = 10, near = 0 },
+    sunRays  = { on = false, intensity = 0.25, spread = 0.5 },
+    atm      = { on = false, color = Color3.fromRGB(199, 199, 199), decay = Color3.fromRGB(106, 127, 145), density = 0.3, offset = 0.25, glare = 0, haze = 0 },
+}
+
+local function _apply()
+    if not WL.enabled then return end
+    pcall(function()
+        if WL.clock.on    then LT.ClockTime            = WL.clock.v    end
+        if WL.geo.on      then LT.GeographicLatitude   = WL.geo.v      end
+        if WL.bright.on   then LT.Brightness           = WL.bright.v   end
+        if WL.expo.on     then LT.ExposureCompensation = WL.expo.v     end
+        LT.GlobalShadows = not WL.noShad
+        if WL.shadSoft.on then LT.ShadowSoftness       = WL.shadSoft.v end
+        if WL.prioLit     then pcall(function() LT.Technology = Enum.Technology.ShadowMap end) end
+        if WL.ambient.on  then
+            LT.Ambient        = WL.ambient.indoor
+            LT.OutdoorAmbient = WL.ambient.outdoor
+        end
+        if WL.cshift.on then
+            LT.ColorShift_Top    = WL.cshift.top
+            LT.ColorShift_Bottom = WL.cshift.bot
+        end
+        if WL.envDiff.on then LT.EnvironmentDiffuseScale  = WL.envDiff.v end
+        if WL.envSpec.on then LT.EnvironmentSpecularScale = WL.envSpec.v end
+        if WL.fog.on then
+            LT.FogColor = WL.fog.color
+            LT.FogStart = WL.fog.s
+            LT.FogEnd   = WL.fog.e
+        end
+    end)
+    pcall(function()
+        local bloom = _getOrCreateFX("BloomEffect")
+        bloom.Enabled = WL.bloom.on
+        if WL.bloom.on then
+            bloom.Intensity = WL.bloom.intensity
+            bloom.Size      = WL.bloom.size
+            bloom.Threshold = WL.bloom.threshold
+        end
+        local cc = _getOrCreateFX("ColorCorrectionEffect")
+        cc.Enabled = WL.cc.on
+        if WL.cc.on then
+            cc.TintColor  = WL.cc.tint
+            cc.Saturation = WL.cc.sat
+            cc.Brightness = WL.cc.bright
+            cc.Contrast   = WL.cc.contrast
+        end
+        local dof = _getOrCreateFX("DepthOfFieldEffect")
+        dof.Enabled = WL.dof.on
+        if WL.dof.on then
+            dof.FarIntensity  = WL.dof.far
+            dof.FocusDistance = WL.dof.focus
+            dof.InFocusRadius = WL.dof.inRadius
+            dof.NearIntensity = WL.dof.near
+        end
+        local sr = _getOrCreateFX("SunRaysEffect")
+        sr.Enabled = WL.sunRays.on
+        if WL.sunRays.on then
+            sr.Intensity = WL.sunRays.intensity
+            sr.Spread    = WL.sunRays.spread
+        end
+        if WL.atm.on then
+            local atm = LT:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere", LT)
+            atm.Color   = WL.atm.color
+            atm.Decay   = WL.atm.decay
+            atm.Density = WL.atm.density
+            atm.Offset  = WL.atm.offset
+            atm.Glare   = WL.atm.glare
+            atm.Haze    = WL.atm.haze
+        end
+    end)
+end
+
+-- ── LEFT GROUPBOX: LIGHTING ──────────────────────────────────────────────
+local LGL = Tabs.WorldChanger:AddLeftGroupbox("Lighting")
+
+LGL:AddToggle("WL_Master", {
+    Text    = "Enable Lighting Override",
+    Default = false,
+    Callback = function(v)
+        WL.enabled = v
+        if v then _saveLtOrig(); _apply() else _restoreLt() end
+    end
+})
+
+LGL:AddDivider()
+LGL:AddLabel("Time & Exposure")
+
+LGL:AddToggle("WL_ClockOn", { Text = "Override Clock Time",       Default = false, Callback = function(v) WL.clock.on    = v; _apply() end })
+LGL:AddSlider("WL_Clock",   { Text = "Clock Time (h)",            Default = 14,  Min = 0,   Max = 24,  Rounding = 2, Callback = function(v) WL.clock.v    = v; _apply() end })
+LGL:AddToggle("WL_GeoOn",   { Text = "Override Geographic Lat",   Default = false, Callback = function(v) WL.geo.on      = v; _apply() end })
+LGL:AddSlider("WL_Geo",     { Text = "Geographic Latitude",       Default = 41,  Min = -90, Max = 90,  Rounding = 1, Callback = function(v) WL.geo.v      = v; _apply() end })
+LGL:AddToggle("WL_BriOn",   { Text = "Override Brightness",       Default = false, Callback = function(v) WL.bright.on   = v; _apply() end })
+LGL:AddSlider("WL_Bri",     { Text = "Brightness",                Default = 2,   Min = 0,   Max = 10,  Rounding = 2, Callback = function(v) WL.bright.v   = v; _apply() end })
+LGL:AddToggle("WL_ExpOn",   { Text = "Override Exposure",         Default = false, Callback = function(v) WL.expo.on     = v; _apply() end })
+LGL:AddSlider("WL_Exp",     { Text = "Exposure Compensation",     Default = 0,   Min = -5,  Max = 5,   Rounding = 2, Callback = function(v) WL.expo.v     = v; _apply() end })
+
+LGL:AddDivider()
+LGL:AddLabel("Shadows")
+
+LGL:AddToggle("WL_NoShad",  { Text = "Disable Global Shadows",      Default = false, Callback = function(v) WL.noShad      = v; _apply() end })
+LGL:AddToggle("WL_SSoftOn", { Text = "Override Shadow Softness",    Default = false, Callback = function(v) WL.shadSoft.on = v; _apply() end })
+LGL:AddSlider("WL_SSoft",   { Text = "Shadow Softness",             Default = 0.5,  Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.shadSoft.v = v; _apply() end })
+LGL:AddToggle("WL_PrioLit", { Text = "Prioritize Lighting Quality", Default = false, Callback = function(v) WL.prioLit     = v; _apply() end })
+
+LGL:AddDivider()
+LGL:AddLabel("Ambient & Color Shift")
+
+LGL:AddToggle("WL_AmbOn", { Text = "Override Ambient Colors", Default = false, Callback = function(v) WL.ambient.on = v; _apply() end })
+LGL:AddColor({ Label = "Indoor Ambient",  Default = Color3.fromRGB(75,  75,  75 ), OnChanged = function(v) WL.ambient.indoor  = v.Rgb; _apply() end })
+LGL:AddColor({ Label = "Outdoor Ambient", Default = Color3.fromRGB(140, 140, 140), OnChanged = function(v) WL.ambient.outdoor = v.Rgb; _apply() end })
+LGL:AddToggle("WL_CSOn",  { Text = "Override Color Shift", Default = false, Callback = function(v) WL.cshift.on = v; _apply() end })
+LGL:AddColor({ Label = "Color Shift Top",    Default = Color3.new(1, 1, 1), OnChanged = function(v) WL.cshift.top = v.Rgb; _apply() end })
+LGL:AddColor({ Label = "Color Shift Bottom", Default = Color3.new(1, 1, 1), OnChanged = function(v) WL.cshift.bot = v.Rgb; _apply() end })
+
+LGL:AddDivider()
+LGL:AddLabel("Environment Scales")
+
+LGL:AddToggle("WL_EDiffOn", { Text = "Override Env Diffuse Scale",  Default = false, Callback = function(v) WL.envDiff.on = v; _apply() end })
+LGL:AddSlider("WL_EDiff",   { Text = "Environment Diffuse Scale",   Default = 1, Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.envDiff.v  = v; _apply() end })
+LGL:AddToggle("WL_ESpecOn", { Text = "Override Env Specular Scale", Default = false, Callback = function(v) WL.envSpec.on = v; _apply() end })
+LGL:AddSlider("WL_ESpec",   { Text = "Environment Specular Scale",  Default = 1, Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.envSpec.v  = v; _apply() end })
+
+LGL:AddDivider()
+LGL:AddLabel("Fog")
+
+LGL:AddToggle("WL_FogOn", { Text = "Override Fog", Default = false, Callback = function(v) WL.fog.on = v; _apply() end })
+LGL:AddColor({ Label = "Fog Color", Default = Color3.fromRGB(128, 128, 128), OnChanged = function(v) WL.fog.color = v.Rgb; _apply() end })
+LGL:AddSlider("WL_FogS",  { Text = "Fog Start", Default = 0,    Min = 0, Max = 10000, Rounding = 0, Callback = function(v) WL.fog.s = v; _apply() end })
+LGL:AddSlider("WL_FogE",  { Text = "Fog End",   Default = 1000, Min = 0, Max = 10000, Rounding = 0, Callback = function(v) WL.fog.e = v; _apply() end })
+
+-- ── RIGHT GROUPBOX: POST PROCESSING & ATMOSPHERE ─────────────────────────
+local LGR = Tabs.WorldChanger:AddRightGroupbox("Post Processing")
+
+LGR:AddLabel("Bloom")
+LGR:AddToggle("WL_BloomOn", { Text = "Enable Bloom",  Default = false, Callback = function(v) WL.bloom.on = v; _apply() end })
+LGR:AddSlider("WL_BloomI",  { Text = "Intensity",     Default = 0.4,  Min = 0, Max = 1,  Rounding = 2, Callback = function(v) WL.bloom.intensity = v; _apply() end })
+LGR:AddSlider("WL_BloomS",  { Text = "Size",          Default = 24,   Min = 0, Max = 56, Rounding = 0, Callback = function(v) WL.bloom.size      = v; _apply() end })
+LGR:AddSlider("WL_BloomT",  { Text = "Threshold",     Default = 0.95, Min = 0, Max = 5,  Rounding = 2, Callback = function(v) WL.bloom.threshold  = v; _apply() end })
+
+LGR:AddDivider()
+LGR:AddLabel("Color Correction")
+LGR:AddToggle("WL_CCOn",  { Text = "Enable Color Correction", Default = false, Callback = function(v) WL.cc.on = v; _apply() end })
+LGR:AddColor({ Label = "Tint Color", Default = Color3.new(1, 1, 1), OnChanged = function(v) WL.cc.tint = v.Rgb; _apply() end })
+LGR:AddSlider("WL_CCSat", { Text = "Saturation", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) WL.cc.sat     = v; _apply() end })
+LGR:AddSlider("WL_CCBri", { Text = "Brightness",  Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) WL.cc.bright  = v; _apply() end })
+LGR:AddSlider("WL_CCCon", { Text = "Contrast",    Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) WL.cc.contrast = v; _apply() end })
+
+LGR:AddDivider()
+LGR:AddLabel("Depth of Field")
+LGR:AddToggle("WL_DofOn",    { Text = "Enable Depth of Field", Default = false, Callback = function(v) WL.dof.on = v; _apply() end })
+LGR:AddSlider("WL_DofFar",   { Text = "Far Intensity",   Default = 0,  Min = 0, Max = 1,   Rounding = 2, Callback = function(v) WL.dof.far      = v; _apply() end })
+LGR:AddSlider("WL_DofFocus", { Text = "Focus Distance",  Default = 50, Min = 0, Max = 200, Rounding = 0, Callback = function(v) WL.dof.focus    = v; _apply() end })
+LGR:AddSlider("WL_DofIn",    { Text = "In-Focus Radius", Default = 10, Min = 0, Max = 100, Rounding = 0, Callback = function(v) WL.dof.inRadius = v; _apply() end })
+LGR:AddSlider("WL_DofNear",  { Text = "Near Intensity",  Default = 0,  Min = 0, Max = 1,   Rounding = 2, Callback = function(v) WL.dof.near     = v; _apply() end })
+
+LGR:AddDivider()
+LGR:AddLabel("Sun Rays")
+LGR:AddToggle("WL_SROn", { Text = "Enable Sun Rays", Default = false, Callback = function(v) WL.sunRays.on = v; _apply() end })
+LGR:AddSlider("WL_SRI",  { Text = "Intensity",       Default = 0.25, Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.sunRays.intensity = v; _apply() end })
+LGR:AddSlider("WL_SRS",  { Text = "Spread",          Default = 0.5,  Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.sunRays.spread    = v; _apply() end })
+
+LGR:AddDivider()
+LGR:AddLabel("Atmosphere")
+LGR:AddToggle("WL_AtmOn",    { Text = "Enable Atmosphere", Default = false, Callback = function(v) WL.atm.on = v; _apply() end })
+LGR:AddColor({ Label = "Atmosphere Color", Default = Color3.fromRGB(199, 199, 199), OnChanged = function(v) WL.atm.color   = v.Rgb; _apply() end })
+LGR:AddColor({ Label = "Atmosphere Decay", Default = Color3.fromRGB(106, 127, 145), OnChanged = function(v) WL.atm.decay   = v.Rgb; _apply() end })
+LGR:AddSlider("WL_AtmDen",   { Text = "Density", Default = 0.3,  Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.density = v; _apply() end })
+LGR:AddSlider("WL_AtmOff",   { Text = "Offset",  Default = 0.25, Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.offset  = v; _apply() end })
+LGR:AddSlider("WL_AtmGlare", { Text = "Glare",   Default = 0,    Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.glare   = v; _apply() end })
+LGR:AddSlider("WL_AtmHaze",  { Text = "Haze",    Default = 0,    Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.haze    = v; _apply() end })
+
+end) -- end pcall
+-- ── END LIGHTING OVERRIDE & POST PROCESSING UI ───────────────────────────
+
 
 ;(function() -- Kicia engine: isolated register scope
 --==========================================================================
