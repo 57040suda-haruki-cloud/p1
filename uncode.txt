@@ -4072,6 +4072,19 @@ HvHL2:AddToggle("RbEnabled", {
     Callback = function(v)
         _kSet({"Ragebot","Enabled"}, v)
         _kSet({"Ragebot","Keybind","State"}, v)
+        task.defer(function()
+            local rb = getgenv()._UNC_Ragebot
+            if rb then
+                pcall(function() rb:SetEnabled(v) end)
+                warn("[UNCODE] Ragebot SetEnabled(" .. tostring(v)
+                    .. ") | _enabled=" .. tostring(rb._enabled)
+                    .. " | hasCtx=" .. tostring(rb._innerContext ~= nil))
+            else
+                warn("[UNCODE] Ragebot instance not yet available in getgenv")
+            end
+            local f = getgenv()._UNC_Fighters
+            warn("[UNCODE] Fighters.LocalState=" .. tostring(f and f.LocalState ~= nil))
+        end)
     end
 })
 HvHL2:AddToggle("RbHackers", {
@@ -70549,6 +70562,8 @@ local v224 = v147:Add(v131.new(v221, v212, { v220, v219 }))
 local v225 = v147:Add(tbl17.jw().new(v190, v199, v218))
 local v226 = v147:Add(v160.new())
 local v227 = v147:Add(tbl17.jO().new(v190, playerTags, v199, v222, v210))
+getgenv()._UNC_Ragebot  = v227
+getgenv()._UNC_Fighters = v190
 local v228 = v147:Add(v177.new(v199, v190, v201))
 local v229 = v147:Add(v116.new(v199, v190))
 local v230 = v147:Add(v141.new(v190, playerIdentities, v212))
