@@ -280,17 +280,24 @@ do
     _G.UNCODEHud.SetEnabled = function(state) _G.UNCODEHud.Enabled = state; gui.Enabled = state end
     _G.UNCODEHud.Toggle = function() _G.UNCODEHud.SetEnabled(not _G.UNCODEHud.Enabled) end
     _G.UNCODEHud.Destroy = function() pcall(function() gui:Destroy() end); _G.UNCODEHud = nil end
+    local _hudPrevX, _hudPrevY, _hudPrevZ = 0, 0, 0
     RunService.Heartbeat:Connect(function()
         if not _G.UNCODEHud or not _G.UNCODEHud.Enabled then return end
         local char = LP.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
             local p = hrp.Position
-            labels.X.Text = string.format("%.0f", p.X)
-            labels.Y.Text = string.format("%.0f", p.Y)
-            labels.Z.Text = string.format("%.0f", p.Z)
+            local nx = math.floor(p.X + 0.5)
+            local ny = math.floor(p.Y + 0.5)
+            local nz = math.floor(p.Z + 0.5)
+            if nx ~= _hudPrevX then _hudPrevX = nx; labels.X.Text = tostring(nx) end
+            if ny ~= _hudPrevY then _hudPrevY = ny; labels.Y.Text = tostring(ny) end
+            if nz ~= _hudPrevZ then _hudPrevZ = nz; labels.Z.Text = tostring(nz) end
         else
-            labels.X.Text = "0"; labels.Y.Text = "0"; labels.Z.Text = "0"
+            if _hudPrevX ~= 0 or _hudPrevY ~= 0 or _hudPrevZ ~= 0 then
+                _hudPrevX, _hudPrevY, _hudPrevZ = 0, 0, 0
+                labels.X.Text = "0"; labels.Y.Text = "0"; labels.Z.Text = "0"
+            end
         end
     end)
 end
@@ -582,16 +589,20 @@ local function updateFovCircle()
     _fovCircle.Radius       = _fovCFG.radius
 end
 
-RunService.RenderStepped:Connect(function()
-    if not _fovCircle then return end
-    if _fovCFG.enabled then
+local _fovConn = nil
+local function _connectFov()
+    if _fovConn or not _fovCircle then return end
+    _fovConn = RunService.RenderStepped:Connect(function()
+        if not _fovCircle then return end
         local center = Camera.ViewportSize / 2
-        _fovCircle.Position  = center
-        _fovCircle.Visible   = true
-    else
-        _fovCircle.Visible = false
-    end
-end)
+        _fovCircle.Position = center
+        _fovCircle.Visible  = true
+    end)
+end
+local function _disconnectFov()
+    if _fovConn then _fovConn:Disconnect(); _fovConn = nil end
+    if _fovCircle then _fovCircle.Visible = false end
+end
 -- ── END FOV CIRCLE ─────────────────────────────────────────────────────────
 
 local char, root, hum
@@ -4427,6 +4438,7 @@ HvHL4:AddToggle("FovCircleEnabled", {
     Default = false,
     Callback = function(v)
         _fovCFG.enabled = v
+        if v then _connectFov() else _disconnectFov() end
     end
 })
 pcall(function() HvHL4:AddColor("FovDrawColor", { Text = "FOV Color", Default = Color3.fromRGB(255, 255, 255),
