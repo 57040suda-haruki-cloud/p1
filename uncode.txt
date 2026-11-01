@@ -1386,6 +1386,12 @@ local predLastShot = 0
 local predRungIndex = 0
 local hookedActivate = {}
 local hookedRemotes = {}
+local predPlayerCache = {}
+do
+    for _, p in ipairs(Players:GetPlayers()) do predPlayerCache[p] = true end
+    Players.PlayerAdded:Connect(function(p) predPlayerCache[p] = true end)
+    Players.PlayerRemoving:Connect(function(p) predPlayerCache[p] = nil end)
+end
 
 local RIVALS_SHOT_REMOTE_HINTS = {
     "fire","shoot","attack","bullet","ray","hit","damage","combat",
@@ -1450,7 +1456,7 @@ local function hookRemote(remote)
                 local callingScript = getcallingscript and getcallingscript()
                 if callingScript ~= LocalPlayer.Character then
                     local args = {...}
-                    for _, p in ipairs(Players:GetPlayers()) do
+                    for p in pairs(predPlayerCache) do
                         if p ~= LocalPlayer and p.Character then
                             for _, a in ipairs(args) do
                                 if a == p.Character or a == p then
