@@ -261,6 +261,7 @@ local function hookRemotes()
             r:SetAttribute("_uc_hooked",true)
             local old=r.FireServer
             r.FireServer = function(self,data,...)
+                pcall(function()
                 if PB.enabled and PB.spoof and type(data)=="table" then
                     local sc=projSpoofed or Camera.CFrame
                     if data.Origin   ~=nil then data.Origin   =sc.Position end
@@ -271,7 +272,8 @@ local function hookRemotes()
                     if data.Spread   ~=nil then data.Spread   =0 end
                     if data.attackNum~=nil then data.attackNum=data.attackNum or math.random(1,9999) end
                 end
-                return old(self,data,...)
+                end)
+                pcall(old,self,data,...)
             end
         end
     end
@@ -668,6 +670,7 @@ local function startNameSpoof()
                 local gui=LP:FindFirstChild("PlayerGui")
                 if not gui then return end
                 local function scan(inst)
+                    pcall(function()
                     for _,c in ipairs(inst:GetChildren()) do
                         if c:IsA("TextLabel") and c.Name=="Title" then
                             local isSelf=c.Text==LP.Name or c.Text==LP.DisplayName
@@ -675,6 +678,7 @@ local function startNameSpoof()
                         end
                         scan(c)
                     end
+                    end)
                 end
                 scan(gui)
             end)
@@ -712,17 +716,28 @@ local function cloneAvatar(uid)
     local ok2,model=pcall(function() return Players:CreateHumanoidModelFromDescription(desc,h.RigType) end)
     if not ok2 or not model then return end
     if c:GetAttribute("UC_Spoofed") then return end
-    model:SetAttribute("UC_Spoofed",true)
-    local oldCF=c:GetPivot()
-    model.Name=LP.Name
+    pcall(function() model:SetAttribute("UC_Spoofed",true) end)
+    local oldCF; pcall(function() oldCF=c:GetPivot() end)
+    pcall(function() model.Name=LP.Name end)
     local anim=c:FindFirstChild("Animate")
     if anim and anim:IsA("LocalScript") then
-        local ac=anim:Clone(); ac.Disabled=true; ac.Parent=model; ac.Disabled=false
+        pcall(function()
+            local ac=anim:Clone(); ac.Disabled=true; ac.Parent=model; ac.Disabled=false
+        end)
     end
-    LP.Character=model; model.Parent=workspace; c:Destroy()
-    model:PivotTo(oldCF)
-    local cam=workspace.CurrentCamera
-    if cam then cam.CameraSubject=model:WaitForChild("Humanoid") end
+    pcall(function()
+        model.Parent=workspace
+        LP.Character=model
+        if c and c.Parent then c:Destroy() end
+    end)
+    if oldCF then pcall(function() model:PivotTo(oldCF) end) end
+    pcall(function()
+        local cam=workspace.CurrentCamera
+        if cam then
+            local newHum=model:WaitForChild("Humanoid",5)
+            if newHum then cam.CameraSubject=newHum end
+        end
+    end)
 end
 
 local origLighting=nil
@@ -762,17 +777,21 @@ local _wcAvailableWorlds = {}
 
 -- Mirror of Kicia _ResolveModel: walks up from tagged instance to find root Model with matching EnvironmentID
 local function wcResolveModel(environmentId)
-    local tagged = _WC_CS:GetTagged("RaycastWhitelist" .. tostring(environmentId))
+    local ok, tagged = pcall(function() return _WC_CS:GetTagged("RaycastWhitelist" .. tostring(environmentId)) end)
+    if not ok or not tagged then return nil end
     local parent = tagged[1]
     if parent == nil then return nil end
-    while true do
-        if parent.ClassName == "Model" and parent:GetAttribute("EnvironmentID") == environmentId then
-            break
+    local result = nil
+    pcall(function()
+        while true do
+            if parent.ClassName == "Model" and parent:GetAttribute("EnvironmentID") == environmentId then
+                result = parent; break
+            end
+            parent = parent.Parent
+            if parent == nil or parent == workspace then break end
         end
-        parent = parent.Parent
-        if parent == nil or parent == workspace then return nil end
-    end
-    return parent
+    end)
+    return result
 end
 
 -- Scan workspace for all models that have the EnvironmentID attribute (Kicia world list)
