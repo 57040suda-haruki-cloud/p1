@@ -4104,6 +4104,7 @@ HvHL2:AddToggle("RbRapidFire", {
     Default = false,
     Tooltip = "Zero the shoot-frame lock so Ragebot fires every eligible frame.",
     Callback = function(v)
+        if not _autoLoadDone and v then return end
         _kSet({"Ragebot","ShootFrames"}, v and 0 or 1)
     end
 })
@@ -4438,7 +4439,7 @@ local function _saveLtOrig()
         FogEnd                 = LT.FogEnd,
         Technology             = LT.Technology,
     }
-    for _, cls in ipairs({"BloomEffect","ColorCorrectionEffect","DepthOfFieldEffect","SunRaysEffect"}) do
+    for _, cls in ipairs({"BloomEffect","ColorCorrectionEffect","DepthOfFieldEffect","SunRaysEffect","ColorGradingEffect"}) do
         local eff = LT:FindFirstChildOfClass(cls)
         _ppOrig[cls] = eff and { Enabled = eff.Enabled } or { Enabled = false }
     end
@@ -4474,7 +4475,7 @@ local function _restoreLt()
         LT.FogEnd                  = _ltOrig.FogEnd
         LT.Technology              = _ltOrig.Technology
     end)
-    for _, cls in ipairs({"BloomEffect","ColorCorrectionEffect","DepthOfFieldEffect","SunRaysEffect"}) do
+    for _, cls in ipairs({"BloomEffect","ColorCorrectionEffect","DepthOfFieldEffect","SunRaysEffect","ColorGradingEffect"}) do
         local orig = _ppOrig[cls]
         if orig then
             local eff = LT:FindFirstChildOfClass(cls)
@@ -4530,6 +4531,8 @@ local WL = {
     dof      = { on = false, far = 0, focus = 50, inRadius = 10, near = 0 },
     sunRays  = { on = false, intensity = 0.25, spread = 0.5 },
     atm      = { on = false, color = Color3.fromRGB(199, 199, 199), decay = Color3.fromRGB(106, 127, 145), density = 0.3, offset = 0.25, glare = 0, haze = 0 },
+    cg       = { on = false, preset = "Default" },
+    mb       = { on = false, intensity = 10, sensitivity = 1 },
 }
 
 local function _apply()
@@ -4597,6 +4600,13 @@ local function _apply()
             atm.Glare   = WL.atm.glare
             atm.Haze    = WL.atm.haze
         end
+        local cgFx = _getOrCreateFX("ColorGradingEffect")
+        cgFx.Enabled = WL.cg.on
+        if WL.cg.on then
+            pcall(function()
+                cgFx.TonemapperPreset = Enum.ToneMapperPreset[WL.cg.preset] or Enum.ToneMapperPreset.Default
+            end)
+        end
     end)
 end
 
@@ -4658,6 +4668,45 @@ LGL:AddColor({ Label = "Fog Color", Default = Color3.fromRGB(128, 128, 128), OnC
 LGL:AddSlider("WL_FogS",  { Text = "Fog Start", Default = 0,    Min = 0, Max = 10000, Rounding = 0, Callback = function(v) WL.fog.s = v; _apply() end })
 LGL:AddSlider("WL_FogE",  { Text = "Fog End",   Default = 1000, Min = 0, Max = 10000, Rounding = 0, Callback = function(v) WL.fog.e = v; _apply() end })
 
+-- ── MOTION BLUR HELPERS ──────────────────────────────────────────────────
+local _mbConn = nil
+local _mbBlur = nil
+local _mbLastCF = nil
+
+local function _mbTeardown()
+    if _mbConn then _mbConn:Disconnect(); _mbConn = nil end
+    if _mbBlur and _mbBlur.Parent then
+        pcall(function() _mbBlur:Destroy() end)
+    end
+    _mbBlur = nil
+    _mbLastCF = nil
+end
+
+local function _mbSetup()
+    _mbTeardown()
+    local RS = game:GetService("RunService")
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    local blur = Instance.new("BlurEffect")
+    blur.Size = 0
+    blur.Parent = cam
+    _mbBlur = blur
+    _mbConn = RS.PreRender:Connect(function(dt)
+        if not WL.mb.on then _mbTeardown(); return end
+        local c = workspace.CurrentCamera
+        if not c or not _mbBlur or not _mbBlur.Parent then return end
+        local cf = c.CFrame
+        local last = _mbLastCF
+        _mbLastCF = cf
+        if not last then return end
+        local linSpd = (cf.Position - last.Position).Magnitude / dt
+        local _, ang = cf:ToObjectSpace(last):ToAxisAngle()
+        local delta = linSpd * 18 + math.abs(ang) / dt * 3
+        local target = math.clamp(delta * WL.mb.sensitivity, 0, WL.mb.intensity)
+        _mbBlur.Size = _mbBlur.Size + (target - _mbBlur.Size) * math.min(1, dt * 24)
+    end)
+end
+
 -- ── RIGHT GROUPBOX: POST PROCESSING & ATMOSPHERE ─────────────────────────
 local LGR = Tabs.WorldChanger:AddRightGroupbox("Post Processing")
 
@@ -4699,8 +4748,182 @@ LGR:AddSlider("WL_AtmOff",   { Text = "Offset",  Default = 0.25, Min = 0, Max = 
 LGR:AddSlider("WL_AtmGlare", { Text = "Glare",   Default = 0,    Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.glare   = v; _apply() end })
 LGR:AddSlider("WL_AtmHaze",  { Text = "Haze",    Default = 0,    Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.haze    = v; _apply() end })
 
+LGR:AddDivider()
+LGR:AddLabel("Color Grading")
+LGR:AddToggle("WL_CGOn", { Text = "Enable Color Grading", Default = false,
+    Callback = function(v) WL.cg.on = v; _apply() end
+})
+LGR:AddDropdown("WL_CGPreset", { Text = "Tonemapper", Values = {"Default","Retro"}, Default = 1,
+    Callback = function(v) WL.cg.preset = v; _apply() end
+})
+
+LGR:AddDivider()
+LGR:AddLabel("Motion Blur")
+LGR:AddToggle("WL_MBOn", { Text = "Enable Motion Blur", Default = false,
+    Callback = function(v)
+        WL.mb.on = v
+        if v then _mbSetup() else _mbTeardown() end
+    end
+})
+LGR:AddSlider("WL_MBInt",  { Text = "Intensity",   Default = 10, Min = 0, Max = 56, Rounding = 1,
+    Callback = function(v) WL.mb.intensity   = v end
+})
+LGR:AddSlider("WL_MBSens", { Text = "Sensitivity", Default = 1,  Min = 0, Max = 5,  Rounding = 2,
+    Callback = function(v) WL.mb.sensitivity = v end
+})
+
 end) -- end pcall
 -- ── END LIGHTING OVERRIDE & POST PROCESSING UI ───────────────────────────
+
+-- ── SKY, WEATHER & AMBIENCE UI ───────────────────────────────────────────
+pcall(function()
+
+local SWL = Tabs.WorldChanger:AddLeftGroupbox("Sky & Weather")
+local SWR = Tabs.WorldChanger:AddRightGroupbox("Weather Detail")
+
+-- Skybox
+SWL:AddLabel("Skybox")
+SWL:AddToggle("WL_SkyOn", { Text = "Enable Skybox Override", Default = false,
+    Callback = function(v) _kSet({"Skybox","Enabled"}, v) end
+})
+SWL:AddLabel("(Manage skyboxes in Kicia UI)")
+
+SWL:AddDivider()
+SWL:AddLabel("Ambient Sound")
+SWL:AddToggle("WL_AmbOn", { Text = "Enable Ambient Sound", Default = false,
+    Callback = function(v) _kSet({"Ambience","Enabled"}, v) end
+})
+SWL:AddDropdown("WL_AmbPreset", { Text = "Preset", Values = {"Soft Rain","Light Rain"}, Default = 1,
+    Callback = function(v) _kSet({"Ambience","Sound"}, v) end
+})
+SWL:AddSlider("WL_AmbVol", { Text = "Volume", Default = 1, Min = 0, Max = 10, Rounding = 1,
+    Callback = function(v) _kSet({"Ambience","Volume"}, v) end
+})
+
+SWL:AddDivider()
+SWL:AddLabel("Weather")
+SWL:AddToggle("WL_WxOn", { Text = "Enable Weather", Default = false,
+    Callback = function(v) _kSet({"Weather","Enabled"}, v) end
+})
+SWL:AddColor({ Label = "Weather Color", Default = Color3.fromRGB(255,255,255),
+    OnChanged = function(v) _kSet({"Weather","Color"}, v.Rgb) end
+})
+SWL:AddDropdown("WL_WxPreset", { Text = "Preset", Values = {"Snow","Rain","Blizzard"}, Default = 1,
+    Callback = function(v) _kSet({"Weather","Preset"}, v) end
+})
+SWL:AddSlider("WL_WxInt",    { Text = "Intensity",     Default = 1,   Min = 0,   Max = 2,   Rounding = 2,
+    Callback = function(v) _kSet({"Weather","Intensity"}, v) end
+})
+SWL:AddSlider("WL_WxRate",   { Text = "Rate",          Default = 1,   Min = 0,   Max = 3,   Rounding = 2,
+    Callback = function(v) _kSet({"Weather","Rate"}, v) end
+})
+SWL:AddSlider("WL_WxHeight", { Text = "Height",        Default = 45,  Min = 10,  Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Height"}, v) end
+})
+SWL:AddSlider("WL_WxSpeed",  { Text = "Speed",         Default = 1,   Min = 0.5, Max = 3,   Rounding = 2,
+    Callback = function(v) _kSet({"Weather","Speed"}, v) end
+})
+SWL:AddSlider("WL_WxGlow",   { Text = "Glow",          Default = 0.6, Min = 0,   Max = 1,   Rounding = 2,
+    Callback = function(v) _kSet({"Weather","Glow"}, v) end
+})
+SWL:AddSlider("WL_WxSize",   { Text = "Particle Size", Default = 1,   Min = 0.5, Max = 2,   Rounding = 2,
+    Callback = function(v) _kSet({"Weather","Size"}, v) end
+})
+SWL:AddSlider("WL_WxSpread", { Text = "Spread",        Default = 25,  Min = 0,   Max = 50,  Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Spread"}, v) end
+})
+SWL:AddDivider()
+SWL:AddLabel("Wind")
+SWL:AddSlider("WL_WxWStr",   { Text = "Wind Strength", Default = 0,   Min = 0,   Max = 20,  Rounding = 1,
+    Callback = function(v) _kSet({"Weather","Wind","Strength"}, v) end
+})
+SWL:AddSlider("WL_WxWAng",   { Text = "Wind Angle",    Default = 0,   Min = 0,   Max = 360, Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Wind","Angle"}, v) end
+})
+
+-- Lightning
+SWR:AddLabel("Lightning")
+SWR:AddToggle("WL_LtOn", { Text = "Enable Lightning", Default = false,
+    Callback = function(v) _kSet({"Weather","Lightning","Enabled"}, v) end
+})
+SWR:AddColor({ Label = "Lightning Color", Default = Color3.fromRGB(180,220,255),
+    OnChanged = function(v) _kSet({"Weather","Lightning","Color"}, v.Rgb) end
+})
+SWR:AddSlider("WL_LtInterval",  { Text = "Interval (s)",  Default = 2,   Min = 0.5, Max = 20,  Rounding = 1,
+    Callback = function(v) _kSet({"Weather","Lightning","Interval"}, v) end
+})
+SWR:AddSlider("WL_LtDistance",  { Text = "Distance",      Default = 80,  Min = 10,  Max = 500, Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Lightning","Distance"}, v) end
+})
+SWR:AddSlider("WL_LtHeight",    { Text = "Height",        Default = 220, Min = 10,  Max = 500, Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Lightning","Height"}, v) end
+})
+SWR:AddSlider("WL_LtThickness", { Text = "Thickness",     Default = 4,   Min = 0.5, Max = 20,  Rounding = 1,
+    Callback = function(v) _kSet({"Weather","Lightning","Thickness"}, v) end
+})
+SWR:AddSlider("WL_LtJagged",    { Text = "Jaggedness",    Default = 7,   Min = 0,   Max = 20,  Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Lightning","Jaggedness"}, v) end
+})
+SWR:AddSlider("WL_LtBranches",  { Text = "Branches",      Default = 12,  Min = 0,   Max = 30,  Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Lightning","Branches"}, v) end
+})
+SWR:AddSlider("WL_LtFlash",     { Text = "Flash",         Default = 8,   Min = 0,   Max = 20,  Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Lightning","Flash"}, v) end
+})
+
+SWR:AddDivider()
+SWR:AddLabel("Sparks")
+SWR:AddToggle("WL_SpkOn", { Text = "Enable Sparks", Default = true,
+    Callback = function(v) _kSet({"Weather","Lightning","Sparks","Enabled"}, v) end
+})
+SWR:AddColor({ Label = "Spark Color", Default = Color3.fromRGB(180,220,255),
+    OnChanged = function(v) _kSet({"Weather","Lightning","Sparks","Color"}, v.Rgb) end
+})
+SWR:AddSlider("WL_SpkCount",  { Text = "Count",      Default = 18,  Min = 1,   Max = 50,  Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Lightning","Sparks","Count"}, v) end
+})
+SWR:AddSlider("WL_SpkThick",  { Text = "Thickness",  Default = 2.2, Min = 0.5, Max = 10,  Rounding = 1,
+    Callback = function(v) _kSet({"Weather","Lightning","Sparks","Thickness"}, v) end
+})
+SWR:AddSlider("WL_SpkDist",   { Text = "Distance",   Default = 22,  Min = 1,   Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Lightning","Sparks","Distance"}, v) end
+})
+SWR:AddSlider("WL_SpkSpeed",  { Text = "Speed",      Default = 22,  Min = 1,   Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Lightning","Sparks","Speed"}, v) end
+})
+SWR:AddSlider("WL_SpkJagged", { Text = "Jaggedness", Default = 4,   Min = 0,   Max = 20,  Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Lightning","Sparks","Jaggedness"}, v) end
+})
+
+SWR:AddDivider()
+SWR:AddLabel("Explosion")
+SWR:AddToggle("WL_ExpOn", { Text = "Enable Explosion", Default = true,
+    Callback = function(v) _kSet({"Weather","Lightning","Explosion","Enabled"}, v) end
+})
+SWR:AddColor({ Label = "Explosion Color", Default = Color3.fromRGB(255,200,100),
+    OnChanged = function(v) _kSet({"Weather","Lightning","Explosion","Color"}, v.Rgb) end
+})
+SWR:AddSlider("WL_ExpSize",  { Text = "Size",  Default = 0.45, Min = 0.1, Max = 2,  Rounding = 2,
+    Callback = function(v) _kSet({"Weather","Lightning","Explosion","Size"}, v) end
+})
+SWR:AddSlider("WL_ExpBolts", { Text = "Bolts", Default = 14,   Min = 1,   Max = 50, Rounding = 0,
+    Callback = function(v) _kSet({"Weather","Lightning","Explosion","Bolts"}, v) end
+})
+
+SWR:AddDivider()
+SWR:AddLabel("Thunder Sound")
+SWR:AddToggle("WL_SndOn", { Text = "Enable Thunder", Default = true,
+    Callback = function(v) _kSet({"Weather","Lightning","Sound","Enabled"}, v) end
+})
+SWR:AddToggle("WL_SndDelay", { Text = "Delay by Distance", Default = true,
+    Callback = function(v) _kSet({"Weather","Lightning","Sound","Delay"}, v) end
+})
+SWR:AddSlider("WL_SndVol", { Text = "Volume", Default = 1, Min = 0, Max = 5, Rounding = 2,
+    Callback = function(v) _kSet({"Weather","Lightning","Sound","Volume"}, v) end
+})
+
+end)
+-- ── END SKY, WEATHER & AMBIENCE UI ───────────────────────────────────────
 
 
 ;(function() -- Kicia engine: isolated register scope
@@ -71410,6 +71633,16 @@ do
     end
 end
 _autoLoadDone = true
+-- Delayed safety net: if Kicia async init sets ShootFrames=0 after our sync block, re-apply.
+task.delay(3, function()
+    local _ks2 = getgenv()._UNC_KiciaStore
+    if _ks2 then
+        local rfOn = Toggles.RbRapidFire and Toggles.RbRapidFire.Value
+        if not rfOn then
+            pcall(function() _ks2:Set({"Ragebot","ShootFrames"}, 1) end)
+        end
+    end
+end)
 
 Library:Notify({ Title = "UNCODE v1", Description = "Rivals HvH — powered by Kicia Rebuild engine", Time = 4 })
 end)()
