@@ -4776,7 +4776,7 @@ end) -- end pcall
 -- ── END LIGHTING OVERRIDE & POST PROCESSING UI ───────────────────────────
 
 -- ── SKY, WEATHER & AMBIENCE UI ───────────────────────────────────────────
-pcall(function()
+local _swOk, _swErr = pcall(function()
 
 local SWL = Tabs.WorldChanger:AddLeftGroupbox("Sky & Weather")
 local SWR = Tabs.WorldChanger:AddRightGroupbox("Weather Detail")
@@ -4790,7 +4790,7 @@ SWL:AddLabel("(Manage skyboxes in Kicia UI)")
 
 SWL:AddDivider()
 SWL:AddLabel("Ambient Sound")
-SWL:AddToggle("WL_AmbOn", { Text = "Enable Ambient Sound", Default = false,
+SWL:AddToggle("WL_AmbSndOn", { Text = "Enable Ambient Sound", Default = false,
     Callback = function(v) _kSet({"Ambience","Enabled"}, v) end
 })
 SWL:AddDropdown("WL_AmbPreset", { Text = "Preset", Values = {"Soft Rain","Light Rain"}, Default = 1,
@@ -4923,6 +4923,9 @@ SWR:AddSlider("WL_SndVol", { Text = "Volume", Default = 1, Min = 0, Max = 5, Rou
 })
 
 end)
+if not _swOk then
+    warn("[UNCODE] Sky & Weather UI failed: " .. tostring(_swErr))
+end
 -- ── END SKY, WEATHER & AMBIENCE UI ───────────────────────────────────────
 
 
@@ -71633,8 +71636,10 @@ do
     end
 end
 _autoLoadDone = true
--- Delayed safety net: if Kicia async init sets ShootFrames=0 after our sync block, re-apply.
-task.delay(3, function()
+-- Kicia loads its config asynchronously; keep enforcing ShootFrames=1
+-- every 2 seconds for the first 60 seconds so any async restore of 0 is caught.
+local function _enforceRFLoop(remaining)
+    if remaining <= 0 then return end
     local _ks2 = getgenv()._UNC_KiciaStore
     if _ks2 then
         local rfOn = Toggles.RbRapidFire and Toggles.RbRapidFire.Value
@@ -71642,7 +71647,9 @@ task.delay(3, function()
             pcall(function() _ks2:Set({"Ragebot","ShootFrames"}, 1) end)
         end
     end
-end)
+    task.delay(2, function() _enforceRFLoop(remaining - 2) end)
+end
+task.delay(1, function() _enforceRFLoop(60) end)
 
 Library:Notify({ Title = "UNCODE v1", Description = "Rivals HvH — powered by Kicia Rebuild engine", Time = 4 })
 end)()
