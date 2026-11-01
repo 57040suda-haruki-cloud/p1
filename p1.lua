@@ -921,7 +921,7 @@ end
 
 local Window=Library:CreateWindow({
     Title="uncode",Footer="rivals . v4 . anti-kicia . anti-transcrait",
-    NotifySide="Right",ShowCustomCursor=true,AutoShow=true,Center=true,
+    NotifySide="Right",ShowCustomCursor=true,AutoShow=false,Center=true,
     Resizable=true,ShowMobileButtons=true,MobileButtonsSide="Left",
     ToggleKeybind=Enum.KeyCode.RightShift,EnableSidebarResize=true,
 })
