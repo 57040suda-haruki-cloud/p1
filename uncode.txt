@@ -4002,8 +4002,8 @@ HvHL1:AddToggle("SaCircleVisible", {
     Default = false,
     Callback = function(v) _kSet({"SilentAim","Fov","Circle","Visible"}, v) end
 })
-HvHL1:AddColor("SaCircleStrokeColor", { Text = "Circle Color", Default = Color3.fromRGB(255, 0, 0),
-    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Stroke","Gradient"}, ColorSequence.new(v)) end })
+pcall(function() HvHL1:AddColor("SaCircleStrokeColor", { Text = "Circle Color", Default = Color3.fromRGB(255, 0, 0),
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Stroke","Gradient"}, ColorSequence.new(v)) end }) end)
 HvHL1:AddSlider("SaCircleThickness", {
     Text = "Circle Thickness",
     Default = 1,
@@ -4021,8 +4021,8 @@ HvHL1:AddToggle("SaCircleFill", {
     Default = false,
     Callback = function(v) _kSet({"SilentAim","Fov","Circle","Fill","Enabled"}, v) end
 })
-HvHL1:AddColor("SaCircleFillColor", { Text = "Fill Color", Default = Color3.fromRGB(255, 80, 80),
-    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Fill","Gradient"}, ColorSequence.new(v)) end })
+pcall(function() HvHL1:AddColor("SaCircleFillColor", { Text = "Fill Color", Default = Color3.fromRGB(255, 80, 80),
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Fill","Gradient"}, ColorSequence.new(v)) end }) end)
 HvHL1:AddSlider("SaCircleFillOpacity", {
     Text = "Fill Opacity",
     Default = 50,
@@ -4139,8 +4139,8 @@ HvHR1:AddToggle("AbCircleVisible", {
     Default = false,
     Callback = function(v) _kSet({"Aimbot","Fov","Circle","Visible"}, v) end
 })
-HvHR1:AddColor("AbCircleStrokeColor", { Text = "Circle Color", Default = Color3.fromRGB(255, 0, 0),
-    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Stroke","Gradient"}, ColorSequence.new(v)) end })
+pcall(function() HvHR1:AddColor("AbCircleStrokeColor", { Text = "Circle Color", Default = Color3.fromRGB(255, 0, 0),
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Stroke","Gradient"}, ColorSequence.new(v)) end }) end)
 HvHR1:AddSlider("AbCircleThickness", {
     Text = "Circle Thickness",
     Default = 1,
@@ -4158,8 +4158,8 @@ HvHR1:AddToggle("AbCircleFill", {
     Default = false,
     Callback = function(v) _kSet({"Aimbot","Fov","Circle","Fill","Enabled"}, v) end
 })
-HvHR1:AddColor("AbCircleFillColor", { Text = "Fill Color", Default = Color3.fromRGB(255, 80, 80),
-    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Fill","Gradient"}, ColorSequence.new(v)) end })
+pcall(function() HvHR1:AddColor("AbCircleFillColor", { Text = "Fill Color", Default = Color3.fromRGB(255, 80, 80),
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Fill","Gradient"}, ColorSequence.new(v)) end }) end)
 HvHR1:AddSlider("AbCircleFillOpacity", {
     Text = "Fill Opacity",
     Default = 50,
@@ -4365,15 +4365,15 @@ HvHL4:AddToggle("EspBox", {
     Default = true,
     Callback = function(v) _kSet({"Esp","Enemy","Box","Enabled"}, v) end
 })
-HvHL4:AddColor("EspBoxColor", { Text = "Box Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _kSet({"Esp","Enemy","Box","Color"}, v) end })
+pcall(function() HvHL4:AddColor("EspBoxColor", { Text = "Box Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _kSet({"Esp","Enemy","Box","Color"}, v) end }) end)
 HvHL4:AddToggle("EspName", {
     Text = "Name",
     Default = true,
     Callback = function(v) _kSet({"Esp","Enemy","Name","Enabled"}, v) end
 })
-HvHL4:AddColor("EspNameColor", { Text = "Name Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _kSet({"Esp","Enemy","Name","Color"}, v) end })
+pcall(function() HvHL4:AddColor("EspNameColor", { Text = "Name Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _kSet({"Esp","Enemy","Name","Color"}, v) end }) end)
 HvHL4:AddToggle("EspHealth", {
     Text = "Health Bar",
     Default = true,
@@ -4384,15 +4384,15 @@ HvHL4:AddToggle("EspTracer", {
     Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Tracer","Enabled"}, v) end
 })
-HvHL4:AddColor("EspTracerColor", { Text = "Tracer Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Color"}, ColorSequence.new(v)) end })
+pcall(function() HvHL4:AddColor("EspTracerColor", { Text = "Tracer Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Color"}, ColorSequence.new(v)) end }) end)
 HvHL4:AddToggle("EspSkeleton", {
     Text = "Skeleton",
     Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Enabled"}, v) end
 })
-HvHL4:AddColor("EspSkeletonColor", { Text = "Skeleton Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Color"}, ColorSequence.new(v)) end })
+pcall(function() HvHL4:AddColor("EspSkeletonColor", { Text = "Skeleton Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Color"}, ColorSequence.new(v)) end }) end)
 HvHL4:AddDivider()
 HvHL4:AddLabel("── FOV Circle ──")
 HvHL4:AddToggle("FovCircleEnabled", {
@@ -4402,8 +4402,8 @@ HvHL4:AddToggle("FovCircleEnabled", {
         _fovCFG.enabled = v
     end
 })
-HvHL4:AddColor("FovDrawColor", { Text = "FOV Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _fovCFG.color = v; updateFovCircle() end })
+pcall(function() HvHL4:AddColor("FovDrawColor", { Text = "FOV Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _fovCFG.color = v; updateFovCircle() end }) end)
 HvHL4:AddSlider("FovCircleThickness", {
     Text     = "FOV Thickness",
     Default  = 1,
@@ -4435,8 +4435,8 @@ HvHR4:AddDropdown("CxStyle", {
     Default = 1,
     Callback = function(v) _kSet({"Crosshair","Style"}, v) end
 })
-HvHR4:AddColor("CrosshairColor", { Text = "Crosshair Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _kSet({"Crosshair","Color"}, v) end })
+pcall(function() HvHR4:AddColor("CrosshairColor", { Text = "Crosshair Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _kSet({"Crosshair","Color"}, v) end }) end)
 HvHR4:AddToggle("CxHitFeedback", {
     Text = "Hit Feedback",
     Default = true,
