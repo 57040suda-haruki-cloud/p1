@@ -71803,8 +71803,7 @@ SaveManager:SetFolder("UNCODE/configs")
 SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
 pcall(function() SaveManager:LoadAutoloadConfig() end)
--- SaveManager may fire callbacks that re-enable Ragebot; force it back off.
--- Round 1: synchronous reset (catches immediate callbacks).
+-- Sync reset: catches any Obsidian callbacks that fire synchronously during load.
 do
     local _ks = getgenv()._UNC_KiciaStore
     if _ks then
@@ -71814,27 +71813,23 @@ do
     end
     local _rb = getgenv()._UNC_Ragebot
     if _rb then pcall(function() _rb:SetEnabled(false) end) end
-    if Toggles.RbEnabled then
-        pcall(function() Toggles.RbEnabled:SetValue(false) end)
-    end
-    if Toggles.RbRapidFire then
-        pcall(function() Toggles.RbRapidFire:SetValue(false) end)
-    end
+    if Toggles.RbEnabled  then pcall(function() Toggles.RbEnabled:SetValue(false)  end) end
+    if Toggles.RbRapidFire then pcall(function() Toggles.RbRapidFire:SetValue(false) end) end
 end
--- Round 2: deferred reset runs AFTER any task.defer callbacks Obsidian queued
--- during LoadAutoloadConfig, so rapid fire cannot sneak back on.
-task.defer(function()
+_autoLoadDone = true
+-- Boot-phase enforcement: fires every 0.5s for 6s, forcing rapid fire OFF.
+-- Covers deferred Obsidian callbacks AND Kicia's async config restore (can be ~1-3s).
+local function _rfBootLoop(remaining)
+    if remaining <= 0 then return end
     local _ks = getgenv()._UNC_KiciaStore
-    if _ks then
-        pcall(function() _ks:Set({"Ragebot","ShootFrames"}, 1) end)
-    end
+    if _ks then pcall(function() _ks:Set({"Ragebot","ShootFrames"}, 1) end) end
     if Toggles.RbRapidFire and Toggles.RbRapidFire.Value then
         pcall(function() Toggles.RbRapidFire:SetValue(false) end)
     end
-end)
-_autoLoadDone = true
--- Kicia loads its config asynchronously; keep enforcing ShootFrames=1
--- every 2 seconds for the first 60 seconds so any async restore of 0 is caught.
+    task.delay(0.5, function() _rfBootLoop(remaining - 0.5) end)
+end
+task.delay(0, function() _rfBootLoop(6) end)
+-- Post-boot enforcement: syncs Kicia ShootFrames to the UI toggle state every 2s.
 local function _enforceRFLoop(remaining)
     if remaining <= 0 then return end
     local _ks2 = getgenv()._UNC_KiciaStore
@@ -71846,7 +71841,7 @@ local function _enforceRFLoop(remaining)
     end
     task.delay(2, function() _enforceRFLoop(remaining - 2) end)
 end
-task.delay(1, function() _enforceRFLoop(60) end)
+task.delay(6, function() _enforceRFLoop(60) end)
 
 Library:Notify({ Title = "UNCODE v1", Description = "Rivals HvH — UNCODE loaded", Time = 4 })
 end)()
