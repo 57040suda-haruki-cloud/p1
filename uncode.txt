@@ -401,13 +401,6 @@ local function UNCODELoadingScreen()
     logo.TextColor3 = Color3.fromRGB(240, 245, 255); logo.Font = Enum.Font.GothamBlack
     logo.TextSize = 38; logo.TextXAlignment = Enum.TextXAlignment.Left
     logo.ZIndex = 11; logo.Parent = card
-    local lg = Instance.new("UIGradient")
-    lg.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 120, 255)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(80, 180, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 80, 255)),
-    })
-    lg.Parent = logo
     local sub = Instance.new("TextLabel")
     sub.Size = UDim2.new(1, -40, 0, 18); sub.Position = UDim2.new(0, 20, 0, 96)
     sub.BackgroundTransparency = 1; sub.Text = "Rivals HvH — UNCODE"
@@ -539,7 +532,7 @@ Library.ShowToggleFrameInKeybinds = true
 
 local Window = Library:CreateWindow({
     Title = "UNCODE v1",
-    Footer = "UNCODE v1",
+    Footer = "",
     Icon = 0,
     NotifySide = "Left",
     Center = true,
