@@ -1016,7 +1016,11 @@ local function applyNoClip(character)
     if not character then return end
     for _, part in ipairs(character:GetDescendants()) do
         if part:IsA("BasePart") then
-            pcall(function() part.CanCollide = false; part.Massless = true end)
+            if part.Name == "HumanoidRootPart" then
+                pcall(function() part.CanCollide = false end)
+            else
+                pcall(function() part.CanCollide = false; part.Massless = true end)
+            end
         end
     end
 end
