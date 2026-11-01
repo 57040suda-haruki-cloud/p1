@@ -4263,6 +4263,23 @@ HvHL2:AddToggle("RbRapidFire", {
         _kSet({"Ragebot","ShootFrames"}, v and 0 or 1)
     end
 })
+HvHL2:AddToggle("RbWallPen", {
+    Text = "Wall Penetration",
+    Default = false,
+    Tooltip = "Target enemies through walls by disabling the line-of-sight requirement on Silent Aim and Aimbot.",
+    Callback = function(v)
+        -- Disable/restore the Visible LOS condition for Silent Aim and Aimbot.
+        _kSet({"SilentAim","TargetConditions","Visible"}, not v)
+        _kSet({"Aimbot","TargetConditions","Visible"},    not v)
+        -- Keep the individual UI toggles in sync.
+        if Toggles.SaVisible then
+            pcall(function() Toggles.SaVisible:SetValue(not v) end)
+        end
+        if Toggles.AbVisible then
+            pcall(function() Toggles.AbVisible:SetValue(not v) end)
+        end
+    end
+})
 HvHL2:AddToggle("RbHackers", {
     Text = "Prioritize Hackers",
     Default = false,
@@ -71780,13 +71797,14 @@ end -- FPS Boost scope
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({"MenuKeybind", "RbEnabled", "RbRapidFire"})
+SaveManager:SetIgnoreIndexes({"MenuKeybind", "RbEnabled", "RbRapidFire", "RbWallPen"})
 ThemeManager:SetFolder("UNCODE")
 SaveManager:SetFolder("UNCODE/configs")
 SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
 pcall(function() SaveManager:LoadAutoloadConfig() end)
 -- SaveManager may fire callbacks that re-enable Ragebot; force it back off.
+-- Round 1: synchronous reset (catches immediate callbacks).
 do
     local _ks = getgenv()._UNC_KiciaStore
     if _ks then
@@ -71803,6 +71821,17 @@ do
         pcall(function() Toggles.RbRapidFire:SetValue(false) end)
     end
 end
+-- Round 2: deferred reset runs AFTER any task.defer callbacks Obsidian queued
+-- during LoadAutoloadConfig, so rapid fire cannot sneak back on.
+task.defer(function()
+    local _ks = getgenv()._UNC_KiciaStore
+    if _ks then
+        pcall(function() _ks:Set({"Ragebot","ShootFrames"}, 1) end)
+    end
+    if Toggles.RbRapidFire and Toggles.RbRapidFire.Value then
+        pcall(function() Toggles.RbRapidFire:SetValue(false) end)
+    end
+end)
 _autoLoadDone = true
 -- Kicia loads its config asynchronously; keep enforcing ShootFrames=1
 -- every 2 seconds for the first 60 seconds so any async restore of 0 is caught.
