@@ -3996,6 +3996,61 @@ HvHL1:AddSlider("SaFov", {
     Suffix = "px",
     Callback = function(v) _kSet({"SilentAim","Fov","Radius"}, v) end
 })
+HvHL1:AddLabel("── SA Targeting Circle ──")
+HvHL1:AddToggle("SaCircleVisible", {
+    Text = "Show Targeting Circle",
+    Default = false,
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Visible"}, v) end
+})
+HvHL1:AddColor({ Label = "Circle Color", Default = Color3.fromRGB(255, 0, 0),
+    OnChanged = function(v) _kSet({"SilentAim","Fov","Circle","Stroke","Gradient"}, ColorSequence.new(v.Rgb)) end })
+HvHL1:AddSlider("SaCircleThickness", {
+    Text = "Circle Thickness",
+    Default = 1,
+    Min = 1, Max = 6, Rounding = 0,
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Stroke","Thickness"}, v) end
+})
+HvHL1:AddSlider("SaCircleOpacity", {
+    Text = "Circle Opacity",
+    Default = 100,
+    Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Stroke","Transparency"}, 1 - v / 100) end
+})
+HvHL1:AddToggle("SaCircleFill", {
+    Text = "Fill Circle",
+    Default = false,
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Fill","Enabled"}, v) end
+})
+HvHL1:AddColor({ Label = "Fill Color", Default = Color3.fromRGB(255, 80, 80),
+    OnChanged = function(v) _kSet({"SilentAim","Fov","Circle","Fill","Gradient"}, ColorSequence.new(v.Rgb)) end })
+HvHL1:AddSlider("SaCircleFillOpacity", {
+    Text = "Fill Opacity",
+    Default = 50,
+    Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Fill","Transparency"}, 1 - v / 100) end
+})
+HvHL1:AddToggle("SaCircleAnimated", {
+    Text = "Animated Circle",
+    Default = false,
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Animated","Enabled"}, v) end
+})
+HvHL1:AddSlider("SaCircleAnimSpeed", {
+    Text = "Animation Speed",
+    Default = 45,
+    Min = 1, Max = 200, Rounding = 0,
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Animated","Speed"}, v) end
+})
+HvHL1:AddToggle("SaCircleFollow", {
+    Text = "Follow Target",
+    Default = false,
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","FollowTarget","Enabled"}, v) end
+})
+HvHL1:AddSlider("SaCircleFollowSpeed", {
+    Text = "Follow Speed",
+    Default = 20,
+    Min = 1, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","FollowTarget","Speed"}, v) end
+})
 HvHL1:AddToggle("SaManipulate", {
     Text = "Manipulate",
     Default = false,
@@ -4070,6 +4125,68 @@ HvHR1:AddToggle("AbNotReloading", {
     Text = "Activate: Not Reloading",
     Default = true,
     Callback = function(v) _kSet({"Aimbot","ActivationConditions","NotReloading"}, v) end
+})
+HvHR1:AddSlider("AbFov", {
+    Text = "FOV Radius",
+    Default = 120,
+    Min = 1, Max = 500, Rounding = 0,
+    Suffix = "px",
+    Callback = function(v) _kSet({"Aimbot","Fov","Radius"}, v) end
+})
+HvHR1:AddLabel("── AB Targeting Circle ──")
+HvHR1:AddToggle("AbCircleVisible", {
+    Text = "Show Targeting Circle",
+    Default = false,
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Visible"}, v) end
+})
+HvHR1:AddColor({ Label = "Circle Color", Default = Color3.fromRGB(255, 0, 0),
+    OnChanged = function(v) _kSet({"Aimbot","Fov","Circle","Stroke","Gradient"}, ColorSequence.new(v.Rgb)) end })
+HvHR1:AddSlider("AbCircleThickness", {
+    Text = "Circle Thickness",
+    Default = 1,
+    Min = 1, Max = 6, Rounding = 0,
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Stroke","Thickness"}, v) end
+})
+HvHR1:AddSlider("AbCircleOpacity", {
+    Text = "Circle Opacity",
+    Default = 100,
+    Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Stroke","Transparency"}, 1 - v / 100) end
+})
+HvHR1:AddToggle("AbCircleFill", {
+    Text = "Fill Circle",
+    Default = false,
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Fill","Enabled"}, v) end
+})
+HvHR1:AddColor({ Label = "Fill Color", Default = Color3.fromRGB(255, 80, 80),
+    OnChanged = function(v) _kSet({"Aimbot","Fov","Circle","Fill","Gradient"}, ColorSequence.new(v.Rgb)) end })
+HvHR1:AddSlider("AbCircleFillOpacity", {
+    Text = "Fill Opacity",
+    Default = 50,
+    Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Fill","Transparency"}, 1 - v / 100) end
+})
+HvHR1:AddToggle("AbCircleAnimated", {
+    Text = "Animated Circle",
+    Default = false,
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Animated","Enabled"}, v) end
+})
+HvHR1:AddSlider("AbCircleAnimSpeed", {
+    Text = "Animation Speed",
+    Default = 45,
+    Min = 1, Max = 200, Rounding = 0,
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Animated","Speed"}, v) end
+})
+HvHR1:AddToggle("AbCircleFollow", {
+    Text = "Follow Target",
+    Default = false,
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","FollowTarget","Enabled"}, v) end
+})
+HvHR1:AddSlider("AbCircleFollowSpeed", {
+    Text = "Follow Speed",
+    Default = 20,
+    Min = 1, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","FollowTarget","Speed"}, v) end
 })
 
 -- ── RAGEBOT ───────────────────────────────────────────────────
@@ -4240,33 +4357,42 @@ HvHR3:AddSlider("FbHumanness", {
 HvHL4:AddToggle("EspEnabled", {
     Text = "Player ESP",
     Default = false,
-    Callback = function(v) _kSet({"PlayerEsp","Enabled"}, v) end
+    Callback = function(v) _kSet({"Esp","Main","Enabled"}, v) end
 })
-HvHL4:AddToggle("EspName", {
-    Text = "ESP: Name",
-    Default = true,
-    Callback = function(v) _kSet({"PlayerEsp","Name","Enabled"}, v) end
-})
-HvHL4:AddToggle("EspHealth", {
-    Text = "ESP: Health Bar",
-    Default = true,
-    Callback = function(v) _kSet({"PlayerEsp","Health","Enabled"}, v) end
-})
+HvHL4:AddLabel("── Enemy ESP ──")
 HvHL4:AddToggle("EspBox", {
-    Text = "ESP: Bounding Box",
+    Text = "Bounding Box",
     Default = true,
-    Callback = function(v) _kSet({"PlayerEsp","Box","Enabled"}, v) end
+    Callback = function(v) _kSet({"Esp","Enemy","Box","Enabled"}, v) end
+})
+HvHL4:AddColor({ Label = "Box Color", Default = Color3.fromRGB(255, 255, 255),
+    OnChanged = function(v) _kSet({"Esp","Enemy","Box","Color"}, v.Rgb) end })
+HvHL4:AddToggle("EspName", {
+    Text = "Name",
+    Default = true,
+    Callback = function(v) _kSet({"Esp","Enemy","Name","Enabled"}, v) end
+})
+HvHL4:AddColor({ Label = "Name Color", Default = Color3.fromRGB(255, 255, 255),
+    OnChanged = function(v) _kSet({"Esp","Enemy","Name","Color"}, v.Rgb) end })
+HvHL4:AddToggle("EspHealth", {
+    Text = "Health Bar",
+    Default = true,
+    Callback = function(v) _kSet({"Esp","Enemy","HealthBar","Enabled"}, v) end
 })
 HvHL4:AddToggle("EspTracer", {
-    Text = "ESP: Tracer",
+    Text = "Tracer",
     Default = false,
-    Callback = function(v) _kSet({"PlayerEsp","Tracer","Enabled"}, v) end
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Enabled"}, v) end
 })
+HvHL4:AddColor({ Label = "Tracer Color", Default = Color3.fromRGB(255, 255, 255),
+    OnChanged = function(v) _kSet({"Esp","Enemy","Tracer","Color"}, ColorSequence.new(v.Rgb)) end })
 HvHL4:AddToggle("EspSkeleton", {
-    Text = "ESP: Skeleton",
+    Text = "Skeleton",
     Default = false,
-    Callback = function(v) _kSet({"PlayerEsp","Skeleton","Enabled"}, v) end
+    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Enabled"}, v) end
 })
+HvHL4:AddColor({ Label = "Skeleton Color", Default = Color3.fromRGB(255, 255, 255),
+    OnChanged = function(v) _kSet({"Esp","Enemy","Skeleton","Color"}, ColorSequence.new(v.Rgb)) end })
 HvHL4:AddDivider()
 HvHL4:AddLabel("── FOV Circle ──")
 HvHL4:AddToggle("FovCircleEnabled", {
@@ -4276,7 +4402,8 @@ HvHL4:AddToggle("FovCircleEnabled", {
         _fovCFG.enabled = v
     end
 })
--- FOV color picker not supported by this Obsidian build; color stays white
+HvHL4:AddColor({ Label = "FOV Color", Default = Color3.fromRGB(255, 255, 255),
+    OnChanged = function(v) _fovCFG.color = v.Rgb; updateFovCircle() end })
 HvHL4:AddSlider("FovCircleThickness", {
     Text     = "FOV Thickness",
     Default  = 1,
@@ -4308,6 +4435,8 @@ HvHR4:AddDropdown("CxStyle", {
     Default = 1,
     Callback = function(v) _kSet({"Crosshair","Style"}, v) end
 })
+HvHR4:AddColor({ Label = "Crosshair Color", Default = Color3.fromRGB(255, 255, 255),
+    OnChanged = function(v) _kSet({"Crosshair","Color"}, v.Rgb) end })
 HvHR4:AddToggle("CxHitFeedback", {
     Text = "Hit Feedback",
     Default = true,
