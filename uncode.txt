@@ -4496,7 +4496,10 @@ local EspR1 = Tabs.ESP:AddRightGroupbox("Text Settings")
 
 -- Main toggle + box fit mode
 EspL1:AddToggle("EspMain", { Text = "Enable ESP", Default = false,
-    Callback = function(v) _kSet({"Esp","Main","Enabled"}, v) end })
+    Callback = function(v)
+        _kSet({"Esp","Main","Enabled"}, v)
+        _kSet({"Esp","Main","Keybind","Kind"}, "Always")
+    end })
 EspL1:AddDropdown("EspBoxFit", { Text = "Box Fit", Values = {"Static","Dynamic"}, Default = 1,
     Callback = function(v) _kSet({"Esp","Main","Mode"}, v) end })
 
@@ -4528,7 +4531,10 @@ local EspL2 = Tabs.ESP:AddLeftGroupbox("Enemy ESP")
 local EspR2 = Tabs.ESP:AddRightGroupbox("Enemy Chams & More")
 
 EspL2:AddToggle("EspEnemy", { Text = "Enable Enemy ESP", Default = false,
-    Callback = function(v) _kSet({"Esp","Enemy","Enabled"}, v) end })
+    Callback = function(v)
+        _kSet({"Esp","Enemy","Enabled"}, v)
+        _kSet({"Esp","Enemy","Keybind","Kind"}, "Always")
+    end })
 EspL2:AddToggle("EspEnemyName", { Text = "Name", Default = true,
     Callback = function(v) _kSet({"Esp","Enemy","Name","Enabled"}, v) end })
 pcall(function() EspL2:AddColor("EspEnemyNameColor", { Text = "Name Color", Default = Color3.fromRGB(255,255,255),
@@ -4607,7 +4613,10 @@ pcall(function() EspR2:AddColor("EspEnemyChamsGlowColor", { Text = "Glow Color",
 EspR2:AddDivider()
 EspR2:AddLabel("── Team ESP ──")
 EspR2:AddToggle("EspTeam", { Text = "Enable Team ESP", Default = false,
-    Callback = function(v) _kSet({"Esp","Team","Enabled"}, v) end })
+    Callback = function(v)
+        _kSet({"Esp","Team","Enabled"}, v)
+        _kSet({"Esp","Team","Keybind","Kind"}, "Always")
+    end })
 EspR2:AddToggle("EspTeamName", { Text = "Team Name", Default = true,
     Callback = function(v) _kSet({"Esp","Team","Name","Enabled"}, v) end })
 pcall(function() EspR2:AddColor("EspTeamNameColor", { Text = "Team Name Color", Default = Color3.fromRGB(100,255,100),
