@@ -1025,6 +1025,15 @@ local function applyNoClip(character)
     end
 end
 
+local function restoreNoClip(character)
+    if not character then return end
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            pcall(function() part.CanCollide = true; part.Massless = false end)
+        end
+    end
+end
+
 local function setNetworkOwnerLocal(hrp)
     if not hrp then return end
     pcall(function() hrp:SetNetworkOwner(LocalPlayer) end)
@@ -1626,7 +1635,13 @@ local function startPredictionV2()
         end
     end)
 end
-function stopPredictionV2() killConn("pred"); cfgDodge.predEnabled = false end
+function stopPredictionV2()
+    killConn("pred")
+    cfgDodge.predEnabled = false
+    if cfgDodge.predNoClip then
+        restoreNoClip(LocalPlayer.Character)
+    end
+end
 
 local antiBaitData = {}
 local lastAntiBaitDodge = 0
