@@ -403,7 +403,7 @@ local function UNCODELoadingScreen()
     lg.Parent = logo
     local sub = Instance.new("TextLabel")
     sub.Size = UDim2.new(1, -40, 0, 18); sub.Position = UDim2.new(0, 20, 0, 96)
-    sub.BackgroundTransparency = 1; sub.Text = "Rivals HvH — Kicia engine"
+    sub.BackgroundTransparency = 1; sub.Text = "Rivals HvH — UNCODE"
     sub.TextColor3 = Color3.fromRGB(140, 160, 200); sub.Font = Enum.Font.Gotham
     sub.TextSize = 12; sub.TextXAlignment = Enum.TextXAlignment.Left
     sub.ZIndex = 11; sub.Parent = card
@@ -4942,7 +4942,7 @@ SWL:AddLabel("Skybox")
 SWL:AddToggle("WL_SkyOn", { Text = "Enable Skybox Override", Default = false,
     Callback = function(v) _kSet({"Skybox","Enabled"}, v) end
 })
-SWL:AddLabel("(Manage skyboxes in Kicia UI)")
+SWL:AddLabel("(Manage skyboxes in settings)")
 
 SWL:AddDivider()
 SWL:AddLabel("Ambient Sound")
@@ -71807,5 +71807,5 @@ local function _enforceRFLoop(remaining)
 end
 task.delay(1, function() _enforceRFLoop(60) end)
 
-Library:Notify({ Title = "UNCODE v1", Description = "Rivals HvH — powered by Kicia Rebuild engine", Time = 4 })
+Library:Notify({ Title = "UNCODE v1", Description = "Rivals HvH — UNCODE loaded", Time = 4 })
 end)()
