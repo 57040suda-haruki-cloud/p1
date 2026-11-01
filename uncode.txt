@@ -4002,8 +4002,8 @@ HvHL1:AddToggle("SaCircleVisible", {
     Default = false,
     Callback = function(v) _kSet({"SilentAim","Fov","Circle","Visible"}, v) end
 })
-HvHL1:AddColor({ Label = "Circle Color", Default = Color3.fromRGB(255, 0, 0),
-    OnChanged = function(v) _kSet({"SilentAim","Fov","Circle","Stroke","Gradient"}, ColorSequence.new(v.Rgb)) end })
+HvHL1:AddColor("SaCircleStrokeColor", { Text = "Circle Color", Default = Color3.fromRGB(255, 0, 0),
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Stroke","Gradient"}, ColorSequence.new(v)) end })
 HvHL1:AddSlider("SaCircleThickness", {
     Text = "Circle Thickness",
     Default = 1,
@@ -4021,8 +4021,8 @@ HvHL1:AddToggle("SaCircleFill", {
     Default = false,
     Callback = function(v) _kSet({"SilentAim","Fov","Circle","Fill","Enabled"}, v) end
 })
-HvHL1:AddColor({ Label = "Fill Color", Default = Color3.fromRGB(255, 80, 80),
-    OnChanged = function(v) _kSet({"SilentAim","Fov","Circle","Fill","Gradient"}, ColorSequence.new(v.Rgb)) end })
+HvHL1:AddColor("SaCircleFillColor", { Text = "Fill Color", Default = Color3.fromRGB(255, 80, 80),
+    Callback = function(v) _kSet({"SilentAim","Fov","Circle","Fill","Gradient"}, ColorSequence.new(v)) end })
 HvHL1:AddSlider("SaCircleFillOpacity", {
     Text = "Fill Opacity",
     Default = 50,
@@ -4139,8 +4139,8 @@ HvHR1:AddToggle("AbCircleVisible", {
     Default = false,
     Callback = function(v) _kSet({"Aimbot","Fov","Circle","Visible"}, v) end
 })
-HvHR1:AddColor({ Label = "Circle Color", Default = Color3.fromRGB(255, 0, 0),
-    OnChanged = function(v) _kSet({"Aimbot","Fov","Circle","Stroke","Gradient"}, ColorSequence.new(v.Rgb)) end })
+HvHR1:AddColor("AbCircleStrokeColor", { Text = "Circle Color", Default = Color3.fromRGB(255, 0, 0),
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Stroke","Gradient"}, ColorSequence.new(v)) end })
 HvHR1:AddSlider("AbCircleThickness", {
     Text = "Circle Thickness",
     Default = 1,
@@ -4158,8 +4158,8 @@ HvHR1:AddToggle("AbCircleFill", {
     Default = false,
     Callback = function(v) _kSet({"Aimbot","Fov","Circle","Fill","Enabled"}, v) end
 })
-HvHR1:AddColor({ Label = "Fill Color", Default = Color3.fromRGB(255, 80, 80),
-    OnChanged = function(v) _kSet({"Aimbot","Fov","Circle","Fill","Gradient"}, ColorSequence.new(v.Rgb)) end })
+HvHR1:AddColor("AbCircleFillColor", { Text = "Fill Color", Default = Color3.fromRGB(255, 80, 80),
+    Callback = function(v) _kSet({"Aimbot","Fov","Circle","Fill","Gradient"}, ColorSequence.new(v)) end })
 HvHR1:AddSlider("AbCircleFillOpacity", {
     Text = "Fill Opacity",
     Default = 50,
@@ -4365,15 +4365,15 @@ HvHL4:AddToggle("EspBox", {
     Default = true,
     Callback = function(v) _kSet({"Esp","Enemy","Box","Enabled"}, v) end
 })
-HvHL4:AddColor({ Label = "Box Color", Default = Color3.fromRGB(255, 255, 255),
-    OnChanged = function(v) _kSet({"Esp","Enemy","Box","Color"}, v.Rgb) end })
+HvHL4:AddColor("EspBoxColor", { Text = "Box Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _kSet({"Esp","Enemy","Box","Color"}, v) end })
 HvHL4:AddToggle("EspName", {
     Text = "Name",
     Default = true,
     Callback = function(v) _kSet({"Esp","Enemy","Name","Enabled"}, v) end
 })
-HvHL4:AddColor({ Label = "Name Color", Default = Color3.fromRGB(255, 255, 255),
-    OnChanged = function(v) _kSet({"Esp","Enemy","Name","Color"}, v.Rgb) end })
+HvHL4:AddColor("EspNameColor", { Text = "Name Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _kSet({"Esp","Enemy","Name","Color"}, v) end })
 HvHL4:AddToggle("EspHealth", {
     Text = "Health Bar",
     Default = true,
@@ -4384,15 +4384,15 @@ HvHL4:AddToggle("EspTracer", {
     Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Tracer","Enabled"}, v) end
 })
-HvHL4:AddColor({ Label = "Tracer Color", Default = Color3.fromRGB(255, 255, 255),
-    OnChanged = function(v) _kSet({"Esp","Enemy","Tracer","Color"}, ColorSequence.new(v.Rgb)) end })
+HvHL4:AddColor("EspTracerColor", { Text = "Tracer Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Color"}, ColorSequence.new(v)) end })
 HvHL4:AddToggle("EspSkeleton", {
     Text = "Skeleton",
     Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Enabled"}, v) end
 })
-HvHL4:AddColor({ Label = "Skeleton Color", Default = Color3.fromRGB(255, 255, 255),
-    OnChanged = function(v) _kSet({"Esp","Enemy","Skeleton","Color"}, ColorSequence.new(v.Rgb)) end })
+HvHL4:AddColor("EspSkeletonColor", { Text = "Skeleton Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Color"}, ColorSequence.new(v)) end })
 HvHL4:AddDivider()
 HvHL4:AddLabel("── FOV Circle ──")
 HvHL4:AddToggle("FovCircleEnabled", {
@@ -4402,8 +4402,8 @@ HvHL4:AddToggle("FovCircleEnabled", {
         _fovCFG.enabled = v
     end
 })
-HvHL4:AddColor({ Label = "FOV Color", Default = Color3.fromRGB(255, 255, 255),
-    OnChanged = function(v) _fovCFG.color = v.Rgb; updateFovCircle() end })
+HvHL4:AddColor("FovDrawColor", { Text = "FOV Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _fovCFG.color = v; updateFovCircle() end })
 HvHL4:AddSlider("FovCircleThickness", {
     Text     = "FOV Thickness",
     Default  = 1,
@@ -4435,8 +4435,8 @@ HvHR4:AddDropdown("CxStyle", {
     Default = 1,
     Callback = function(v) _kSet({"Crosshair","Style"}, v) end
 })
-HvHR4:AddColor({ Label = "Crosshair Color", Default = Color3.fromRGB(255, 255, 255),
-    OnChanged = function(v) _kSet({"Crosshair","Color"}, v.Rgb) end })
+HvHR4:AddColor("CrosshairColor", { Text = "Crosshair Color", Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _kSet({"Crosshair","Color"}, v) end })
 HvHR4:AddToggle("CxHitFeedback", {
     Text = "Hit Feedback",
     Default = true,
@@ -4775,11 +4775,11 @@ LGL:AddDivider()
 LGL:AddLabel("Ambient & Color Shift")
 
 LGL:AddToggle("WL_AmbOn", { Text = "Override Ambient Colors", Default = false, Callback = function(v) WL.ambient.on = v; _apply() end })
-LGL:AddColor({ Label = "Indoor Ambient",  Default = Color3.fromRGB(75,  75,  75 ), OnChanged = function(v) WL.ambient.indoor  = v.Rgb; _apply() end })
-LGL:AddColor({ Label = "Outdoor Ambient", Default = Color3.fromRGB(140, 140, 140), OnChanged = function(v) WL.ambient.outdoor = v.Rgb; _apply() end })
+LGL:AddColor("WL_IndoorAmbient",  { Text = "Indoor Ambient",  Default = Color3.fromRGB(75,  75,  75 ), Callback = function(v) WL.ambient.indoor  = v; _apply() end })
+LGL:AddColor("WL_OutdoorAmbient", { Text = "Outdoor Ambient", Default = Color3.fromRGB(140, 140, 140), Callback = function(v) WL.ambient.outdoor = v; _apply() end })
 LGL:AddToggle("WL_CSOn",  { Text = "Override Color Shift", Default = false, Callback = function(v) WL.cshift.on = v; _apply() end })
-LGL:AddColor({ Label = "Color Shift Top",    Default = Color3.new(1, 1, 1), OnChanged = function(v) WL.cshift.top = v.Rgb; _apply() end })
-LGL:AddColor({ Label = "Color Shift Bottom", Default = Color3.new(1, 1, 1), OnChanged = function(v) WL.cshift.bot = v.Rgb; _apply() end })
+LGL:AddColor("WL_CShiftTop", { Text = "Color Shift Top",    Default = Color3.new(1, 1, 1), Callback = function(v) WL.cshift.top = v; _apply() end })
+LGL:AddColor("WL_CShiftBot", { Text = "Color Shift Bottom", Default = Color3.new(1, 1, 1), Callback = function(v) WL.cshift.bot = v; _apply() end })
 
 LGL:AddDivider()
 LGL:AddLabel("Environment Scales")
@@ -4793,7 +4793,7 @@ LGL:AddDivider()
 LGL:AddLabel("Fog")
 
 LGL:AddToggle("WL_FogOn", { Text = "Override Fog", Default = false, Callback = function(v) WL.fog.on = v; _apply() end })
-LGL:AddColor({ Label = "Fog Color", Default = Color3.fromRGB(128, 128, 128), OnChanged = function(v) WL.fog.color = v.Rgb; _apply() end })
+LGL:AddColor("WL_FogColor", { Text = "Fog Color", Default = Color3.fromRGB(128, 128, 128), Callback = function(v) WL.fog.color = v; _apply() end })
 LGL:AddSlider("WL_FogS",  { Text = "Fog Start", Default = 0,    Min = 0, Max = 10000, Rounding = 0, Callback = function(v) WL.fog.s = v; _apply() end })
 LGL:AddSlider("WL_FogE",  { Text = "Fog End",   Default = 1000, Min = 0, Max = 10000, Rounding = 0, Callback = function(v) WL.fog.e = v; _apply() end })
 
@@ -4848,7 +4848,7 @@ LGR:AddSlider("WL_BloomT",  { Text = "Threshold",     Default = 0.95, Min = 0, M
 LGR:AddDivider()
 LGR:AddLabel("Color Correction")
 LGR:AddToggle("WL_CCOn",  { Text = "Enable Color Correction", Default = false, Callback = function(v) WL.cc.on = v; _apply() end })
-LGR:AddColor({ Label = "Tint Color", Default = Color3.new(1, 1, 1), OnChanged = function(v) WL.cc.tint = v.Rgb; _apply() end })
+LGR:AddColor("WL_TintColor", { Text = "Tint Color", Default = Color3.new(1, 1, 1), Callback = function(v) WL.cc.tint = v; _apply() end })
 LGR:AddSlider("WL_CCSat", { Text = "Saturation", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) WL.cc.sat     = v; _apply() end })
 LGR:AddSlider("WL_CCBri", { Text = "Brightness",  Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) WL.cc.bright  = v; _apply() end })
 LGR:AddSlider("WL_CCCon", { Text = "Contrast",    Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) WL.cc.contrast = v; _apply() end })
@@ -4870,8 +4870,8 @@ LGR:AddSlider("WL_SRS",  { Text = "Spread",          Default = 0.5,  Min = 0, Ma
 LGR:AddDivider()
 LGR:AddLabel("Atmosphere")
 LGR:AddToggle("WL_AtmOn",    { Text = "Enable Atmosphere", Default = false, Callback = function(v) WL.atm.on = v; _apply() end })
-LGR:AddColor({ Label = "Atmosphere Color", Default = Color3.fromRGB(199, 199, 199), OnChanged = function(v) WL.atm.color   = v.Rgb; _apply() end })
-LGR:AddColor({ Label = "Atmosphere Decay", Default = Color3.fromRGB(106, 127, 145), OnChanged = function(v) WL.atm.decay   = v.Rgb; _apply() end })
+LGR:AddColor("WL_AtmColor", { Text = "Atmosphere Color", Default = Color3.fromRGB(199, 199, 199), Callback = function(v) WL.atm.color = v; _apply() end })
+LGR:AddColor("WL_AtmDecay", { Text = "Atmosphere Decay", Default = Color3.fromRGB(106, 127, 145), Callback = function(v) WL.atm.decay = v; _apply() end })
 LGR:AddSlider("WL_AtmDen",   { Text = "Density", Default = 0.3,  Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.density = v; _apply() end })
 LGR:AddSlider("WL_AtmOff",   { Text = "Offset",  Default = 0.25, Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.offset  = v; _apply() end })
 LGR:AddSlider("WL_AtmGlare", { Text = "Glare",   Default = 0,    Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.glare   = v; _apply() end })
@@ -4934,8 +4934,8 @@ SWL:AddLabel("Weather")
 SWL:AddToggle("WL_WxOn", { Text = "Enable Weather", Default = false,
     Callback = function(v) _kSet({"Weather","Enabled"}, v) end
 })
-SWL:AddColor({ Label = "Weather Color", Default = Color3.fromRGB(255,255,255),
-    OnChanged = function(v) _kSet({"Weather","Color"}, v.Rgb) end
+SWL:AddColor("WL_WeatherColor", { Text = "Weather Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Weather","Color"}, v) end
 })
 SWL:AddDropdown("WL_WxPreset", { Text = "Preset", Values = {"Snow","Rain","Blizzard"}, Default = 1,
     Callback = function(v) _kSet({"Weather","Preset"}, v) end
@@ -4975,8 +4975,8 @@ SWR:AddLabel("Lightning")
 SWR:AddToggle("WL_LtOn", { Text = "Enable Lightning", Default = false,
     Callback = function(v) _kSet({"Weather","Lightning","Enabled"}, v) end
 })
-SWR:AddColor({ Label = "Lightning Color", Default = Color3.fromRGB(180,220,255),
-    OnChanged = function(v) _kSet({"Weather","Lightning","Color"}, v.Rgb) end
+SWR:AddColor("WL_LightningColor", { Text = "Lightning Color", Default = Color3.fromRGB(180,220,255),
+    Callback = function(v) _kSet({"Weather","Lightning","Color"}, v) end
 })
 SWR:AddSlider("WL_LtInterval",  { Text = "Interval (s)",  Default = 2,   Min = 0.5, Max = 20,  Rounding = 1,
     Callback = function(v) _kSet({"Weather","Lightning","Interval"}, v) end
@@ -5005,8 +5005,8 @@ SWR:AddLabel("Sparks")
 SWR:AddToggle("WL_SpkOn", { Text = "Enable Sparks", Default = true,
     Callback = function(v) _kSet({"Weather","Lightning","Sparks","Enabled"}, v) end
 })
-SWR:AddColor({ Label = "Spark Color", Default = Color3.fromRGB(180,220,255),
-    OnChanged = function(v) _kSet({"Weather","Lightning","Sparks","Color"}, v.Rgb) end
+SWR:AddColor("WL_SparkColor", { Text = "Spark Color", Default = Color3.fromRGB(180,220,255),
+    Callback = function(v) _kSet({"Weather","Lightning","Sparks","Color"}, v) end
 })
 SWR:AddSlider("WL_SpkCount",  { Text = "Count",      Default = 18,  Min = 1,   Max = 50,  Rounding = 0,
     Callback = function(v) _kSet({"Weather","Lightning","Sparks","Count"}, v) end
@@ -5029,8 +5029,8 @@ SWR:AddLabel("Explosion")
 SWR:AddToggle("WL_ExpOn", { Text = "Enable Explosion", Default = true,
     Callback = function(v) _kSet({"Weather","Lightning","Explosion","Enabled"}, v) end
 })
-SWR:AddColor({ Label = "Explosion Color", Default = Color3.fromRGB(255,200,100),
-    OnChanged = function(v) _kSet({"Weather","Lightning","Explosion","Color"}, v.Rgb) end
+SWR:AddColor("WL_ExplosionColor", { Text = "Explosion Color", Default = Color3.fromRGB(255,200,100),
+    Callback = function(v) _kSet({"Weather","Lightning","Explosion","Color"}, v) end
 })
 SWR:AddSlider("WL_ExpSize",  { Text = "Size",  Default = 0.45, Min = 0.1, Max = 2,  Rounding = 2,
     Callback = function(v) _kSet({"Weather","Lightning","Explosion","Size"}, v) end
