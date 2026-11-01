@@ -1623,6 +1623,8 @@ local function startPredictionV2()
             if toward.Magnitude > 0.01 then newPos = newPos - toward.Unit * (cfgDodge.predDodgeDist * 0.3) end
         end
         if cfgDodge.predMultiPoint then newPos = newPos + Vector3.new(0, math.random() * 15, 0) end
+        local groundCheck = workspace:Raycast(newPos + Vector3.new(0, 5, 0), Vector3.new(0, -60, 0))
+        if not groundCheck then return end
         for i = 1, 3 do
             pcall(function()
                 root.CFrame = CFrame.new(newPos + Vector3.new((math.random()-0.5)*4, 0, (math.random()-0.5)*4))
