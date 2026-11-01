@@ -520,7 +520,7 @@ UNCODELoadingScreen()
 
 ;(function()
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/visnoukkk/ObsidianLib/refs/heads/main/Library.lua"))()
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
 local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
@@ -2869,6 +2869,7 @@ Tabs.Translocation= Window:AddTab("Translocation", "move")
 Tabs.SlingBypass  = Window:AddTab("Sling Bypass",  "target")
 Tabs.Riot         = Window:AddTab("Riot",          "flame")
 Tabs.SkinChanger  = Window:AddTab("SkinChanger",   "shirt")
+Tabs.ESP          = Window:AddTab("ESP",             "eye")
 Tabs.WorldChanger = Window:AddTab("World",          "globe")
 Tabs.Settings     = Window:AddTab("Settings",      "settings")
 
@@ -4402,45 +4403,7 @@ HvHR3:AddSlider("FbHumanness", {
 })
 
 -- ── VISUALS ───────────────────────────────────────────────────
-HvHL4:AddToggle("EspEnabled", {
-    Text = "Player ESP",
-    Default = false,
-    Callback = function(v) _kSet({"Esp","Main","Enabled"}, v) end
-})
-HvHL4:AddLabel("── Enemy ESP ──")
-HvHL4:AddToggle("EspBox", {
-    Text = "Bounding Box",
-    Default = true,
-    Callback = function(v) _kSet({"Esp","Enemy","Box","Enabled"}, v) end
-})
-pcall(function() HvHL4:AddColor("EspBoxColor", { Text = "Box Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _kSet({"Esp","Enemy","Box","Color"}, v) end }) end)
-HvHL4:AddToggle("EspName", {
-    Text = "Name",
-    Default = true,
-    Callback = function(v) _kSet({"Esp","Enemy","Name","Enabled"}, v) end
-})
-pcall(function() HvHL4:AddColor("EspNameColor", { Text = "Name Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _kSet({"Esp","Enemy","Name","Color"}, v) end }) end)
-HvHL4:AddToggle("EspHealth", {
-    Text = "Health Bar",
-    Default = true,
-    Callback = function(v) _kSet({"Esp","Enemy","HealthBar","Enabled"}, v) end
-})
-HvHL4:AddToggle("EspTracer", {
-    Text = "Tracer",
-    Default = false,
-    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Enabled"}, v) end
-})
-pcall(function() HvHL4:AddColor("EspTracerColor", { Text = "Tracer Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Color"}, ColorSequence.new(v)) end }) end)
-HvHL4:AddToggle("EspSkeleton", {
-    Text = "Skeleton",
-    Default = false,
-    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Enabled"}, v) end
-})
-pcall(function() HvHL4:AddColor("EspSkeletonColor", { Text = "Skeleton Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Color"}, ColorSequence.new(v)) end }) end)
+-- (ESP controls moved to the dedicated ESP tab)
 HvHL4:AddDivider()
 HvHL4:AddLabel("── FOV Circle ──")
 HvHL4:AddToggle("FovCircleEnabled", {
@@ -4525,6 +4488,162 @@ HvHR4:AddToggle("WeaponHandling", {
 
 end -- HvH UI scope
 
+-- ── ESP TAB (full Kicia ESP ports) ───────────────────────────────────────
+pcall(function()
+
+local EspL1 = Tabs.ESP:AddLeftGroupbox("Player ESP")
+local EspR1 = Tabs.ESP:AddRightGroupbox("Text Settings")
+
+-- Main toggle + box fit mode
+EspL1:AddToggle("EspMain", { Text = "Enable ESP", Default = false,
+    Callback = function(v) _kSet({"Esp","Main","Enabled"}, v) end })
+EspL1:AddDropdown("EspBoxFit", { Text = "Box Fit", Values = {"Static","Dynamic"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Main","Mode"}, v) end })
+
+-- Text / font settings
+EspR1:AddToggle("EspDisplayName", { Text = "Use Display Names", Default = false,
+    Callback = function(v) _kSet({"Esp","Settings","UseDisplayName"}, v) end })
+EspR1:AddSlider("EspFontSize", { Text = "Font Size", Default = 13, Min = 8, Max = 32, Rounding = 0,
+    Callback = function(v) _kSet({"Esp","Settings","FontSize"}, v) end })
+EspR1:AddDropdown("EspTextCase", { Text = "Text Case", Values = {"Standard","UPPERCASE","lowercase"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Settings","TextCase"}, v) end })
+EspR1:AddDropdown("EspTextSurround", { Text = "Text Surround", Values = {"None","[]","()","<>","{}"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Settings","TextSurround"}, v) end })
+EspR1:AddDivider()
+EspR1:AddLabel("── Flags ──")
+EspR1:AddSlider("EspFlagFontSize", { Text = "Flag Font Size", Default = 10, Min = 6, Max = 24, Rounding = 0,
+    Callback = function(v) _kSet({"Esp","Settings","FlagFontSize"}, v) end })
+EspR1:AddDropdown("EspFlagCase", { Text = "Flag Text Case", Values = {"Standard","UPPERCASE","lowercase"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Settings","FlagTextCase"}, v) end })
+EspR1:AddDropdown("EspFlagSurround", { Text = "Flag Surround", Values = {"None","[]","()","<>","{}"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Settings","FlagTextSurround"}, v) end })
+EspR1:AddDivider()
+EspR1:AddToggle("EspDistScale", { Text = "Scale With Distance", Default = false,
+    Callback = function(v) _kSet({"Esp","Settings","DistanceScaling"}, v) end })
+EspR1:AddSlider("EspDistScaleRef", { Text = "Reference Distance", Default = 50, Min = 10, Max = 300, Rounding = 0,
+    Callback = function(v) _kSet({"Esp","Settings","DistanceScalingRef"}, v) end })
+
+-- Enemy ESP
+local EspL2 = Tabs.ESP:AddLeftGroupbox("Enemy ESP")
+local EspR2 = Tabs.ESP:AddRightGroupbox("Enemy Chams & More")
+
+EspL2:AddToggle("EspEnemy", { Text = "Enable Enemy ESP", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","Enabled"}, v) end })
+EspL2:AddToggle("EspEnemyName", { Text = "Name", Default = true,
+    Callback = function(v) _kSet({"Esp","Enemy","Name","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyNameColor", { Text = "Name Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","Name","Color"}, v) end }) end)
+EspL2:AddToggle("EspEnemyBox", { Text = "Box", Default = true,
+    Callback = function(v) _kSet({"Esp","Enemy","Box","Enabled"}, v) end })
+EspL2:AddDropdown("EspEnemyBoxStyle", { Text = "Box Style", Values = {"Full","Corner"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Enemy","Box","Style"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyBoxColor", { Text = "Box Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","Box","Color"}, v) end }) end)
+EspL2:AddToggle("EspEnemyFilledBox", { Text = "Filled Box", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","FilledBox","Enabled"}, v) end })
+EspL2:AddToggle("EspEnemyHealth", { Text = "Health Bar", Default = true,
+    Callback = function(v) _kSet({"Esp","Enemy","HealthBar","Enabled"}, v) end })
+EspL2:AddDropdown("EspEnemyHealthMode", { Text = "Health Color Mode", Values = {"Solid","Gradient","Reactive"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Enemy","HealthBar","ColorMode"}, v) end })
+EspL2:AddToggle("EspEnemyHealthNum", { Text = "Health Number", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","HealthNumber","Enabled"}, v) end })
+EspL2:AddToggle("EspEnemyWeapon", { Text = "Held Weapon", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","HeldWeapon","Enabled"}, v) end })
+EspL2:AddToggle("EspEnemyAmmo", { Text = "Ammo Bar", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","AmmoBar","Enabled"}, v) end })
+EspL2:AddToggle("EspEnemyDist", { Text = "Distance", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","Distance","Enabled"}, v) end })
+EspL2:AddToggle("EspEnemyRank", { Text = "Rank", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","Rank","Enabled"}, v) end })
+EspL2:AddToggle("EspEnemyStreak", { Text = "Win Streak", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","Winstreak","Enabled"}, v) end })
+EspL2:AddToggle("EspEnemyDeflect", { Text = "Deflecting", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","Deflecting","Enabled"}, v) end })
+
+-- Enemy Skeleton & Tracer
+EspL2:AddDivider()
+EspL2:AddToggle("EspEnemySkel", { Text = "Skeleton", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Enabled"}, v) end })
+EspL2:AddSlider("EspEnemySkelThick", { Text = "Skeleton Thickness", Default = 1, Min = 1, Max = 6, Rounding = 0,
+    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Thickness"}, v) end })
+EspL2:AddToggle("EspEnemyTracer", { Text = "Tracer", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Enabled"}, v) end })
+EspL2:AddDropdown("EspEnemyTracerFrom", { Text = "Tracer From", Values = {"Bottom","Center","Top","Mouse"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Origin"}, v) end })
+EspL2:AddDropdown("EspEnemyTracerTo", { Text = "Tracer To", Values = {"Feet","Head"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Target"}, v) end })
+EspL2:AddSlider("EspEnemyTracerThick", { Text = "Tracer Thickness", Default = 1, Min = 1, Max = 6, Rounding = 0,
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Thickness"}, v) end })
+EspL2:AddToggle("EspEnemyTracerOutline", { Text = "Tracer Outline", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Outline"}, v) end })
+
+-- Enemy Head Marker
+EspL2:AddDivider()
+EspL2:AddToggle("EspEnemyHM", { Text = "Head Marker", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","Enabled"}, v) end })
+EspL2:AddDropdown("EspEnemyHMShape", { Text = "Marker Shape", Values = {"Cross","Circle","Diamond"}, Default = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","Shape"}, v) end })
+EspL2:AddToggle("EspEnemyHMFilled", { Text = "Marker Filled", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","Filled"}, v) end })
+EspL2:AddToggle("EspEnemyHMOutline", { Text = "Marker Outline", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","Outline"}, v) end })
+
+-- Enemy Chams (right side)
+EspR2:AddLabel("── Enemy Chams ──")
+EspR2:AddToggle("EspEnemyChams", { Text = "Chams", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","Chams","Enabled"}, v) end })
+EspR2:AddDropdown("EspEnemyChamsKind", { Text = "Chams Kind", Values = {"Legacy","Highlight"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Enemy","Chams","Kind"}, v) end })
+pcall(function() EspR2:AddColor("EspEnemyChamsFill", { Text = "Fill Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","Chams","InnerColor"}, v) end }) end)
+pcall(function() EspR2:AddColor("EspEnemyChamsOutline", { Text = "Outline Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","Chams","OutlineColor"}, v) end }) end)
+EspR2:AddToggle("EspEnemyChamsGlow", { Text = "Glow", Default = false,
+    Callback = function(v) _kSet({"Esp","Enemy","Chams","Glow"}, v) end })
+pcall(function() EspR2:AddColor("EspEnemyChamsGlowColor", { Text = "Glow Color", Default = Color3.fromRGB(255,200,200),
+    Callback = function(v) _kSet({"Esp","Enemy","Chams","GlowColor"}, v) end }) end)
+
+-- Team ESP (right side)
+EspR2:AddDivider()
+EspR2:AddLabel("── Team ESP ──")
+EspR2:AddToggle("EspTeam", { Text = "Enable Team ESP", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamName", { Text = "Team Name", Default = true,
+    Callback = function(v) _kSet({"Esp","Team","Name","Enabled"}, v) end })
+pcall(function() EspR2:AddColor("EspTeamNameColor", { Text = "Team Name Color", Default = Color3.fromRGB(100,255,100),
+    Callback = function(v) _kSet({"Esp","Team","Name","Color"}, v) end }) end)
+EspR2:AddToggle("EspTeamBox", { Text = "Team Box", Default = true,
+    Callback = function(v) _kSet({"Esp","Team","Box","Enabled"}, v) end })
+EspR2:AddDropdown("EspTeamBoxStyle", { Text = "Team Box Style", Values = {"Full","Corner"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Team","Box","Style"}, v) end })
+EspR2:AddToggle("EspTeamHealth", { Text = "Team Health Bar", Default = true,
+    Callback = function(v) _kSet({"Esp","Team","HealthBar","Enabled"}, v) end })
+EspR2:AddDropdown("EspTeamHealthMode", { Text = "Team Health Mode", Values = {"Solid","Gradient","Reactive"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Team","HealthBar","ColorMode"}, v) end })
+EspR2:AddToggle("EspTeamTracer", { Text = "Team Tracer", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","Tracer","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamSkel", { Text = "Team Skeleton", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","Skeleton","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamChams", { Text = "Team Chams", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","Chams","Enabled"}, v) end })
+pcall(function() EspR2:AddColor("EspTeamChamsFill", { Text = "Team Chams Fill", Default = Color3.fromRGB(100,255,100),
+    Callback = function(v) _kSet({"Esp","Team","Chams","InnerColor"}, v) end }) end)
+
+-- Sound ESP
+local EspL3 = Tabs.ESP:AddLeftGroupbox("Sound & Crosshair")
+EspL3:AddToggle("SoundEspTab", { Text = "Sound ESP", Default = false,
+    Callback = function(v) _kSet({"SoundEsp","Enabled"}, v) end })
+EspL3:AddToggle("CxEnabledTab", { Text = "Custom Crosshair", Default = false,
+    Callback = function(v) _kSet({"Crosshair","Enabled"}, v) end })
+EspL3:AddDropdown("CxStyleTab", { Text = "Crosshair Style", Values = {"Cross","Dot","Circle","Gap"}, Default = 1,
+    Callback = function(v) _kSet({"Crosshair","Style"}, v) end })
+pcall(function() EspL3:AddColor("CrosshairColorTab", { Text = "Crosshair Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Crosshair","Color"}, v) end }) end)
+EspL3:AddToggle("CxHitTab", { Text = "Hit Feedback", Default = true,
+    Callback = function(v) _kSet({"HitFeedback","Enabled"}, v) end })
+
+end) -- end ESP tab pcall
+
 -- ── WORLD CHANGER UI ─────────────────────────────────────────────────────
 pcall(function()
 local wcDropValues = {"(scan first)"}
@@ -4588,370 +4707,237 @@ end)
 end)
 -- ── END WORLD CHANGER UI ─────────────────────────────────────────────────
 
--- ── LIGHTING OVERRIDE & POST PROCESSING UI ───────────────────────────────
+-- ── LIGHTING & POST PROCESSING UI (Kicia) ────────────────────────────────
 pcall(function()
 
-local LT = cloneref(game:GetService("Lighting"))
-
--- Saved original Lighting values restored when override is disabled
-local _ltOrig = nil
-local _ppOrig = {}
-
-local function _saveLtOrig()
-    if _ltOrig then return end
-    _ltOrig = {
-        ClockTime              = LT.ClockTime,
-        GeographicLatitude     = LT.GeographicLatitude,
-        Brightness             = LT.Brightness,
-        ExposureCompensation   = LT.ExposureCompensation,
-        GlobalShadows          = LT.GlobalShadows,
-        ShadowSoftness         = LT.ShadowSoftness,
-        Ambient                = LT.Ambient,
-        OutdoorAmbient         = LT.OutdoorAmbient,
-        ColorShift_Top         = LT.ColorShift_Top,
-        ColorShift_Bottom      = LT.ColorShift_Bottom,
-        EnvironmentDiffuseScale  = LT.EnvironmentDiffuseScale,
-        EnvironmentSpecularScale = LT.EnvironmentSpecularScale,
-        FogColor               = LT.FogColor,
-        FogStart               = LT.FogStart,
-        FogEnd                 = LT.FogEnd,
-        Technology             = LT.Technology,
-    }
-    for _, cls in ipairs({"BloomEffect","ColorCorrectionEffect","DepthOfFieldEffect","SunRaysEffect","ColorGradingEffect"}) do
-        local eff = LT:FindFirstChildOfClass(cls)
-        _ppOrig[cls] = eff and { Enabled = eff.Enabled } or { Enabled = false }
-    end
-    local atm = LT:FindFirstChildOfClass("Atmosphere")
-    _ppOrig["Atmosphere"] = atm and {
-        existed = true,
-        Color   = atm.Color,
-        Decay   = atm.Decay,
-        Density = atm.Density,
-        Offset  = atm.Offset,
-        Glare   = atm.Glare,
-        Haze    = atm.Haze,
-    } or { existed = false }
-end
-
-local function _restoreLt()
-    if not _ltOrig then return end
-    pcall(function()
-        LT.ClockTime               = _ltOrig.ClockTime
-        LT.GeographicLatitude      = _ltOrig.GeographicLatitude
-        LT.Brightness              = _ltOrig.Brightness
-        LT.ExposureCompensation    = _ltOrig.ExposureCompensation
-        LT.GlobalShadows           = _ltOrig.GlobalShadows
-        LT.ShadowSoftness          = _ltOrig.ShadowSoftness
-        LT.Ambient                 = _ltOrig.Ambient
-        LT.OutdoorAmbient          = _ltOrig.OutdoorAmbient
-        LT.ColorShift_Top          = _ltOrig.ColorShift_Top
-        LT.ColorShift_Bottom       = _ltOrig.ColorShift_Bottom
-        LT.EnvironmentDiffuseScale  = _ltOrig.EnvironmentDiffuseScale
-        LT.EnvironmentSpecularScale = _ltOrig.EnvironmentSpecularScale
-        LT.FogColor                = _ltOrig.FogColor
-        LT.FogStart                = _ltOrig.FogStart
-        LT.FogEnd                  = _ltOrig.FogEnd
-        LT.Technology              = _ltOrig.Technology
-    end)
-    for _, cls in ipairs({"BloomEffect","ColorCorrectionEffect","DepthOfFieldEffect","SunRaysEffect","ColorGradingEffect"}) do
-        local orig = _ppOrig[cls]
-        if orig then
-            local eff = LT:FindFirstChildOfClass(cls)
-            if eff then pcall(function() eff.Enabled = orig.Enabled end) end
-        end
-    end
-    local atmOrig = _ppOrig["Atmosphere"]
-    if atmOrig then
-        local atm = LT:FindFirstChildOfClass("Atmosphere")
-        if not atmOrig.existed and atm then
-            pcall(function() atm:Destroy() end)
-        elseif atmOrig.existed and atm then
-            pcall(function()
-                atm.Color   = atmOrig.Color
-                atm.Decay   = atmOrig.Decay
-                atm.Density = atmOrig.Density
-                atm.Offset  = atmOrig.Offset
-                atm.Glare   = atmOrig.Glare
-                atm.Haze    = atmOrig.Haze
-            end)
-        end
-    end
-    _ltOrig = nil
-    _ppOrig = {}
-end
-
-local function _getOrCreateFX(className)
-    local eff = LT:FindFirstChildOfClass(className)
-    if not eff then
-        eff = Instance.new(className)
-        eff.Parent = LT
-    end
-    return eff
-end
-
--- Current override state table
-local WL = {
-    enabled  = false,
-    clock    = { on = false, v = 14 },
-    geo      = { on = false, v = 41 },
-    bright   = { on = false, v = 2 },
-    expo     = { on = false, v = 0 },
-    noShad   = false,
-    shadSoft = { on = false, v = 0.5 },
-    prioLit  = false,
-    ambient  = { on = false, indoor = Color3.fromRGB(75, 75, 75), outdoor = Color3.fromRGB(140, 140, 140) },
-    cshift   = { on = false, top = Color3.new(1, 1, 1), bot = Color3.new(1, 1, 1) },
-    envDiff  = { on = false, v = 1 },
-    envSpec  = { on = false, v = 1 },
-    fog      = { on = false, color = Color3.fromRGB(128, 128, 128), s = 0, e = 1000 },
-    bloom    = { on = false, intensity = 0.4, size = 24, threshold = 0.95 },
-    cc       = { on = false, tint = Color3.new(1, 1, 1), sat = 0, bright = 0, contrast = 0 },
-    dof      = { on = false, far = 0, focus = 50, inRadius = 10, near = 0 },
-    sunRays  = { on = false, intensity = 0.25, spread = 0.5 },
-    atm      = { on = false, color = Color3.fromRGB(199, 199, 199), decay = Color3.fromRGB(106, 127, 145), density = 0.3, offset = 0.25, glare = 0, haze = 0 },
-    cg       = { on = false, preset = "Default" },
-    mb       = { on = false, intensity = 10, sensitivity = 1 },
-}
-
-local function _apply()
-    if not WL.enabled then return end
-    pcall(function()
-        if WL.clock.on    then LT.ClockTime            = WL.clock.v    end
-        if WL.geo.on      then LT.GeographicLatitude   = WL.geo.v      end
-        if WL.bright.on   then LT.Brightness           = WL.bright.v   end
-        if WL.expo.on     then LT.ExposureCompensation = WL.expo.v     end
-        LT.GlobalShadows = not WL.noShad
-        if WL.shadSoft.on then LT.ShadowSoftness       = WL.shadSoft.v end
-        if WL.prioLit     then pcall(function() LT.Technology = Enum.Technology.ShadowMap end) end
-        if WL.ambient.on  then
-            LT.Ambient        = WL.ambient.indoor
-            LT.OutdoorAmbient = WL.ambient.outdoor
-        end
-        if WL.cshift.on then
-            LT.ColorShift_Top    = WL.cshift.top
-            LT.ColorShift_Bottom = WL.cshift.bot
-        end
-        if WL.envDiff.on then LT.EnvironmentDiffuseScale  = WL.envDiff.v end
-        if WL.envSpec.on then LT.EnvironmentSpecularScale = WL.envSpec.v end
-        if WL.fog.on then
-            LT.FogColor = WL.fog.color
-            LT.FogStart = WL.fog.s
-            LT.FogEnd   = WL.fog.e
-        end
-    end)
-    pcall(function()
-        local bloom = _getOrCreateFX("BloomEffect")
-        bloom.Enabled = WL.bloom.on
-        if WL.bloom.on then
-            bloom.Intensity = WL.bloom.intensity
-            bloom.Size      = WL.bloom.size
-            bloom.Threshold = WL.bloom.threshold
-        end
-        local cc = _getOrCreateFX("ColorCorrectionEffect")
-        cc.Enabled = WL.cc.on
-        if WL.cc.on then
-            cc.TintColor  = WL.cc.tint
-            cc.Saturation = WL.cc.sat
-            cc.Brightness = WL.cc.bright
-            cc.Contrast   = WL.cc.contrast
-        end
-        local dof = _getOrCreateFX("DepthOfFieldEffect")
-        dof.Enabled = WL.dof.on
-        if WL.dof.on then
-            dof.FarIntensity  = WL.dof.far
-            dof.FocusDistance = WL.dof.focus
-            dof.InFocusRadius = WL.dof.inRadius
-            dof.NearIntensity = WL.dof.near
-        end
-        local sr = _getOrCreateFX("SunRaysEffect")
-        sr.Enabled = WL.sunRays.on
-        if WL.sunRays.on then
-            sr.Intensity = WL.sunRays.intensity
-            sr.Spread    = WL.sunRays.spread
-        end
-        if WL.atm.on then
-            local atm = LT:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere", LT)
-            atm.Color   = WL.atm.color
-            atm.Decay   = WL.atm.decay
-            atm.Density = WL.atm.density
-            atm.Offset  = WL.atm.offset
-            atm.Glare   = WL.atm.glare
-            atm.Haze    = WL.atm.haze
-        end
-        local cgFx = _getOrCreateFX("ColorGradingEffect")
-        cgFx.Enabled = WL.cg.on
-        if WL.cg.on then
-            pcall(function()
-                cgFx.TonemapperPreset = Enum.ToneMapperPreset[WL.cg.preset] or Enum.ToneMapperPreset.Default
-            end)
-        end
-    end)
-end
-
--- ── LEFT GROUPBOX: LIGHTING ──────────────────────────────────────────────
 local LGL = Tabs.WorldChanger:AddLeftGroupbox("Lighting")
 
-LGL:AddToggle("WL_Master", {
-    Text    = "Enable Lighting Override",
-    Default = false,
-    Callback = function(v)
-        WL.enabled = v
-        if v then _saveLtOrig(); _apply() else _restoreLt() end
-    end
+LGL:AddToggle("KL_Master", { Text = "Enable Lighting Override", Default = false,
+    Callback = function(v) _kSet({"Lighting","Enabled"}, v) end
 })
 
 LGL:AddDivider()
 LGL:AddLabel("Time & Exposure")
 
-LGL:AddToggle("WL_ClockOn", { Text = "Override Clock Time",       Default = false, Callback = function(v) WL.clock.on    = v; _apply() end })
-LGL:AddSlider("WL_Clock",   { Text = "Clock Time (h)",            Default = 14,  Min = 0,   Max = 24,  Rounding = 2, Callback = function(v) WL.clock.v    = v; _apply() end })
-LGL:AddToggle("WL_GeoOn",   { Text = "Override Geographic Lat",   Default = false, Callback = function(v) WL.geo.on      = v; _apply() end })
-LGL:AddSlider("WL_Geo",     { Text = "Geographic Latitude",       Default = 41,  Min = -90, Max = 90,  Rounding = 1, Callback = function(v) WL.geo.v      = v; _apply() end })
-LGL:AddToggle("WL_BriOn",   { Text = "Override Brightness",       Default = false, Callback = function(v) WL.bright.on   = v; _apply() end })
-LGL:AddSlider("WL_Bri",     { Text = "Brightness",                Default = 2,   Min = 0,   Max = 10,  Rounding = 2, Callback = function(v) WL.bright.v   = v; _apply() end })
-LGL:AddToggle("WL_ExpOn",   { Text = "Override Exposure",         Default = false, Callback = function(v) WL.expo.on     = v; _apply() end })
-LGL:AddSlider("WL_Exp",     { Text = "Exposure Compensation",     Default = 0,   Min = -5,  Max = 5,   Rounding = 2, Callback = function(v) WL.expo.v     = v; _apply() end })
+LGL:AddToggle("KL_ClockOn", { Text = "Override Clock Time", Default = false,
+    Callback = function(v) _kSet({"Lighting","ClockTime","Enabled"}, v) end
+})
+LGL:AddSlider("KL_Clock", { Text = "Clock Time (h)", Default = 14, Min = 0, Max = 24, Rounding = 2,
+    Callback = function(v) _kSet({"Lighting","ClockTime","Value"}, v) end
+})
+LGL:AddToggle("KL_GeoOn", { Text = "Override Geographic Lat", Default = false,
+    Callback = function(v) _kSet({"Lighting","GeographicLatitude","Enabled"}, v) end
+})
+LGL:AddSlider("KL_Geo", { Text = "Geographic Latitude", Default = 41, Min = -90, Max = 90, Rounding = 1,
+    Callback = function(v) _kSet({"Lighting","GeographicLatitude","Value"}, v) end
+})
+LGL:AddToggle("KL_BriOn", { Text = "Override Brightness", Default = false,
+    Callback = function(v) _kSet({"Lighting","Brightness","Enabled"}, v) end
+})
+LGL:AddSlider("KL_Bri", { Text = "Brightness", Default = 2, Min = 0, Max = 10, Rounding = 2,
+    Callback = function(v) _kSet({"Lighting","Brightness","Value"}, v) end
+})
+LGL:AddToggle("KL_ExpOn", { Text = "Override Exposure", Default = false,
+    Callback = function(v) _kSet({"Lighting","ExposureCompensation","Enabled"}, v) end
+})
+LGL:AddSlider("KL_Exp", { Text = "Exposure Compensation", Default = 0, Min = -5, Max = 5, Rounding = 2,
+    Callback = function(v) _kSet({"Lighting","ExposureCompensation","Value"}, v) end
+})
 
 LGL:AddDivider()
 LGL:AddLabel("Shadows")
 
-LGL:AddToggle("WL_NoShad",  { Text = "Disable Global Shadows",      Default = false, Callback = function(v) WL.noShad      = v; _apply() end })
-LGL:AddToggle("WL_SSoftOn", { Text = "Override Shadow Softness",    Default = false, Callback = function(v) WL.shadSoft.on = v; _apply() end })
-LGL:AddSlider("WL_SSoft",   { Text = "Shadow Softness",             Default = 0.5,  Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.shadSoft.v = v; _apply() end })
-LGL:AddToggle("WL_PrioLit", { Text = "Prioritize Lighting Quality", Default = false, Callback = function(v) WL.prioLit     = v; _apply() end })
+LGL:AddToggle("KL_NoShad",  { Text = "Disable Global Shadows",      Default = false,
+    Callback = function(v) _kSet({"Lighting","DisableGlobalShadows"}, v) end
+})
+LGL:AddToggle("KL_SSoftOn", { Text = "Override Shadow Softness",    Default = false,
+    Callback = function(v) _kSet({"Lighting","ShadowSoftness","Enabled"}, v) end
+})
+LGL:AddSlider("KL_SSoft",   { Text = "Shadow Softness",             Default = 0.5, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Lighting","ShadowSoftness","Value"}, v) end
+})
+LGL:AddToggle("KL_LitStyle", { Text = "Override Lighting Style", Default = false,
+    Callback = function(v) _kSet({"Lighting","LightingStyle","Enabled"}, v) end
+})
+LGL:AddDropdown("KL_LitStyleVal", { Text = "Lighting Style", Values = {"Realistic","Soft"}, Default = 1,
+    Callback = function(v) _kSet({"Lighting","LightingStyle","Value"}, v) end
+})
+LGL:AddToggle("KL_PrioLit", { Text = "Prioritize Lighting Quality", Default = false,
+    Callback = function(v) _kSet({"Lighting","PrioritizeLightingQuality"}, v) end
+})
 
 LGL:AddDivider()
 LGL:AddLabel("Ambient & Color Shift")
 
-LGL:AddToggle("WL_AmbOn", { Text = "Override Ambient Colors", Default = false, Callback = function(v) WL.ambient.on = v; _apply() end })
-LGL:AddColor("WL_IndoorAmbient",  { Text = "Indoor Ambient",  Default = Color3.fromRGB(75,  75,  75 ), Callback = function(v) WL.ambient.indoor  = v; _apply() end })
-LGL:AddColor("WL_OutdoorAmbient", { Text = "Outdoor Ambient", Default = Color3.fromRGB(140, 140, 140), Callback = function(v) WL.ambient.outdoor = v; _apply() end })
-LGL:AddToggle("WL_CSOn",  { Text = "Override Color Shift", Default = false, Callback = function(v) WL.cshift.on = v; _apply() end })
-LGL:AddColor("WL_CShiftTop", { Text = "Color Shift Top",    Default = Color3.new(1, 1, 1), Callback = function(v) WL.cshift.top = v; _apply() end })
-LGL:AddColor("WL_CShiftBot", { Text = "Color Shift Bottom", Default = Color3.new(1, 1, 1), Callback = function(v) WL.cshift.bot = v; _apply() end })
+LGL:AddToggle("KL_AmbOn", { Text = "Override Ambient Colors", Default = false,
+    Callback = function(v) _kSet({"Lighting","Ambient","Enabled"}, v) end
+})
+LGL:AddColor("KL_IndoorAmbient",  { Text = "Indoor Ambient",  Default = Color3.fromRGB(75, 75, 75),
+    Callback = function(v) _kSet({"Lighting","Ambient","Indoor"}, v) end
+})
+LGL:AddColor("KL_OutdoorAmbient", { Text = "Outdoor Ambient", Default = Color3.fromRGB(140, 140, 140),
+    Callback = function(v) _kSet({"Lighting","Ambient","Outdoor"}, v) end
+})
+LGL:AddToggle("KL_ShadColorOn", { Text = "Override Shadow Color", Default = false,
+    Callback = function(v) _kSet({"Lighting","ShadowColor","Enabled"}, v) end
+})
+LGL:AddColor("KL_ShadColor", { Text = "Shadow Color", Default = Color3.fromRGB(128, 128, 128),
+    Callback = function(v) _kSet({"Lighting","ShadowColor","Value"}, v) end
+})
+LGL:AddToggle("KL_CSOn", { Text = "Override Color Shift", Default = false,
+    Callback = function(v) _kSet({"Lighting","ColorShift","Enabled"}, v) end
+})
+LGL:AddColor("KL_CShiftTop", { Text = "Color Shift Top",    Default = Color3.new(1, 1, 1),
+    Callback = function(v) _kSet({"Lighting","ColorShift","Top"}, v) end
+})
+LGL:AddColor("KL_CShiftBot", { Text = "Color Shift Bottom", Default = Color3.new(1, 1, 1),
+    Callback = function(v) _kSet({"Lighting","ColorShift","Bottom"}, v) end
+})
 
 LGL:AddDivider()
 LGL:AddLabel("Environment Scales")
 
-LGL:AddToggle("WL_EDiffOn", { Text = "Override Env Diffuse Scale",  Default = false, Callback = function(v) WL.envDiff.on = v; _apply() end })
-LGL:AddSlider("WL_EDiff",   { Text = "Environment Diffuse Scale",   Default = 1, Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.envDiff.v  = v; _apply() end })
-LGL:AddToggle("WL_ESpecOn", { Text = "Override Env Specular Scale", Default = false, Callback = function(v) WL.envSpec.on = v; _apply() end })
-LGL:AddSlider("WL_ESpec",   { Text = "Environment Specular Scale",  Default = 1, Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.envSpec.v  = v; _apply() end })
+LGL:AddToggle("KL_EDiffOn", { Text = "Override Env Diffuse Scale",  Default = false,
+    Callback = function(v) _kSet({"Lighting","EnvironmentDiffuseScale","Enabled"}, v) end
+})
+LGL:AddSlider("KL_EDiff",   { Text = "Environment Diffuse Scale",   Default = 1, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Lighting","EnvironmentDiffuseScale","Value"}, v) end
+})
+LGL:AddToggle("KL_ESpecOn", { Text = "Override Env Specular Scale", Default = false,
+    Callback = function(v) _kSet({"Lighting","EnvironmentSpecularScale","Enabled"}, v) end
+})
+LGL:AddSlider("KL_ESpec",   { Text = "Environment Specular Scale",  Default = 1, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Lighting","EnvironmentSpecularScale","Value"}, v) end
+})
 
 LGL:AddDivider()
 LGL:AddLabel("Fog")
 
-LGL:AddToggle("WL_FogOn", { Text = "Override Fog", Default = false, Callback = function(v) WL.fog.on = v; _apply() end })
-LGL:AddColor("WL_FogColor", { Text = "Fog Color", Default = Color3.fromRGB(128, 128, 128), Callback = function(v) WL.fog.color = v; _apply() end })
-LGL:AddSlider("WL_FogS",  { Text = "Fog Start", Default = 0,    Min = 0, Max = 10000, Rounding = 0, Callback = function(v) WL.fog.s = v; _apply() end })
-LGL:AddSlider("WL_FogE",  { Text = "Fog End",   Default = 1000, Min = 0, Max = 10000, Rounding = 0, Callback = function(v) WL.fog.e = v; _apply() end })
+LGL:AddToggle("KL_FogOn", { Text = "Enable Fog Override", Default = false,
+    Callback = function(v) _kSet({"Lighting","Fog","Enabled"}, v) end
+})
+LGL:AddColor("KL_FogColor", { Text = "Fog Color", Default = Color3.fromRGB(128, 128, 128),
+    Callback = function(v) _kSet({"Lighting","Fog","Color"}, v) end
+})
+LGL:AddSlider("KL_FogS", { Text = "Fog Start", Default = 0,    Min = 0, Max = 10000, Rounding = 0,
+    Callback = function(v) _kSet({"Lighting","Fog","Start"}, v) end
+})
+LGL:AddSlider("KL_FogE", { Text = "Fog End",   Default = 1000, Min = 0, Max = 10000, Rounding = 0,
+    Callback = function(v) _kSet({"Lighting","Fog","End"}, v) end
+})
 
--- ── MOTION BLUR HELPERS ──────────────────────────────────────────────────
-local _mbConn = nil
-local _mbBlur = nil
-local _mbLastCF = nil
-
-local function _mbTeardown()
-    if _mbConn then _mbConn:Disconnect(); _mbConn = nil end
-    if _mbBlur and _mbBlur.Parent then
-        pcall(function() _mbBlur:Destroy() end)
-    end
-    _mbBlur = nil
-    _mbLastCF = nil
-end
-
-local function _mbSetup()
-    _mbTeardown()
-    local RS = game:GetService("RunService")
-    local cam = workspace.CurrentCamera
-    if not cam then return end
-    local blur = Instance.new("BlurEffect")
-    blur.Size = 0
-    blur.Parent = cam
-    _mbBlur = blur
-    _mbConn = RS.PreRender:Connect(function(dt)
-        if not WL.mb.on then _mbTeardown(); return end
-        local c = workspace.CurrentCamera
-        if not c or not _mbBlur or not _mbBlur.Parent then return end
-        local cf = c.CFrame
-        local last = _mbLastCF
-        _mbLastCF = cf
-        if not last then return end
-        local linSpd = (cf.Position - last.Position).Magnitude / dt
-        local _, ang = cf:ToObjectSpace(last):ToAxisAngle()
-        local delta = linSpd * 18 + math.abs(ang) / dt * 3
-        local target = math.clamp(delta * WL.mb.sensitivity, 0, WL.mb.intensity)
-        _mbBlur.Size = _mbBlur.Size + (target - _mbBlur.Size) * math.min(1, dt * 24)
-    end)
-end
-
--- ── RIGHT GROUPBOX: POST PROCESSING & ATMOSPHERE ─────────────────────────
+-- ── RIGHT GROUPBOX: POST PROCESSING ──────────────────────────────────────
 local LGR = Tabs.WorldChanger:AddRightGroupbox("Post Processing")
 
 LGR:AddLabel("Bloom")
-LGR:AddToggle("WL_BloomOn", { Text = "Enable Bloom",  Default = false, Callback = function(v) WL.bloom.on = v; _apply() end })
-LGR:AddSlider("WL_BloomI",  { Text = "Intensity",     Default = 0.4,  Min = 0, Max = 1,  Rounding = 2, Callback = function(v) WL.bloom.intensity = v; _apply() end })
-LGR:AddSlider("WL_BloomS",  { Text = "Size",          Default = 24,   Min = 0, Max = 56, Rounding = 0, Callback = function(v) WL.bloom.size      = v; _apply() end })
-LGR:AddSlider("WL_BloomT",  { Text = "Threshold",     Default = 0.95, Min = 0, Max = 5,  Rounding = 2, Callback = function(v) WL.bloom.threshold  = v; _apply() end })
+LGR:AddToggle("KL_BloomOn", { Text = "Enable Bloom",  Default = false,
+    Callback = function(v) _kSet({"Bloom","Enabled"}, v) end
+})
+LGR:AddSlider("KL_BloomI", { Text = "Intensity", Default = 0.4,  Min = 0, Max = 1,  Rounding = 2,
+    Callback = function(v) _kSet({"Bloom","Intensity"}, v) end
+})
+LGR:AddSlider("KL_BloomS", { Text = "Size",      Default = 24,   Min = 0, Max = 56, Rounding = 0,
+    Callback = function(v) _kSet({"Bloom","Size"}, v) end
+})
+LGR:AddSlider("KL_BloomT", { Text = "Threshold", Default = 0.95, Min = 0, Max = 5,  Rounding = 2,
+    Callback = function(v) _kSet({"Bloom","Threshold"}, v) end
+})
 
 LGR:AddDivider()
 LGR:AddLabel("Color Correction")
-LGR:AddToggle("WL_CCOn",  { Text = "Enable Color Correction", Default = false, Callback = function(v) WL.cc.on = v; _apply() end })
-LGR:AddColor("WL_TintColor", { Text = "Tint Color", Default = Color3.new(1, 1, 1), Callback = function(v) WL.cc.tint = v; _apply() end })
-LGR:AddSlider("WL_CCSat", { Text = "Saturation", Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) WL.cc.sat     = v; _apply() end })
-LGR:AddSlider("WL_CCBri", { Text = "Brightness",  Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) WL.cc.bright  = v; _apply() end })
-LGR:AddSlider("WL_CCCon", { Text = "Contrast",    Default = 0, Min = -1, Max = 1, Rounding = 2, Callback = function(v) WL.cc.contrast = v; _apply() end })
-
-LGR:AddDivider()
-LGR:AddLabel("Depth of Field")
-LGR:AddToggle("WL_DofOn",    { Text = "Enable Depth of Field", Default = false, Callback = function(v) WL.dof.on = v; _apply() end })
-LGR:AddSlider("WL_DofFar",   { Text = "Far Intensity",   Default = 0,  Min = 0, Max = 1,   Rounding = 2, Callback = function(v) WL.dof.far      = v; _apply() end })
-LGR:AddSlider("WL_DofFocus", { Text = "Focus Distance",  Default = 50, Min = 0, Max = 200, Rounding = 0, Callback = function(v) WL.dof.focus    = v; _apply() end })
-LGR:AddSlider("WL_DofIn",    { Text = "In-Focus Radius", Default = 10, Min = 0, Max = 100, Rounding = 0, Callback = function(v) WL.dof.inRadius = v; _apply() end })
-LGR:AddSlider("WL_DofNear",  { Text = "Near Intensity",  Default = 0,  Min = 0, Max = 1,   Rounding = 2, Callback = function(v) WL.dof.near     = v; _apply() end })
-
-LGR:AddDivider()
-LGR:AddLabel("Sun Rays")
-LGR:AddToggle("WL_SROn", { Text = "Enable Sun Rays", Default = false, Callback = function(v) WL.sunRays.on = v; _apply() end })
-LGR:AddSlider("WL_SRI",  { Text = "Intensity",       Default = 0.25, Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.sunRays.intensity = v; _apply() end })
-LGR:AddSlider("WL_SRS",  { Text = "Spread",          Default = 0.5,  Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.sunRays.spread    = v; _apply() end })
-
-LGR:AddDivider()
-LGR:AddLabel("Atmosphere")
-LGR:AddToggle("WL_AtmOn",    { Text = "Enable Atmosphere", Default = false, Callback = function(v) WL.atm.on = v; _apply() end })
-LGR:AddColor("WL_AtmColor", { Text = "Atmosphere Color", Default = Color3.fromRGB(199, 199, 199), Callback = function(v) WL.atm.color = v; _apply() end })
-LGR:AddColor("WL_AtmDecay", { Text = "Atmosphere Decay", Default = Color3.fromRGB(106, 127, 145), Callback = function(v) WL.atm.decay = v; _apply() end })
-LGR:AddSlider("WL_AtmDen",   { Text = "Density", Default = 0.3,  Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.density = v; _apply() end })
-LGR:AddSlider("WL_AtmOff",   { Text = "Offset",  Default = 0.25, Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.offset  = v; _apply() end })
-LGR:AddSlider("WL_AtmGlare", { Text = "Glare",   Default = 0,    Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.glare   = v; _apply() end })
-LGR:AddSlider("WL_AtmHaze",  { Text = "Haze",    Default = 0,    Min = 0, Max = 1, Rounding = 2, Callback = function(v) WL.atm.haze    = v; _apply() end })
+LGR:AddToggle("KL_CCOn", { Text = "Enable Color Correction", Default = false,
+    Callback = function(v) _kSet({"ColorCorrection","Enabled"}, v) end
+})
+LGR:AddColor("KL_TintColor", { Text = "Tint Color", Default = Color3.new(1, 1, 1),
+    Callback = function(v) _kSet({"ColorCorrection","TintColor"}, v) end
+})
+LGR:AddSlider("KL_CCSat", { Text = "Saturation", Default = 0, Min = -1, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"ColorCorrection","Saturation"}, v) end
+})
+LGR:AddSlider("KL_CCBri", { Text = "Brightness",  Default = 0, Min = -1, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"ColorCorrection","Brightness"}, v) end
+})
+LGR:AddSlider("KL_CCCon", { Text = "Contrast",    Default = 0, Min = -1, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"ColorCorrection","Contrast"}, v) end
+})
 
 LGR:AddDivider()
 LGR:AddLabel("Color Grading")
-LGR:AddToggle("WL_CGOn", { Text = "Enable Color Grading", Default = false,
-    Callback = function(v) WL.cg.on = v; _apply() end
+LGR:AddToggle("KL_CGOn", { Text = "Enable Color Grading", Default = false,
+    Callback = function(v) _kSet({"ColorGrading","Enabled"}, v) end
 })
-LGR:AddDropdown("WL_CGPreset", { Text = "Tonemapper", Values = {"Default","Retro"}, Default = 1,
-    Callback = function(v) WL.cg.preset = v; _apply() end
+LGR:AddDropdown("KL_CGPreset", { Text = "Tonemapper", Values = {"Default","Retro"}, Default = 1,
+    Callback = function(v) _kSet({"ColorGrading","TonemapperPreset"}, v) end
+})
+
+LGR:AddDivider()
+LGR:AddLabel("Depth of Field")
+LGR:AddToggle("KL_DofOn", { Text = "Enable Depth of Field", Default = false,
+    Callback = function(v) _kSet({"DepthOfField","Enabled"}, v) end
+})
+LGR:AddSlider("KL_DofFar",   { Text = "Far Intensity",   Default = 0.75, Min = 0, Max = 1,   Rounding = 2,
+    Callback = function(v) _kSet({"DepthOfField","FarIntensity"}, v) end
+})
+LGR:AddSlider("KL_DofFocus", { Text = "Focus Distance",  Default = 0.05, Min = 0, Max = 200, Rounding = 2,
+    Callback = function(v) _kSet({"DepthOfField","FocusDistance"}, v) end
+})
+LGR:AddSlider("KL_DofIn",    { Text = "In-Focus Radius", Default = 10,   Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"DepthOfField","InFocusRadius"}, v) end
+})
+LGR:AddSlider("KL_DofNear",  { Text = "Near Intensity",  Default = 0.75, Min = 0, Max = 1,   Rounding = 2,
+    Callback = function(v) _kSet({"DepthOfField","NearIntensity"}, v) end
+})
+
+LGR:AddDivider()
+LGR:AddLabel("Sun Rays")
+LGR:AddToggle("KL_SROn", { Text = "Enable Sun Rays", Default = false,
+    Callback = function(v) _kSet({"SunRays","Enabled"}, v) end
+})
+LGR:AddSlider("KL_SRI", { Text = "Intensity", Default = 0.25, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"SunRays","Intensity"}, v) end
+})
+LGR:AddSlider("KL_SRS", { Text = "Spread",    Default = 1,    Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"SunRays","Spread"}, v) end
+})
+
+LGR:AddDivider()
+LGR:AddLabel("Atmosphere")
+LGR:AddToggle("KL_AtmOn", { Text = "Enable Atmosphere", Default = false,
+    Callback = function(v) _kSet({"Atmosphere","Enabled"}, v) end
+})
+LGR:AddColor("KL_AtmColor", { Text = "Atmosphere Color", Default = Color3.fromRGB(199, 199, 199),
+    Callback = function(v) _kSet({"Atmosphere","Color"}, v) end
+})
+LGR:AddColor("KL_AtmDecay", { Text = "Atmosphere Decay", Default = Color3.fromRGB(106, 127, 145),
+    Callback = function(v) _kSet({"Atmosphere","Decay"}, v) end
+})
+LGR:AddSlider("KL_AtmDen",   { Text = "Density", Default = 0.395, Min = 0, Max = 1, Rounding = 3,
+    Callback = function(v) _kSet({"Atmosphere","Density"}, v) end
+})
+LGR:AddSlider("KL_AtmOff",   { Text = "Offset",  Default = 0,     Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Atmosphere","Offset"}, v) end
+})
+LGR:AddSlider("KL_AtmGlare", { Text = "Glare",   Default = 0,     Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Atmosphere","Glare"}, v) end
+})
+LGR:AddSlider("KL_AtmHaze",  { Text = "Haze",    Default = 0,     Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Atmosphere","Haze"}, v) end
 })
 
 LGR:AddDivider()
 LGR:AddLabel("Motion Blur")
-LGR:AddToggle("WL_MBOn", { Text = "Enable Motion Blur", Default = false,
-    Callback = function(v)
-        WL.mb.on = v
-        if v then _mbSetup() else _mbTeardown() end
-    end
+LGR:AddToggle("KL_MBOn", { Text = "Enable Motion Blur", Default = false,
+    Callback = function(v) _kSet({"MotionBlur","Enabled"}, v) end
 })
-LGR:AddSlider("WL_MBInt",  { Text = "Intensity",   Default = 10, Min = 0, Max = 56, Rounding = 1,
-    Callback = function(v) WL.mb.intensity   = v end
+LGR:AddSlider("KL_MBInt",  { Text = "Intensity",   Default = 10, Min = 0, Max = 56, Rounding = 1,
+    Callback = function(v) _kSet({"MotionBlur","Intensity"}, v) end
 })
-LGR:AddSlider("WL_MBSens", { Text = "Sensitivity", Default = 1,  Min = 0, Max = 5,  Rounding = 2,
-    Callback = function(v) WL.mb.sensitivity = v end
+LGR:AddSlider("KL_MBSens", { Text = "Sensitivity", Default = 1,  Min = 0, Max = 5,  Rounding = 2,
+    Callback = function(v) _kSet({"MotionBlur","Sensitivity"}, v) end
 })
 
 end) -- end pcall
--- ── END LIGHTING OVERRIDE & POST PROCESSING UI ───────────────────────────
+-- ── END LIGHTING & POST PROCESSING UI ────────────────────────────────────
 
 -- ── SKY, WEATHER & AMBIENCE UI ───────────────────────────────────────────
 local _swOk, _swErr = pcall(function()
@@ -71788,6 +71774,18 @@ end)
 end -- FPS Boost scope
 
 ThemeManager:SetLibrary(Library)
+-- Apply pure black Obsidian theme
+pcall(function()
+    Library:SetColors({
+        Background       = Color3.fromRGB(0,   0,   0),
+        MainColor        = Color3.fromRGB(5,   5,   5),
+        SecondaryColor   = Color3.fromRGB(10,  10,  10),
+        AccentColor      = Color3.fromRGB(197, 59,  59),
+        DarkContrast     = Color3.fromRGB(3,   3,   3),
+        OutlineColor     = Color3.fromRGB(30,  30,  30),
+        TextColor        = Color3.fromRGB(200, 200, 200),
+    })
+end)
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({"MenuKeybind", "RbEnabled", "RbRapidFire", "RbWallPen"})
