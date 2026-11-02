@@ -757,10 +757,10 @@ local rangeExtCFG = {
 }
 
 local translocCFG = {
-    enabled = false, frequency = 512, offsetDist = 1e15,
+    enabled = false, frequency = 512, offsetDist = 5,
     offsetMode = "Ahead", offsetY = 0, fakeVel = true,
-    fakeVelMag = 1e15, snapBack = true, jitter = true,
-    jitterAmp = 1e14, layers = 10,
+    fakeVelMag = 100, snapBack = true, jitter = true,
+    jitterAmp = 50, layers = 10,
     burstMode = false, burstCount = 10, burstInterval = 0.001,
     randomFrequency = false, freqMin = 50, freqMax = 500,
     spinFake = false, spinFakeSpeed = 720,
@@ -776,15 +776,15 @@ local translocCFG = {
     autoDodge = false, autoDodgeRadius = 60,
     usePreRenderCommit = true, networkOwnerFix = true,
     rivalsMode = true, rivalsTranslocFreq = 2048,
-    rivalsTranslocDist = 1e15, rivalsTranslocLayers = 20,
-    rivalsFakeVel = true, rivalsFakeVelMag = 1e15,
+    rivalsTranslocDist = 5, rivalsTranslocLayers = 20,
+    rivalsFakeVel = true, rivalsFakeVelMag = 100,
     rivalsSnapBack = true, rivalsNetworkOwner = true,
     translocNoClip = true, translocAntiFling = true,
     translocVelZero = true, translocMassless = true,
     translocPhaseThrough = true, translocIgnoreCollide = true,
     translocHipHeight = 0,
     translocBypassAnticheat = true, translocAntiKick = true,
-    translocFastTp = true, translocFastTpCount = 20, translocFastTpInterval = 0.001,
+    translocFastTp = false, translocFastTpCount = 20, translocFastTpInterval = 0.001,
     translocStickToTarget = true, translocStickOffset = 2,
     translocAutoAim = true, translocAimStrength = 1,
     translocAutoShoot = true, translocAutoShootRange = 1e15,
@@ -3337,7 +3337,7 @@ local TL = Tabs.Translocation:AddLeftGroupbox("Translocation")
 AddBindableToggle(TL, "TranslocToggle", "Enable Translocation", false, function(v) translocCFG.enabled = v; if v then startTransloc() else stopTransloc() end end)
 TL:AddDropdown("TranslocMode", { Text = "Offset Mode", Default = "Ahead", Values = {"Ahead","Behind","Perpendicular","Above","Below","AboveBelow","MirrorX","MirrorZ","Diagonal","ScreenEdge","Orbit","ZoneEscape"}, Callback = function(v) translocCFG.offsetMode = v end })
 TL:AddSlider("TranslocFreq", { Text = "Frequency (Hz)", Default = 512, Min = 1, Max = 10000, Rounding = 0, Callback = function(v) translocCFG.frequency = v end })
-TL:AddSlider("TranslocDist", { Text = "Offset Distance", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.offsetDist = v end })
+TL:AddSlider("TranslocDist", { Text = "Offset Distance", Default = 5, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.offsetDist = v end })
 TL:AddSlider("TranslocOffY", { Text = "Y Offset", Default = 0, Min = -1e15, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.offsetY = v end })
 TL:AddSlider("TranslocLayers", { Text = "Fake Layers", Default = 10, Min = 1, Max = 50, Rounding = 0, Callback = function(v) translocCFG.layers = v end })
 AddBindableToggle(TL, "TranslocRandFreq", "Random Frequency", false, function(v) translocCFG.randomFrequency = v end)
@@ -3352,8 +3352,8 @@ local TL2 = Tabs.Translocation:AddRightGroupbox("Helpful Options")
 AddBindableToggle(TL2, "TranslocFakeVel", "Fake Velocity", true, function(v) translocCFG.fakeVel = v end)
 AddBindableToggle(TL2, "TranslocSnapBack", "Snap Back", true, function(v) translocCFG.snapBack = v end)
 AddBindableToggle(TL2, "TranslocJitter", "Position Jitter", true, function(v) translocCFG.jitter = v end)
-TL2:AddSlider("TranslocVelMag", { Text = "Fake Vel Magnitude", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.fakeVelMag = v end })
-TL2:AddSlider("TranslocJitterAmp", { Text = "Jitter Amplitude", Default = 1e14, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.jitterAmp = v end })
+TL2:AddSlider("TranslocVelMag", { Text = "Fake Vel Magnitude", Default = 100, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.fakeVelMag = v end })
+TL2:AddSlider("TranslocJitterAmp", { Text = "Jitter Amplitude", Default = 50, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.jitterAmp = v end })
 AddBindableToggle(TL2, "TranslocSpinFake", "Spin Fake Position", false, function(v) translocCFG.spinFake = v end)
 TL2:AddSlider("TranslocSpinSpeed", { Text = "Spin Speed (deg/s)", Default = 720, Min = 10, Max = 3600, Rounding = 0, Callback = function(v) translocCFG.spinFakeSpeed = v end })
 AddBindableToggle(TL2, "TranslocMirrorX", "Mirror X", false, function(v) translocCFG.mirrorX = v end)
@@ -3390,12 +3390,12 @@ AddBindableToggle(TL2, "TranslocPhaseThrough", "Phase Through Walls", true, func
 AddBindableToggle(TL2, "TranslocIgnoreCollide", "Ignore Collisions", true, function(v) translocCFG.translocIgnoreCollide = v end)
 AddBindableToggle(TL2, "TranslocGhostMode", "Ghost Mode", false, function(v) translocCFG.translocGhostMode = v end)
 AddBindableToggle(TL2, "TranslocRivalsFakeVel", "Rivals Fake Vel", true, function(v) translocCFG.rivalsFakeVel = v end)
-TL2:AddSlider("TranslocRivalsFakeVelMag", { Text = "Rivals Fake Vel Mag", Default = 1e15, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.rivalsFakeVelMag = v end })
+TL2:AddSlider("TranslocRivalsFakeVelMag", { Text = "Rivals Fake Vel Mag", Default = 100, Min = 1, Max = 1e15, Rounding = 0, Callback = function(v) translocCFG.rivalsFakeVelMag = v end })
 AddBindableToggle(TL2, "TranslocRivalsSnapBack", "Rivals Snap Back", true, function(v) translocCFG.rivalsSnapBack = v end)
 AddBindableToggle(TL2, "TranslocRivalsNetOwner", "Rivals Net Owner", true, function(v) translocCFG.rivalsNetworkOwner = v end)
 AddBindableToggle(TL2, "TranslocBypassAnticheat", "Bypass Anticheat", true, function(v) translocCFG.translocBypassAnticheat = v end)
 AddBindableToggle(TL2, "TranslocAntiKick", "Anti Kick", true, function(v) translocCFG.translocAntiKick = v end)
-AddBindableToggle(TL2, "TranslocFastTp", "Fast TP", true, function(v) translocCFG.translocFastTp = v end)
+AddBindableToggle(TL2, "TranslocFastTp", "Fast TP", false, function(v) translocCFG.translocFastTp = v end)
 TL2:AddSlider("TranslocFastTpCount", { Text = "Fast TP Count", Default = 20, Min = 1, Max = 100, Rounding = 0, Callback = function(v) translocCFG.translocFastTpCount = v end })
 TL2:AddSlider("TranslocFastTpInterval", { Text = "Fast TP Interval (s)", Default = 0.001, Min = 0.001, Max = 0.1, Rounding = 3, Callback = function(v) translocCFG.translocFastTpInterval = v end })
 AddBindableToggle(TL2, "TranslocStickToTarget", "Stick to Target", true, function(v) translocCFG.translocStickToTarget = v end)
@@ -4499,6 +4499,13 @@ EspL1:AddToggle("EspMain", { Text = "Enable ESP", Default = false,
     Callback = function(v)
         _kSet({"Esp","Main","Enabled"}, v)
         _kSet({"Esp","Main","Keybind","Kind"}, "Always")
+        if v then
+            _kSet({"Esp","Enemy","Enabled"}, true)
+            _kSet({"Esp","Enemy","Keybind","Kind"}, "Always")
+            _kSet({"Esp","Enemy","Name","Enabled"}, true)
+            _kSet({"Esp","Enemy","Box","Enabled"}, true)
+            _kSet({"Esp","Enemy","HealthBar","Enabled"}, true)
+        end
     end })
 EspL1:AddDropdown("EspBoxFit", { Text = "Box Fit", Values = {"Static","Dynamic"}, Default = 1,
     Callback = function(v) _kSet({"Esp","Main","Mode"}, v) end })
@@ -4534,6 +4541,11 @@ EspL2:AddToggle("EspEnemy", { Text = "Enable Enemy ESP", Default = false,
     Callback = function(v)
         _kSet({"Esp","Enemy","Enabled"}, v)
         _kSet({"Esp","Enemy","Keybind","Kind"}, "Always")
+        if v then
+            _kSet({"Esp","Enemy","Name","Enabled"}, true)
+            _kSet({"Esp","Enemy","Box","Enabled"}, true)
+            _kSet({"Esp","Enemy","HealthBar","Enabled"}, true)
+        end
     end })
 EspL2:AddToggle("EspEnemyName", { Text = "Name", Default = true,
     Callback = function(v) _kSet({"Esp","Enemy","Name","Enabled"}, v) end })
@@ -4616,6 +4628,11 @@ EspR2:AddToggle("EspTeam", { Text = "Enable Team ESP", Default = false,
     Callback = function(v)
         _kSet({"Esp","Team","Enabled"}, v)
         _kSet({"Esp","Team","Keybind","Kind"}, "Always")
+        if v then
+            _kSet({"Esp","Team","Name","Enabled"}, true)
+            _kSet({"Esp","Team","Box","Enabled"}, true)
+            _kSet({"Esp","Team","HealthBar","Enabled"}, true)
+        end
     end })
 EspR2:AddToggle("EspTeamName", { Text = "Team Name", Default = true,
     Callback = function(v) _kSet({"Esp","Team","Name","Enabled"}, v) end })
