@@ -4319,9 +4319,9 @@ HvHR2:AddSlider("RbShootFrames", {
 })
 HvHR2:AddDropdown("RbEvasion", {
     Text = "Evasion Mode",
-    Values = {"Random", "ProjectileBreaker", "Translocate"},
+    Values = {"Off", "Random", "ProjectileBreaker", "Translocate"},
     Default = 1,
-    Tooltip = "How the Ragebot evades incoming projectiles.",
+    Tooltip = "How the Ragebot evades incoming projectiles. Off disables teleporting.",
     Callback = function(v) _kSet({"Ragebot","Evasion","Mode"}, v) end
 })
 HvHR2:AddDropdown("RbOnEmpty", {
