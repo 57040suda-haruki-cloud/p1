@@ -61,7 +61,6 @@ waitForLoadingScreen()
 -- Clear stale getgenv state so Ragebot does not auto-enable on re-run
 getgenv()._UNC_Ragebot  = nil
 getgenv()._UNC_Fighters = nil
-getgenv()._UNC_RbAbove  = 5   -- studs above enemy head when ragebot attacks
 
 do
     local function safeNewcclosure(fn)
@@ -4347,15 +4346,6 @@ HvHR2:AddSlider("RbTranslocateOffset", {
     Default = -5,
     Min = -50, Max = 50, Rounding = 0,
     Callback = function(v) _kSet({"Ragebot","Evasion","Translocate","Offset"}, v) end
-})
-HvHR2:AddDivider()
-HvHR2:AddLabel("── Attack Position ──")
-HvHR2:AddSlider("RbAboveHeight", {
-    Text = "Above Height",
-    Default = 5,
-    Min = 0, Max = 12, Rounding = 1,
-    Tooltip = "How many studs above the enemy head to teleport when attacking (0-12; higher = safer but may miss).",
-    Callback = function(v) getgenv()._UNC_RbAbove = v end
 })
 
 -- ── TRIGGERBOT ────────────────────────────────────────────────
@@ -67554,8 +67544,7 @@ index2.Plan = function(arg, arg2, arg3, arg4, arg5, arg6)
 local hitboxHead = arg3.AliveState.HitboxHead
 local flag19 = v117(arg3.FighterState) ~= "Below"
 local ragebot = v115.Data.Ragebot
-local _rbAboveY = getgenv()._UNC_RbAbove or 25
-local v119 = Vector3.new(0, _rbAboveY, 0)
+local v119 = flag19 and vector or vector2
 local v120 = arg._partGlue:Acquire(arg5, hitboxHead)
 local n
 
@@ -67675,8 +67664,7 @@ local aliveState = arg3.AliveState
 local hitboxHead = aliveState.HitboxHead
 local flag19 = v117(arg3.FighterState) ~= "Below"
 local ragebot = v115.Data.Ragebot
-local _rbAboveY = getgenv()._UNC_RbAbove or 25
-local v119 = Vector3.new(0, _rbAboveY, 0)
+local v119 = flag19 and vector or vector2
 local v120 = arg._partGlue:Acquire(gluedOurPart, hitboxHead)
 arg._gluedOurPart = gluedOurPart
 local n
