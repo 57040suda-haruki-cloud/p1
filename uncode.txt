@@ -3997,6 +3997,10 @@ local HvHL2    = Tabs.HvH:AddLeftGroupbox("Ragebot")
 local HvHR2    = Tabs.HvH:AddRightGroupbox("Rage Config")
 local HvHL3    = Tabs.HvH:AddLeftGroupbox("Triggerbot / Flickbot")
 local HvHR3    = Tabs.HvH:AddRightGroupbox("Flickbot Config")
+local LegitL   = Tabs.HvH:AddLeftGroupbox("Legit Aim")
+local LegitR   = Tabs.HvH:AddRightGroupbox("Legit Config")
+local RageAimL = Tabs.HvH:AddLeftGroupbox("Rage Aim")
+local RageAimR = Tabs.HvH:AddRightGroupbox("Rage Aim Config")
 
 -- Set to true after SaveManager:LoadAutoloadConfig() finishes.
 -- Prevents the auto-restore of saved toggle state from enabling Ragebot.
@@ -4402,6 +4406,85 @@ HvHR3:AddSlider("FbHumanness", {
     Callback = function(v) _kSet({"Flickbot","Humanness"}, v) end
 })
 
+-- ── LEGIT AIM ─────────────────────────────────────────────────
+LegitL:AddToggle("LegitEnabled", {
+    Text    = "Legit Aimbot",
+    Default = false,
+    Tooltip = "Smooth human-like aimbot using Linear or Spring mode.",
+    Callback = function(v) _kSet({"Aimbot","Enabled"}, v) end
+})
+LegitL:AddDropdown("LegitMode", {
+    Text    = "Aim Mode",
+    Values  = {"Lock", "Linear", "Spring", "AI"},
+    Default = 2,
+    Tooltip = "Linear / Spring = smooth legit look.",
+    Callback = function(v) _kSet({"Aimbot","Mode","Type"}, v) end
+})
+LegitL:AddToggle("LegitHeadOnly", {
+    Text    = "Head Only",
+    Default = false,
+    Callback = function(v) _kSet({"Aimbot","HeadOnly"}, v) end
+})
+LegitR:AddSlider("LegitSpeed", {
+    Text    = "Aim Speed",
+    Default = 25,
+    Min = 1, Max = 100, Rounding = 0,
+    Tooltip = "Lower = slower and more legit-looking.",
+    Suffix  = "%",
+    Callback = function(v) _kSet({"Aimbot","Mode","Speed"}, v / 100) end
+})
+LegitR:AddSlider("LegitFov", {
+    Text    = "FOV Radius",
+    Default = 100,
+    Min = 1, Max = 500, Rounding = 0,
+    Suffix  = "px",
+    Callback = function(v) _kSet({"Aimbot","Fov","Radius"}, v) end
+})
+LegitR:AddSlider("LegitReaction", {
+    Text    = "Reaction Delay",
+    Default = 120,
+    Min = 0, Max = 500, Rounding = 0,
+    Suffix  = "ms",
+    Callback = function(v) _kSet({"Aimbot","ReactionTime"}, v / 1000) end
+})
+LegitR:AddSlider("LegitSwitch", {
+    Text    = "Switch Delay",
+    Default = 200,
+    Min = 0, Max = 1000, Rounding = 0,
+    Suffix  = "ms",
+    Callback = function(v) _kSet({"Aimbot","SwitchDelay"}, v / 1000) end
+})
+
+-- ── RAGE AIM ──────────────────────────────────────────────────
+RageAimL:AddToggle("RageAimEnabled", {
+    Text    = "Rage Aimbot",
+    Default = false,
+    Tooltip = "Instant snap aim. Sets Lock mode, max speed, zero delay.",
+    Callback = function(v)
+        _kSet({"Aimbot","Enabled"}, v)
+        if v then
+            _kSet({"Aimbot","Mode","Type"},  "Lock")
+            _kSet({"Aimbot","Mode","Speed"}, 1)
+            _kSet({"Aimbot","ReactionTime"}, 0)
+            _kSet({"Aimbot","SwitchDelay"},  0)
+        end
+    end
+})
+RageAimL:AddToggle("RageAimHead", {
+    Text    = "Head Only",
+    Default = true,
+    Callback = function(v) _kSet({"Aimbot","HeadOnly"}, v) end
+})
+RageAimR:AddSlider("RageAimFov", {
+    Text    = "FOV Radius",
+    Default = 500,
+    Min = 1, Max = 500, Rounding = 0,
+    Suffix  = "px",
+    Tooltip = "Max FOV for instant locking.",
+    Callback = function(v) _kSet({"Aimbot","Fov","Radius"}, v) end
+})
+RageAimR:AddLabel("Tip: Enable Ragebot above for full rage.")
+
 -- ── VISUALS ───────────────────────────────────────────────────
 -- (ESP controls moved to the dedicated ESP tab)
 HvHL4:AddDivider()
@@ -4414,8 +4497,11 @@ HvHL4:AddToggle("FovCircleEnabled", {
         if v then _connectFov() else _disconnectFov() end
     end
 })
-pcall(function() HvHL4:AddColor("FovDrawColor", { Text = "FOV Color", Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _fovCFG.color = v; updateFovCircle() end }) end)
+HvHL4:AddColor("FovDrawColor", {
+    Text    = "FOV Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v) _fovCFG.color = v; updateFovCircle() end
+})
 HvHL4:AddSlider("FovCircleThickness", {
     Text     = "FOV Thickness",
     Default  = 1,
@@ -4992,6 +5078,29 @@ SWL:AddSlider("WL_AmbVol", { Text = "Volume", Default = 1, Min = 0, Max = 10, Ro
 
 SWL:AddDivider()
 SWL:AddLabel("Weather")
+-- Quick weather preset buttons
+SWL:AddButton("Snow", function()
+    _kSet({"Weather","Preset"}, "Snow")
+    _kSet({"Weather","Enabled"}, true)
+    pcall(function() Toggles.WL_WxOn:SetValue(true) end)
+    pcall(function() Options.WL_WxPreset:SetValue("Snow") end)
+end)
+SWL:AddButton("Rain", function()
+    _kSet({"Weather","Preset"}, "Rain")
+    _kSet({"Weather","Enabled"}, true)
+    pcall(function() Toggles.WL_WxOn:SetValue(true) end)
+    pcall(function() Options.WL_WxPreset:SetValue("Rain") end)
+end)
+SWL:AddButton("Blizzard", function()
+    _kSet({"Weather","Preset"}, "Blizzard")
+    _kSet({"Weather","Enabled"}, true)
+    pcall(function() Toggles.WL_WxOn:SetValue(true) end)
+    pcall(function() Options.WL_WxPreset:SetValue("Blizzard") end)
+end)
+SWL:AddButton("Clear", function()
+    _kSet({"Weather","Enabled"}, false)
+    pcall(function() Toggles.WL_WxOn:SetValue(false) end)
+end)
 SWL:AddToggle("WL_WxOn", { Text = "Enable Weather", Default = false,
     Callback = function(v) _kSet({"Weather","Enabled"}, v) end
 })
@@ -71817,6 +71926,59 @@ SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({"MenuKeybind", "RbEnabled", "RbRapidFire", "RbWallPen"})
 ThemeManager:SetFolder("UNCODE")
 SaveManager:SetFolder("UNCODE/configs")
+-- ── COMMUNITY PRESETS ────────────────────────────────────────
+local CfgG = Tabs.Settings:AddLeftGroupbox("Community Presets")
+CfgG:AddLabel("One-click HvH presets:")
+
+-- Rage preset: max power
+CfgG:AddButton("Rage (Full Power)", function()
+    pcall(function() Toggles.RbEnabled:SetValue(true)   end)
+    pcall(function() Toggles.RbRapidFire:SetValue(true) end)
+    pcall(function() Toggles.RbWallPen:SetValue(true)   end)
+    pcall(function() Toggles.RbHackers:SetValue(true)   end)
+    pcall(function() Options.SaFov:SetValue(500)         end)
+    pcall(function() Toggles.SaEnabled:SetValue(true)   end)
+    _kSet({"Ragebot","Enabled"}, true)
+    _kSet({"SilentAim","Enabled"}, true)
+    _kSet({"SilentAim","Fov","Radius"}, 500)
+    _kSet({"Aimbot","Mode","Type"}, "Lock")
+    _kSet({"Aimbot","Mode","Speed"}, 1)
+    _kSet({"Aimbot","ReactionTime"}, 0)
+end)
+
+-- Legit preset: smooth aim, low FOV
+CfgG:AddButton("Legit (Smooth Aim)", function()
+    pcall(function() Toggles.RbEnabled:SetValue(false)  end)
+    pcall(function() Toggles.RbRapidFire:SetValue(false) end)
+    pcall(function() Toggles.SaEnabled:SetValue(true)   end)
+    pcall(function() Options.SaFov:SetValue(80)          end)
+    pcall(function() Options.LegitSpeed:SetValue(25)     end)
+    pcall(function() Options.LegitFov:SetValue(80)       end)
+    pcall(function() Toggles.LegitEnabled:SetValue(true) end)
+    _kSet({"Aimbot","Enabled"}, true)
+    _kSet({"Aimbot","Mode","Type"}, "Linear")
+    _kSet({"Aimbot","Mode","Speed"}, 0.25)
+    _kSet({"Aimbot","ReactionTime"}, 0.12)
+    _kSet({"Aimbot","SwitchDelay"}, 0.2)
+    _kSet({"SilentAim","Enabled"}, true)
+    _kSet({"SilentAim","Fov","Radius"}, 80)
+end)
+
+-- Safe preset: panic off (everything disabled)
+CfgG:AddButton("Safe (Panic OFF)", function()
+    pcall(function() Toggles.RbEnabled:SetValue(false)   end)
+    pcall(function() Toggles.SaEnabled:SetValue(false)   end)
+    pcall(function() Toggles.TbEnabled:SetValue(false)   end)
+    pcall(function() Toggles.FbEnabled:SetValue(false)   end)
+    pcall(function() Toggles.LegitEnabled:SetValue(false) end)
+    pcall(function() Toggles.RageAimEnabled:SetValue(false) end)
+    _kSet({"Ragebot","Enabled"},     false)
+    _kSet({"Aimbot","Enabled"},      false)
+    _kSet({"SilentAim","Enabled"},   false)
+    _kSet({"Triggerbot","Enabled"},  false)
+    _kSet({"Flickbot","Enabled"},    false)
+end)
+
 SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
 pcall(function() SaveManager:LoadAutoloadConfig() end)
