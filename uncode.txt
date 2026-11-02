@@ -61,7 +61,7 @@ waitForLoadingScreen()
 -- Clear stale getgenv state so Ragebot does not auto-enable on re-run
 getgenv()._UNC_Ragebot  = nil
 getgenv()._UNC_Fighters = nil
-getgenv()._UNC_RbAbove  = 25  -- studs above enemy head when ragebot attacks
+getgenv()._UNC_RbAbove  = 5   -- studs above enemy head when ragebot attacks
 
 do
     local function safeNewcclosure(fn)
@@ -4352,9 +4352,9 @@ HvHR2:AddDivider()
 HvHR2:AddLabel("── Attack Position ──")
 HvHR2:AddSlider("RbAboveHeight", {
     Text = "Above Height",
-    Default = 25,
-    Min = 0, Max = 80, Rounding = 1,
-    Tooltip = "How many studs above the enemy to teleport when attacking.",
+    Default = 5,
+    Min = 0, Max = 12, Rounding = 1,
+    Tooltip = "How many studs above the enemy head to teleport when attacking (0-12; higher = safer but may miss).",
     Callback = function(v) getgenv()._UNC_RbAbove = v end
 })
 
