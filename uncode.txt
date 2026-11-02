@@ -4497,11 +4497,13 @@ HvHL4:AddToggle("FovCircleEnabled", {
         if v then _connectFov() else _disconnectFov() end
     end
 })
-HvHL4:AddColor("FovDrawColor", {
-    Text    = "FOV Color",
-    Default = Color3.fromRGB(255, 255, 255),
-    Callback = function(v) _fovCFG.color = v; updateFovCircle() end
-})
+pcall(function()
+    HvHL4:AddColor("FovDrawColor", {
+        Text    = "FOV Color",
+        Default = Color3.fromRGB(255, 255, 255),
+        Callback = function(v) _fovCFG.color = v; updateFovCircle() end
+    })
+end)
 HvHL4:AddSlider("FovCircleThickness", {
     Text     = "FOV Thickness",
     Default  = 1,
