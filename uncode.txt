@@ -4259,7 +4259,7 @@ HvHL2:AddToggle("RbRapidFire", {
 })
 HvHL2:AddToggle("RbWallPen", {
     Text = "Wall Penetration",
-    Default = false,
+    Default = true,
     Tooltip = "Target enemies through walls by disabling the line-of-sight requirement on Silent Aim and Aimbot.",
     Callback = function(v)
         -- Disable/restore the Visible LOS condition for Silent Aim and Aimbot.
@@ -4276,7 +4276,7 @@ HvHL2:AddToggle("RbWallPen", {
 })
 HvHL2:AddToggle("RbHackers", {
     Text = "Prioritize Hackers",
-    Default = false,
+    Default = true,
     Tooltip = "Target players using cheats first.",
     Callback = function(v) _kSet({"Ragebot","PrioritizeHackers"}, v) end
 })
@@ -4304,7 +4304,7 @@ HvHL2:AddToggle("RbMelee", {
 -- ── RAGEBOT CONFIG (right side) ───────────────────────────────
 HvHR2:AddSlider("RbStability", {
     Text = "Stability",
-    Default = 15,
+    Default = 0,
     Min = 0, Max = 100, Rounding = 0,
     Suffix = "%",
     Tooltip = "How stable the Ragebot's shots are (0=instant, 100=very stable).",
@@ -4312,9 +4312,9 @@ HvHR2:AddSlider("RbStability", {
 })
 HvHR2:AddSlider("RbShootFrames", {
     Text = "Shoot Frames",
-    Default = 1,
-    Min = 1, Max = 10, Rounding = 0,
-    Tooltip = "Frames to hold fire for each shot.",
+    Default = 0,
+    Min = 0, Max = 10, Rounding = 0,
+    Tooltip = "Frames to hold fire for each shot (0=fire every eligible frame).",
     Callback = function(v) _kSet({"Ragebot","ShootFrames"}, v) end
 })
 HvHR2:AddDropdown("RbEvasion", {
