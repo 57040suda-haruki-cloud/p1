@@ -4606,6 +4606,8 @@ EspL1:AddDropdown("EspBoxFit", { Text = "Box Fit", Values = {"Static","Dynamic"}
 -- Text / font settings
 EspR1:AddToggle("EspDisplayName", { Text = "Use Display Names", Default = false,
     Callback = function(v) _kSet({"Esp","Settings","UseDisplayName"}, v) end })
+EspR1:AddDropdown("EspFont", { Text = "Font", Values = {"GothamBold","Gotham","SourceSans","RobotoMono","Inconsolata","Arcade","Highway","SciFi"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Settings","Font"}, v) end })
 EspR1:AddSlider("EspFontSize", { Text = "Font Size", Default = 13, Min = 8, Max = 32, Rounding = 0,
     Callback = function(v) _kSet({"Esp","Settings","FontSize"}, v) end })
 EspR1:AddDropdown("EspTextCase", { Text = "Text Case", Values = {"Standard","UPPERCASE","lowercase"}, Default = 1,
@@ -4614,6 +4616,8 @@ EspR1:AddDropdown("EspTextSurround", { Text = "Text Surround", Values = {"None",
     Callback = function(v) _kSet({"Esp","Settings","TextSurround"}, v) end })
 EspR1:AddDivider()
 EspR1:AddLabel("── Flags ──")
+EspR1:AddDropdown("EspFlagFont", { Text = "Flag Font", Values = {"GothamBold","Gotham","SourceSans","RobotoMono","Inconsolata","Arcade","Highway","SciFi"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Settings","FlagFont"}, v) end })
 EspR1:AddSlider("EspFlagFontSize", { Text = "Flag Font Size", Default = 10, Min = 6, Max = 24, Rounding = 0,
     Callback = function(v) _kSet({"Esp","Settings","FlagFontSize"}, v) end })
 EspR1:AddDropdown("EspFlagCase", { Text = "Flag Text Case", Values = {"Standard","UPPERCASE","lowercase"}, Default = 1,
@@ -4628,7 +4632,7 @@ EspR1:AddSlider("EspDistScaleRef", { Text = "Reference Distance", Default = 50, 
 
 -- Enemy ESP
 local EspL2 = Tabs.ESP:AddLeftGroupbox("Enemy ESP")
-local EspR2 = Tabs.ESP:AddRightGroupbox("Enemy Chams & More")
+local EspR2 = Tabs.ESP:AddRightGroupbox("Enemy Detail")
 
 EspL2:AddToggle("EspEnemy", { Text = "Enable Enemy ESP", Default = false,
     Callback = function(v)
@@ -4644,6 +4648,8 @@ EspL2:AddToggle("EspEnemyName", { Text = "Name", Default = true,
     Callback = function(v) _kSet({"Esp","Enemy","Name","Enabled"}, v) end })
 pcall(function() EspL2:AddColor("EspEnemyNameColor", { Text = "Name Color", Default = Color3.fromRGB(255,255,255),
     Callback = function(v) _kSet({"Esp","Enemy","Name","Color"}, v) end }) end)
+EspL2:AddSlider("EspEnemyNameTrans", { Text = "Name Transparency", Default = 0, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","Name","Transparency"}, v) end })
 EspL2:AddToggle("EspEnemyBox", { Text = "Box", Default = true,
     Callback = function(v) _kSet({"Esp","Enemy","Box","Enabled"}, v) end })
 EspL2:AddDropdown("EspEnemyBoxStyle", { Text = "Box Style", Values = {"Full","Corner"}, Default = 1,
@@ -4652,33 +4658,72 @@ pcall(function() EspL2:AddColor("EspEnemyBoxColor", { Text = "Box Color", Defaul
     Callback = function(v) _kSet({"Esp","Enemy","Box","Color"}, v) end }) end)
 EspL2:AddToggle("EspEnemyFilledBox", { Text = "Filled Box", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","FilledBox","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyFilledBoxColor", { Text = "Filled Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","FilledBox","Color"}, v) end }) end)
+EspL2:AddSlider("EspEnemyFilledTrans", { Text = "Filled Transparency", Default = 0.5, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","FilledBox","Transparency"}, v) end })
 EspL2:AddToggle("EspEnemyHealth", { Text = "Health Bar", Default = true,
     Callback = function(v) _kSet({"Esp","Enemy","HealthBar","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyHealthColor", { Text = "Health Color", Default = Color3.fromRGB(100,255,100),
+    Callback = function(v) _kSet({"Esp","Enemy","HealthBar","Color"}, v) end }) end)
 EspL2:AddDropdown("EspEnemyHealthMode", { Text = "Health Color Mode", Values = {"Solid","Gradient","Reactive"}, Default = 1,
     Callback = function(v) _kSet({"Esp","Enemy","HealthBar","ColorMode"}, v) end })
 EspL2:AddToggle("EspEnemyHealthNum", { Text = "Health Number", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","HealthNumber","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyHealthNumColor", { Text = "Health# Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","HealthNumber","Color"}, v) end }) end)
 EspL2:AddToggle("EspEnemyWeapon", { Text = "Held Weapon", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","HeldWeapon","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyWeaponColor", { Text = "Weapon Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","HeldWeapon","Color"}, v) end }) end)
+EspL2:AddSlider("EspEnemyWeaponTrans", { Text = "Weapon Transparency", Default = 0, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","HeldWeapon","Transparency"}, v) end })
 EspL2:AddToggle("EspEnemyAmmo", { Text = "Ammo Bar", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","AmmoBar","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyAmmoColor", { Text = "Ammo Color", Default = Color3.fromRGB(255,200,100),
+    Callback = function(v) _kSet({"Esp","Enemy","AmmoBar","Color"}, v) end }) end)
+EspL2:AddDropdown("EspEnemyAmmoMode", { Text = "Ammo Color Mode", Values = {"Solid","Gradient","Reactive"}, Default = 1,
+    Callback = function(v) _kSet({"Esp","Enemy","AmmoBar","ColorMode"}, v) end })
 EspL2:AddToggle("EspEnemyDist", { Text = "Distance", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Distance","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyDistColor", { Text = "Distance Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","Distance","Color"}, v) end }) end)
 EspL2:AddToggle("EspEnemyRank", { Text = "Rank", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Rank","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyRankColor", { Text = "Rank Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","Rank","Color"}, v) end }) end)
 EspL2:AddToggle("EspEnemyStreak", { Text = "Win Streak", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Winstreak","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyStreakColor", { Text = "Streak Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","Winstreak","Color"}, v) end }) end)
 EspL2:AddToggle("EspEnemyDeflect", { Text = "Deflecting", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Deflecting","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyDeflectColor", { Text = "Deflect Color", Default = Color3.fromRGB(255,200,255),
+    Callback = function(v) _kSet({"Esp","Enemy","Deflecting","Color"}, v) end }) end)
+EspL2:AddSlider("EspEnemyDeflectTrans", { Text = "Deflect Transparency", Default = 0, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","Deflecting","Transparency"}, v) end })
 
--- Enemy Skeleton & Tracer
+-- Enemy Skeleton
 EspL2:AddDivider()
+EspL2:AddLabel("── Skeleton ──")
 EspL2:AddToggle("EspEnemySkel", { Text = "Skeleton", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemySkelColor", { Text = "Skeleton Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Color"}, v) end }) end)
+EspL2:AddSlider("EspEnemySkelTrans", { Text = "Skeleton Transparency", Default = 0, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Transparency"}, v) end })
 EspL2:AddSlider("EspEnemySkelThick", { Text = "Skeleton Thickness", Default = 1, Min = 1, Max = 6, Rounding = 0,
     Callback = function(v) _kSet({"Esp","Enemy","Skeleton","Thickness"}, v) end })
+
+-- Enemy Tracer
+EspL2:AddDivider()
+EspL2:AddLabel("── Tracer ──")
 EspL2:AddToggle("EspEnemyTracer", { Text = "Tracer", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Tracer","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyTracerColor", { Text = "Tracer Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Color"}, v) end }) end)
+EspL2:AddSlider("EspEnemyTracerTrans", { Text = "Tracer Transparency", Default = 0, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","Transparency"}, v) end })
 EspL2:AddDropdown("EspEnemyTracerFrom", { Text = "Tracer From", Values = {"Bottom","Center","Top","Mouse"}, Default = 1,
     Callback = function(v) _kSet({"Esp","Enemy","Tracer","Origin"}, v) end })
 EspL2:AddDropdown("EspEnemyTracerTo", { Text = "Tracer To", Values = {"Feet","Head"}, Default = 1,
@@ -4687,17 +4732,32 @@ EspL2:AddSlider("EspEnemyTracerThick", { Text = "Tracer Thickness", Default = 1,
     Callback = function(v) _kSet({"Esp","Enemy","Tracer","Thickness"}, v) end })
 EspL2:AddToggle("EspEnemyTracerOutline", { Text = "Tracer Outline", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Tracer","Outline"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyTracerOutlineColor", { Text = "Outline Color", Default = Color3.fromRGB(0,0,0),
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","OutlineColor"}, v) end }) end)
+EspL2:AddSlider("EspEnemyTracerOutlineTrans", { Text = "Outline Transparency", Default = 0, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","OutlineTransparency"}, v) end })
+EspL2:AddSlider("EspEnemyTracerOutlineThick", { Text = "Outline Thickness", Default = 1, Min = 1, Max = 4, Rounding = 0,
+    Callback = function(v) _kSet({"Esp","Enemy","Tracer","OutlineThickness"}, v) end })
 
 -- Enemy Head Marker
 EspL2:AddDivider()
+EspL2:AddLabel("── Head Marker ──")
 EspL2:AddToggle("EspEnemyHM", { Text = "Head Marker", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","Enabled"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyHMColor", { Text = "Marker Color", Default = Color3.fromRGB(255,255,255),
+    Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","Color"}, v) end }) end)
+EspL2:AddSlider("EspEnemyHMTrans", { Text = "Marker Transparency", Default = 0, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","Transparency"}, v) end })
 EspL2:AddDropdown("EspEnemyHMShape", { Text = "Marker Shape", Values = {"Cross","Circle","Diamond"}, Default = 2,
     Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","Shape"}, v) end })
 EspL2:AddToggle("EspEnemyHMFilled", { Text = "Marker Filled", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","Filled"}, v) end })
 EspL2:AddToggle("EspEnemyHMOutline", { Text = "Marker Outline", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","Outline"}, v) end })
+pcall(function() EspL2:AddColor("EspEnemyHMOutlineColor", { Text = "Outline Color", Default = Color3.fromRGB(0,0,0),
+    Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","OutlineColor"}, v) end }) end)
+EspL2:AddSlider("EspEnemyHMOutlineTrans", { Text = "Outline Transparency", Default = 0, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","HeadMarker","OutlineTransparency"}, v) end })
 
 -- Enemy Chams (right side)
 EspR2:AddLabel("── Enemy Chams ──")
@@ -4707,8 +4767,12 @@ EspR2:AddDropdown("EspEnemyChamsKind", { Text = "Chams Kind", Values = {"Legacy"
     Callback = function(v) _kSet({"Esp","Enemy","Chams","Kind"}, v) end })
 pcall(function() EspR2:AddColor("EspEnemyChamsFill", { Text = "Fill Color", Default = Color3.fromRGB(255,255,255),
     Callback = function(v) _kSet({"Esp","Enemy","Chams","InnerColor"}, v) end }) end)
+EspR2:AddSlider("EspEnemyChamsFillTrans", { Text = "Fill Transparency", Default = 0.5, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","Chams","InnerTransparency"}, v) end })
 pcall(function() EspR2:AddColor("EspEnemyChamsOutline", { Text = "Outline Color", Default = Color3.fromRGB(255,255,255),
     Callback = function(v) _kSet({"Esp","Enemy","Chams","OutlineColor"}, v) end }) end)
+EspR2:AddSlider("EspEnemyChamsOutlineTrans", { Text = "Outline Transparency", Default = 0, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v) _kSet({"Esp","Enemy","Chams","OutlineTransparency"}, v) end })
 EspR2:AddToggle("EspEnemyChamsGlow", { Text = "Glow", Default = false,
     Callback = function(v) _kSet({"Esp","Enemy","Chams","Glow"}, v) end })
 pcall(function() EspR2:AddColor("EspEnemyChamsGlowColor", { Text = "Glow Color", Default = Color3.fromRGB(255,200,200),
@@ -4735,20 +4799,40 @@ EspR2:AddToggle("EspTeamBox", { Text = "Team Box", Default = true,
     Callback = function(v) _kSet({"Esp","Team","Box","Enabled"}, v) end })
 EspR2:AddDropdown("EspTeamBoxStyle", { Text = "Team Box Style", Values = {"Full","Corner"}, Default = 1,
     Callback = function(v) _kSet({"Esp","Team","Box","Style"}, v) end })
+pcall(function() EspR2:AddColor("EspTeamBoxColor", { Text = "Team Box Color", Default = Color3.fromRGB(100,255,100),
+    Callback = function(v) _kSet({"Esp","Team","Box","Color"}, v) end }) end)
+EspR2:AddToggle("EspTeamFilledBox", { Text = "Team Filled Box", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","FilledBox","Enabled"}, v) end })
 EspR2:AddToggle("EspTeamHealth", { Text = "Team Health Bar", Default = true,
     Callback = function(v) _kSet({"Esp","Team","HealthBar","Enabled"}, v) end })
 EspR2:AddDropdown("EspTeamHealthMode", { Text = "Team Health Mode", Values = {"Solid","Gradient","Reactive"}, Default = 1,
     Callback = function(v) _kSet({"Esp","Team","HealthBar","ColorMode"}, v) end })
-EspR2:AddToggle("EspTeamTracer", { Text = "Team Tracer", Default = false,
-    Callback = function(v) _kSet({"Esp","Team","Tracer","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamHealthNum", { Text = "Team Health Number", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","HealthNumber","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamWeapon", { Text = "Team Held Weapon", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","HeldWeapon","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamAmmo", { Text = "Team Ammo Bar", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","AmmoBar","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamDist", { Text = "Team Distance", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","Distance","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamRank", { Text = "Team Rank", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","Rank","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamStreak", { Text = "Team Win Streak", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","Winstreak","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamDeflect", { Text = "Team Deflecting", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","Deflecting","Enabled"}, v) end })
 EspR2:AddToggle("EspTeamSkel", { Text = "Team Skeleton", Default = false,
     Callback = function(v) _kSet({"Esp","Team","Skeleton","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamTracer", { Text = "Team Tracer", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","Tracer","Enabled"}, v) end })
+EspR2:AddToggle("EspTeamHeadMarker", { Text = "Team Head Marker", Default = false,
+    Callback = function(v) _kSet({"Esp","Team","HeadMarker","Enabled"}, v) end })
 EspR2:AddToggle("EspTeamChams", { Text = "Team Chams", Default = false,
     Callback = function(v) _kSet({"Esp","Team","Chams","Enabled"}, v) end })
 pcall(function() EspR2:AddColor("EspTeamChamsFill", { Text = "Team Chams Fill", Default = Color3.fromRGB(100,255,100),
     Callback = function(v) _kSet({"Esp","Team","Chams","InnerColor"}, v) end }) end)
 
--- Sound ESP
+-- Sound ESP & Crosshair
 local EspL3 = Tabs.ESP:AddLeftGroupbox("Sound & Crosshair")
 EspL3:AddToggle("SoundEspTab", { Text = "Sound ESP", Default = false,
     Callback = function(v) _kSet({"SoundEsp","Enabled"}, v) end })
@@ -5111,9 +5195,9 @@ end)
 SWL:AddToggle("WL_WxOn", { Text = "Enable Weather", Default = false,
     Callback = function(v) _kSet({"Weather","Enabled"}, v) end
 })
-SWL:AddColor("WL_WeatherColor", { Text = "Weather Color", Default = Color3.fromRGB(255,255,255),
+pcall(function() SWL:AddColor("WL_WeatherColor", { Text = "Weather Color", Default = Color3.fromRGB(255,255,255),
     Callback = function(v) _kSet({"Weather","Color"}, v) end
-})
+}) end)
 SWL:AddDropdown("WL_WxPreset", { Text = "Preset", Values = {"Snow","Rain","Blizzard"}, Default = 1,
     Callback = function(v) _kSet({"Weather","Preset"}, v) end
 })
@@ -5152,9 +5236,9 @@ SWR:AddLabel("Lightning")
 SWR:AddToggle("WL_LtOn", { Text = "Enable Lightning", Default = false,
     Callback = function(v) _kSet({"Weather","Lightning","Enabled"}, v) end
 })
-SWR:AddColor("WL_LightningColor", { Text = "Lightning Color", Default = Color3.fromRGB(180,220,255),
+pcall(function() SWR:AddColor("WL_LightningColor", { Text = "Lightning Color", Default = Color3.fromRGB(180,220,255),
     Callback = function(v) _kSet({"Weather","Lightning","Color"}, v) end
-})
+}) end)
 SWR:AddSlider("WL_LtInterval",  { Text = "Interval (s)",  Default = 2,   Min = 0.5, Max = 20,  Rounding = 1,
     Callback = function(v) _kSet({"Weather","Lightning","Interval"}, v) end
 })
@@ -5182,9 +5266,9 @@ SWR:AddLabel("Sparks")
 SWR:AddToggle("WL_SpkOn", { Text = "Enable Sparks", Default = true,
     Callback = function(v) _kSet({"Weather","Lightning","Sparks","Enabled"}, v) end
 })
-SWR:AddColor("WL_SparkColor", { Text = "Spark Color", Default = Color3.fromRGB(180,220,255),
+pcall(function() SWR:AddColor("WL_SparkColor", { Text = "Spark Color", Default = Color3.fromRGB(180,220,255),
     Callback = function(v) _kSet({"Weather","Lightning","Sparks","Color"}, v) end
-})
+}) end)
 SWR:AddSlider("WL_SpkCount",  { Text = "Count",      Default = 18,  Min = 1,   Max = 50,  Rounding = 0,
     Callback = function(v) _kSet({"Weather","Lightning","Sparks","Count"}, v) end
 })
@@ -5206,9 +5290,9 @@ SWR:AddLabel("Explosion")
 SWR:AddToggle("WL_ExpOn", { Text = "Enable Explosion", Default = true,
     Callback = function(v) _kSet({"Weather","Lightning","Explosion","Enabled"}, v) end
 })
-SWR:AddColor("WL_ExplosionColor", { Text = "Explosion Color", Default = Color3.fromRGB(255,200,100),
+pcall(function() SWR:AddColor("WL_ExplosionColor", { Text = "Explosion Color", Default = Color3.fromRGB(255,200,100),
     Callback = function(v) _kSet({"Weather","Lightning","Explosion","Color"}, v) end
-})
+}) end)
 SWR:AddSlider("WL_ExpSize",  { Text = "Size",  Default = 0.45, Min = 0.1, Max = 2,  Rounding = 2,
     Callback = function(v) _kSet({"Weather","Lightning","Explosion","Size"}, v) end
 })
