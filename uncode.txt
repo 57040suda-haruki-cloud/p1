@@ -3999,8 +3999,9 @@ local HvHL3    = Tabs.HvH:AddLeftGroupbox("Triggerbot / Flickbot")
 local HvHR3    = Tabs.HvH:AddRightGroupbox("Flickbot Config")
 local LegitL   = Tabs.HvH:AddLeftGroupbox("Legit Aim")
 local LegitR   = Tabs.HvH:AddRightGroupbox("Legit Config")
-local RageAimL = Tabs.HvH:AddLeftGroupbox("Rage Aim")
-local RageAimR = Tabs.HvH:AddRightGroupbox("Rage Aim Config")
+-- Rage Aim reuses the existing Ragebot groups (no extra boxes needed)
+local RageAimL = HvHL2
+local RageAimR = HvHR2
 
 -- Set to true after SaveManager:LoadAutoloadConfig() finishes.
 -- Prevents the auto-restore of saved toggle state from enabling Ragebot.
@@ -4455,7 +4456,9 @@ LegitR:AddSlider("LegitSwitch", {
     Callback = function(v) _kSet({"Aimbot","SwitchDelay"}, v / 1000) end
 })
 
--- ── RAGE AIM ──────────────────────────────────────────────────
+-- ── RAGE AIM (appended to Ragebot group) ─────────────────────
+RageAimL:AddDivider()
+RageAimL:AddLabel("── Rage Aimbot ──")
 RageAimL:AddToggle("RageAimEnabled", {
     Text    = "Rage Aimbot",
     Default = false,
@@ -4483,7 +4486,9 @@ RageAimR:AddSlider("RageAimFov", {
     Tooltip = "Max FOV for instant locking.",
     Callback = function(v) _kSet({"Aimbot","Fov","Radius"}, v) end
 })
-RageAimR:AddLabel("Tip: Enable Ragebot above for full rage.")
+RageAimR:AddDivider()
+RageAimR:AddLabel("── Rage Aim Config ──")
+RageAimR:AddLabel("Tip: Pairs with Ragebot above.")
 
 -- ── VISUALS ───────────────────────────────────────────────────
 -- (ESP controls moved to the dedicated ESP tab)
