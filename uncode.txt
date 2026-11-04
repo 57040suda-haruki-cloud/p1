@@ -4,6 +4,7 @@
 -- ║  Additions: Harion startup hooks · Rivals SkinChanger                   ║
 -- ║  Executor: Delta (iOS, Lua 5.1)    Game: Roblox Rivals                  ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
+print("[UNCODE] Script started")
 local function waitForLoadingScreen()
 	local players = game:GetService("Players")
 	local coreGui = game:GetService("CoreGui")
@@ -56,7 +57,9 @@ local function waitForLoadingScreen()
 	until clearSince and os.clock() - clearSince >= 0.5
 end
 
+print("[UNCODE] Waiting for loading screen...")
 waitForLoadingScreen()
+print("[UNCODE] Loading screen done")
 
 -- Clear stale getgenv state so Ragebot does not auto-enable on re-run
 getgenv()._UNC_Ragebot  = nil
