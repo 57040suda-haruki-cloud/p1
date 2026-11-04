@@ -5,6 +5,38 @@
 -- ║  Executor: Delta (iOS, Lua 5.1)    Game: Roblox Rivals                  ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
 warn("[UNCODE] Starting...")
+
+-- On-screen status banner (shows even if executor console panel is wrong)
+local _statusLabel = nil
+pcall(function()
+    local plr = game:GetService("Players").LocalPlayer
+    if plr then
+        local pGui = plr:FindFirstChild("PlayerGui") or plr:WaitForChild("PlayerGui", 3)
+        if pGui then
+            local sg = Instance.new("ScreenGui")
+            sg.Name = "UNCODEStatus"
+            sg.ResetOnSpawn = false
+            sg.DisplayOrder = 999
+            local lbl = Instance.new("TextLabel", sg)
+            lbl.Size = UDim2.new(1, 0, 0, 36)
+            lbl.Position = UDim2.new(0, 0, 0, 0)
+            lbl.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            lbl.BackgroundTransparency = 0.3
+            lbl.TextColor3 = Color3.fromRGB(255, 220, 0)
+            lbl.Text = "UNCODE: Starting..."
+            lbl.TextScaled = true
+            lbl.Font = Enum.Font.GothamBold
+            sg.Parent = pGui
+            _statusLabel = lbl
+        end
+    end
+end)
+local function _status(msg)
+    warn("[UNCODE] " .. msg)
+    if _statusLabel then pcall(function() _statusLabel.Text = "UNCODE: " .. msg end) end
+end
+_status("Script started")
+
 local function waitForLoadingScreen()
 	local players = game:GetService("Players")
 	local coreGui = game:GetService("CoreGui")
@@ -60,6 +92,7 @@ local function waitForLoadingScreen()
 end
 
 waitForLoadingScreen()
+_status("Loading screen done")
 
 -- Clear stale getgenv state so Ragebot does not auto-enable on re-run
 getgenv()._UNC_Ragebot  = nil
@@ -522,7 +555,7 @@ end
 UNCODELoadingScreen()
 
 ;(function()
-warn("[UNCODE] UI library loading...")
+_status("Downloading UI library...")
 local Library, Notifications, Themes
 do
     local loadFinished = false
@@ -537,23 +570,24 @@ do
     local waitStart = os.clock()
     while not loadFinished do
         if os.clock() - waitStart > 20 then
-            warn("[UNCODE] Library load timeout (font download hung?)")
+            _status("ERROR: Library load timeout")
             return
         end
         task.wait(0.1)
     end
     if loadError then
-        warn("[UNCODE] Library load error: " .. tostring(loadError))
+        _status("ERROR: " .. tostring(loadError):sub(1, 60))
         return
     end
     if not Library then
-        warn("[UNCODE] Library is nil after load")
+        _status("ERROR: Library is nil")
         return
     end
 end
-warn("[UNCODE] UI library loaded OK")
+_status("Library OK - opening window...")
 
 local Window = Library:Window({Name = "UNCODE v1"})
+_status("UI ready!")
 
 -- Bbot compatibility shim: makes Bbot look like the old Obsidian API
 -- so all existing :AddToggle/:AddSlider/:AddDropdown/etc. calls work unchanged.
