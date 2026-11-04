@@ -42,7 +42,7 @@ local function waitForLoadingScreen()
 	local clearSince
 	local startTime = os.clock()
 	repeat
-		if os.clock() - startTime >= 15 then break end  -- 15s max timeout
+		if os.clock() - startTime >= 5 then break end  -- 5s max timeout
 		local loading = false
 		for _, root in ipairs({playerGui, coreGui}) do
 			for _, object in ipairs(root:GetDescendants()) do
@@ -525,11 +525,25 @@ UNCODELoadingScreen()
 warn("[UNCODE] UI library loading...")
 local Library, Notifications, Themes
 do
-    local ok, err = pcall(function()
-        Library, Notifications, Themes = loadstring(game:HttpGet("https://raw.githubusercontent.com/i77lhm/Libraries/refs/heads/main/Bbot/Library.lua"))()
+    local loadFinished = false
+    local loadError = nil
+    task.spawn(function()
+        local ok, err = pcall(function()
+            Library, Notifications, Themes = loadstring(game:HttpGet("https://raw.githubusercontent.com/i77lhm/Libraries/refs/heads/main/Bbot/Library.lua"))()
+        end)
+        if not ok then loadError = err end
+        loadFinished = true
     end)
-    if not ok then
-        warn("[UNCODE] Library load error: " .. tostring(err))
+    local waitStart = os.clock()
+    while not loadFinished do
+        if os.clock() - waitStart > 20 then
+            warn("[UNCODE] Library load timeout (font download hung?)")
+            return
+        end
+        task.wait(0.1)
+    end
+    if loadError then
+        warn("[UNCODE] Library load error: " .. tostring(loadError))
         return
     end
     if not Library then
