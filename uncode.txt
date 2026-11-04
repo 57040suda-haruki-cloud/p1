@@ -6,30 +6,43 @@
 -- ╚══════════════════════════════════════════════════════════════════════════╝
 warn("[UNCODE] Starting...")
 
--- On-screen status banner (shows even if executor console panel is wrong)
+-- Diagnostic: Roblox system notification (appears top-right, no console needed)
+local function _notify(title, text)
+    warn("[UNCODE] " .. title .. ": " .. text)
+    task.spawn(function()
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = title,
+                Text = text,
+                Duration = 8,
+            })
+        end)
+    end)
+end
+_notify("UNCODE", "Script started v1")
+
+-- On-screen status banner
 local _statusLabel = nil
 pcall(function()
     local plr = game:GetService("Players").LocalPlayer
-    if plr then
-        local pGui = plr:FindFirstChild("PlayerGui") or plr:WaitForChild("PlayerGui", 3)
-        if pGui then
-            local sg = Instance.new("ScreenGui")
-            sg.Name = "UNCODEStatus"
-            sg.ResetOnSpawn = false
-            sg.DisplayOrder = 999
-            local lbl = Instance.new("TextLabel", sg)
-            lbl.Size = UDim2.new(1, 0, 0, 36)
-            lbl.Position = UDim2.new(0, 0, 0, 0)
-            lbl.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            lbl.BackgroundTransparency = 0.3
-            lbl.TextColor3 = Color3.fromRGB(255, 220, 0)
-            lbl.Text = "UNCODE: Starting..."
-            lbl.TextScaled = true
-            lbl.Font = Enum.Font.GothamBold
-            sg.Parent = pGui
-            _statusLabel = lbl
-        end
-    end
+    if not plr then return end
+    local pGui = plr:FindFirstChild("PlayerGui")
+    if not pGui then return end
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "UNCODEStatus"
+    sg.ResetOnSpawn = false
+    sg.DisplayOrder = 999
+    local lbl = Instance.new("TextLabel", sg)
+    lbl.Size = UDim2.new(1, 0, 0, 36)
+    lbl.Position = UDim2.new(0, 0, 0, 0)
+    lbl.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    lbl.BackgroundTransparency = 0.3
+    lbl.TextColor3 = Color3.fromRGB(255, 220, 0)
+    lbl.Text = "UNCODE: Starting..."
+    lbl.TextScaled = true
+    lbl.Font = Enum.Font.GothamBold
+    sg.Parent = pGui
+    _statusLabel = lbl
 end)
 local function _status(msg)
     warn("[UNCODE] " .. msg)
@@ -556,6 +569,7 @@ UNCODELoadingScreen()
 
 ;(function()
 _status("Downloading UI library...")
+_notify("UNCODE", "Downloading UI...")
 local Library, Notifications, Themes
 do
     local loadFinished = false
@@ -571,23 +585,29 @@ do
     while not loadFinished do
         if os.clock() - waitStart > 20 then
             _status("ERROR: Library load timeout")
+        _notify("UNCODE ERR", "Library timeout")
             return
         end
         task.wait(0.1)
     end
     if loadError then
-        _status("ERROR: " .. tostring(loadError):sub(1, 60))
+        local emsg = tostring(loadError):sub(1, 40)
+        _status("ERROR: " .. emsg)
+        _notify("UNCODE ERR", emsg)
         return
     end
     if not Library then
         _status("ERROR: Library is nil")
+        _notify("UNCODE ERR", "Library nil")
         return
     end
 end
 _status("Library OK - opening window...")
+_notify("UNCODE", "UI loading...")
 
 local Window = Library:Window({Name = "UNCODE v1"})
 _status("UI ready!")
+_notify("UNCODE", "UI ready!")
 
 -- Bbot compatibility shim: makes Bbot look like the old Obsidian API
 -- so all existing :AddToggle/:AddSlider/:AddDropdown/etc. calls work unchanged.
