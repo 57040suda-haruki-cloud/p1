@@ -519,31 +519,162 @@ end
 UNCODELoadingScreen()
 
 ;(function()
-local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+local Library, Notifications, Themes = loadstring(game:HttpGet("https://raw.githubusercontent.com/i77lhm/Libraries/refs/heads/main/Bbot/Library.lua"))()
 
-local Options = Library.Options
-local Toggles = Library.Toggles
+local Window = Library:Window({name = "UNCODE v1"})
 
-Library.ForceCheckbox = false
-Library.ShowToggleFrameInKeybinds = true
+-- Bbot compatibility shim: makes Bbot look like the old Obsidian API
+-- so all existing :AddToggle/:AddSlider/:AddDropdown/etc. calls work unchanged.
+local _bbotObjects = {}
 
-local Window = Library:CreateWindow({
-    Title = "UNCODE v1",
-    Footer = "",
-    Icon = 0,
-    NotifySide = "Left",
-    Center = true,
-    AutoShow = false,
-    Resizable = true,
-    MobileButtonsSide = "Left",
-    ShowCustomCursor = true,
-})
+local function _getProxy(key)
+    local proxy = {}
+    setmetatable(proxy, {
+        __index = function(_, k)
+            if k == "Value" then return Library.Flags[key] end
+        end
+    })
+    function proxy:SetValue(v)
+        local s = Library.ConfigFlags and Library.ConfigFlags[key]
+        if s then pcall(s, v) else Library.Flags[key] = v end
+    end
+    function proxy:SetValues(vals)
+        local obj = _bbotObjects[key]
+        if obj and obj.RefreshOptions then
+            pcall(function() obj.RefreshOptions(vals) end)
+        end
+    end
+    return proxy
+end
+
+local _proxyCache = {}
+local function _proxy(key)
+    if not _proxyCache[key] then _proxyCache[key] = _getProxy(key) end
+    return _proxyCache[key]
+end
+
+local Toggles = setmetatable({}, { __index = function(_, k) return _proxy(k) end, __newindex = rawset })
+local Options  = setmetatable({}, { __index = function(_, k) return _proxy(k) end, __newindex = rawset })
+
+local function _makeGroupbox(section)
+    local GW = {}
+    setmetatable(GW, { __index = section })
+
+    function GW:AddToggle(key, props)
+        props = props or {}
+        local bbT = section:Toggle({
+            Name     = props.Text    or key,
+            Flag     = key,
+            Default  = props.Default or false,
+            Callback = props.Callback or function() end,
+        })
+        _bbotObjects[key] = bbT
+        local tw = _proxy(key)
+        function tw:AddKeyPicker(kpKey, kpProps)
+            pcall(function()
+                kpProps = kpProps or {}
+                bbT:Keybind({
+                    Name        = kpProps.Text or kpKey,
+                    Flag        = kpKey,
+                    ShowInList  = not kpProps.NoUI,
+                    Callback    = function(b)
+                        if kpProps.SyncToggleState then
+                            local s = Library.ConfigFlags and Library.ConfigFlags[key]
+                            if s then pcall(s, not Library.Flags[key]) end
+                        end
+                    end,
+                })
+            end)
+            return tw
+        end
+        return tw
+    end
+
+    function GW:AddSlider(key, props)
+        props = props or {}
+        local rounding = props.Rounding or 0
+        local step = (rounding == 0) and 1 or (10 ^ (-rounding))
+        local bbS = section:Slider({
+            Name     = props.Text    or key,
+            Flag     = key,
+            Default  = props.Default or 0,
+            Min      = props.Min     or 0,
+            Max      = props.Max     or 100,
+            Decimal  = step,
+            Suffix   = props.Suffix  or "",
+            Callback = props.Callback or function() end,
+        })
+        _bbotObjects[key] = bbS
+        return _proxy(key)
+    end
+
+    function GW:AddDropdown(key, props)
+        props = props or {}
+        local bbD = section:Dropdown({
+            Name     = props.Text   or key,
+            Flag     = key,
+            Options  = props.Values or {},
+            Default  = props.Default,
+            Multi    = props.Multi  or false,
+            Callback = props.Callback or function() end,
+        })
+        _bbotObjects[key] = bbD
+        return _proxy(key)
+    end
+
+    function GW:AddButton(textOrProps, callback)
+        if type(textOrProps) == "table" then
+            section:Button({Name = textOrProps.Text or "Button", Callback = textOrProps.Func or function() end})
+        else
+            section:Button({Name = textOrProps or "Button", Callback = callback or function() end})
+        end
+    end
+
+    function GW:AddLabel(text)
+        pcall(function() section:Label({Name = text or ""}) end)
+        -- Return stub so :AddKeyPicker() chains silently (e.g. MenuKeybind line)
+        local lw = {}
+        function lw:AddKeyPicker() return lw end
+        return lw
+    end
+
+    function GW:AddDivider() end  -- no Bbot equivalent; skip
+
+    function GW:AddColorpicker(key, props)
+        props = props or {}
+        pcall(function()
+            local lbl = section:Label({Name = props.Text or key})
+            lbl:Colorpicker({Flag = key, Color = props.Default or Color3.new(1,1,1), Callback = props.Callback or function() end})
+        end)
+    end
+
+    function GW:AddTextBox(key, props)
+        props = props or {}
+        section:Textbox({
+            Name     = props.Text    or key,
+            Flag     = key,
+            Default  = props.Default or "",
+            Callback = props.Callback or function() end,
+        })
+    end
+
+    return GW
+end
+
+local function _makeTab(bbTab)
+    local TW = {}
+    setmetatable(TW, { __index = bbTab })
+    function TW:AddLeftGroupbox(name)
+        return _makeGroupbox(bbTab:Section({Name = name, Side = "Left"}))
+    end
+    function TW:AddRightGroupbox(name)
+        return _makeGroupbox(bbTab:Section({Name = name, Side = "Right"}))
+    end
+    return TW
+end
 
 local function Notify(text, duration)
-    Library:Notify({ Title = "UNCODE v1", Description = text, Time = duration or 3 })
+    pcall(function() Notifications:Create({Name = "UNCODE v1: " .. tostring(text)}) end)
 end
 
 local Players = game:GetService("Players")
@@ -997,6 +1128,7 @@ local function getTarget(mode)
 end
 
 local function AddBindableToggle(group, flag, text, default, callback)
+    -- Shim handles AddKeyPicker internally in _makeGroupbox:AddToggle
     local toggle = group:AddToggle(flag, { Text = text, Default = default or false, Callback = callback })
     toggle:AddKeyPicker(flag .. "Key", { Default = "None", Mode = "Toggle", Text = text, SyncToggleState = true, NoUI = false })
     return toggle
@@ -2859,19 +2991,19 @@ end
 
 -- Tab order: VoidSpam → Combat → HvH → others → Settings(last)
 local Tabs = {}
-Tabs.VoidSpam     = Window:AddTab("VoidSpam",    "activity")
-Tabs.Combat       = Window:AddTab("Combat",      "crosshair")
-Tabs.HvH          = Window:AddTab("HvH",          "crosshair")
-Tabs.Orbit        = Window:AddTab("Orbit",         "refresh-cw")
-Tabs.Prediction   = Window:AddTab("Prediction",    "crosshair")
-Tabs.Defense      = Window:AddTab("Defense",       "shield")
-Tabs.Translocation= Window:AddTab("Translocation", "move")
-Tabs.SlingBypass  = Window:AddTab("Sling Bypass",  "target")
-Tabs.Riot         = Window:AddTab("Riot",          "flame")
-Tabs.SkinChanger  = Window:AddTab("SkinChanger",   "shirt")
-Tabs.ESP          = Window:AddTab("ESP",             "eye")
-Tabs.WorldChanger = Window:AddTab("World",          "globe")
-Tabs.Settings     = Window:AddTab("Settings",      "settings")
+Tabs.VoidSpam      = _makeTab(Window:Tab({Name = "VoidSpam"}))
+Tabs.Combat        = _makeTab(Window:Tab({Name = "Combat"}))
+Tabs.HvH           = _makeTab(Window:Tab({Name = "HvH"}))
+Tabs.Orbit         = _makeTab(Window:Tab({Name = "Orbit"}))
+Tabs.Prediction    = _makeTab(Window:Tab({Name = "Prediction"}))
+Tabs.Defense       = _makeTab(Window:Tab({Name = "Defense"}))
+Tabs.Translocation = _makeTab(Window:Tab({Name = "Translocation"}))
+Tabs.SlingBypass   = _makeTab(Window:Tab({Name = "Sling Bypass"}))
+Tabs.Riot          = _makeTab(Window:Tab({Name = "Riot"}))
+Tabs.SkinChanger   = _makeTab(Window:Tab({Name = "SkinChanger"}))
+Tabs.ESP           = _makeTab(Window:Tab({Name = "ESP"}))
+Tabs.WorldChanger  = _makeTab(Window:Tab({Name = "World"}))
+Tabs.Settings      = _makeTab(Window:Tab({Name = "Settings"}))
 
 do
 local VG = Tabs.VoidSpam:AddLeftGroupbox("Void Control")
@@ -71831,7 +71963,7 @@ end)
 
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 UIGroup:AddLabel("Menu Keybind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", Text = "Menu Keybind", Mode = "Toggle", NoUI = true })
-Library.ToggleKeybind = Options.MenuKeybind
+-- Library:Configs(Window) handles the menu keybind internally in Bbot
 UIGroup:AddToggle("ShowCoords", { Text = "Show Live HUD", Default = true, Callback = function(v)
     if _G.UNCODEHud and _G.UNCODEHud.SetEnabled then _G.UNCODEHud.SetEnabled(v) end
 end })
@@ -71999,24 +72131,8 @@ end)
 
 end -- FPS Boost scope
 
-ThemeManager:SetLibrary(Library)
--- Apply pure black Obsidian theme
-pcall(function()
-    Library:SetColors({
-        Background       = Color3.fromRGB(0,   0,   0),
-        MainColor        = Color3.fromRGB(5,   5,   5),
-        SecondaryColor   = Color3.fromRGB(10,  10,  10),
-        AccentColor      = Color3.fromRGB(197, 59,  59),
-        DarkContrast     = Color3.fromRGB(3,   3,   3),
-        OutlineColor     = Color3.fromRGB(30,  30,  30),
-        TextColor        = Color3.fromRGB(200, 200, 200),
-    })
-end)
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({"MenuKeybind", "RbEnabled", "RbRapidFire", "RbWallPen"})
-ThemeManager:SetFolder("UNCODE")
-SaveManager:SetFolder("UNCODE/configs")
+-- Bbot built-in config/theme system (replaces ThemeManager + SaveManager)
+Library:Configs(Window)
 -- ── COMMUNITY PRESETS ────────────────────────────────────────
 local CfgG = Tabs.Settings:AddLeftGroupbox("Community Presets")
 CfgG:AddLabel("One-click HvH presets:")
@@ -72070,9 +72186,7 @@ CfgG:AddButton("Safe (Panic OFF)", function()
     _kSet({"Flickbot","Enabled"},    false)
 end)
 
-SaveManager:BuildConfigSection(Tabs.Settings)
-ThemeManager:ApplyToTab(Tabs.Settings)
-pcall(function() SaveManager:LoadAutoloadConfig() end)
+-- Config section and theme are handled by Library:Configs(Window) above
 -- Sync reset: catches any Obsidian callbacks that fire synchronously during load.
 do
     local _ks = getgenv()._UNC_KiciaStore
@@ -72113,5 +72227,5 @@ local function _enforceRFLoop(remaining)
 end
 task.delay(6, function() _enforceRFLoop(60) end)
 
-Library:Notify({ Title = "UNCODE v1", Description = "Rivals HvH — UNCODE loaded", Time = 4 })
+Notifications:Create({Name = "UNCODE v1: Rivals HvH — UNCODE loaded"})
 end)()
