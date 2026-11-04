@@ -4,7 +4,7 @@
 -- ║  Additions: Harion startup hooks · Rivals SkinChanger                   ║
 -- ║  Executor: Delta (iOS, Lua 5.1)    Game: Roblox Rivals                  ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
-task.spawn(function() error("[UNCODE] Script started") end)
+print("UNCODE_START"); warn("UNCODE_START"); pcall(error, "UNCODE_START")
 local function waitForLoadingScreen()
 	local players = game:GetService("Players")
 	local coreGui = game:GetService("CoreGui")
