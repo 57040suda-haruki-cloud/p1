@@ -519,9 +519,24 @@ end
 UNCODELoadingScreen()
 
 ;(function()
-local Library, Notifications, Themes = loadstring(game:HttpGet("https://raw.githubusercontent.com/i77lhm/Libraries/refs/heads/main/Bbot/Library.lua"))()
+print("[UNCODE] UI library loading...")
+local Library, Notifications, Themes
+do
+    local ok, err = pcall(function()
+        Library, Notifications, Themes = loadstring(game:HttpGet("https://raw.githubusercontent.com/i77lhm/Libraries/refs/heads/main/Bbot/Library.lua"))()
+    end)
+    if not ok then
+        warn("[UNCODE] Library load error: " .. tostring(err))
+        return
+    end
+    if not Library then
+        warn("[UNCODE] Library is nil after load")
+        return
+    end
+end
+print("[UNCODE] UI library loaded OK")
 
-local Window = Library:Window({name = "UNCODE v1"})
+local Window = Library:Window({Name = "UNCODE v1"})
 
 -- Bbot compatibility shim: makes Bbot look like the old Obsidian API
 -- so all existing :AddToggle/:AddSlider/:AddDropdown/etc. calls work unchanged.
@@ -72132,7 +72147,7 @@ end)
 end -- FPS Boost scope
 
 -- Bbot built-in config/theme system (replaces ThemeManager + SaveManager)
-Library:Configs(Window)
+pcall(function() Library:Configs(Window) end)
 -- ── COMMUNITY PRESETS ────────────────────────────────────────
 local CfgG = Tabs.Settings:AddLeftGroupbox("Community Presets")
 CfgG:AddLabel("One-click HvH presets:")
@@ -72227,5 +72242,6 @@ local function _enforceRFLoop(remaining)
 end
 task.delay(6, function() _enforceRFLoop(60) end)
 
-Notifications:Create({Name = "UNCODE v1: Rivals HvH — UNCODE loaded"})
+pcall(function() Notifications:Create({Name = "UNCODE v1: Rivals HvH — UNCODE loaded"}) end)
+print("[UNCODE] Loaded successfully")
 end)()
