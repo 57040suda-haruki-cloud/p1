@@ -4,7 +4,7 @@
 -- ║  Additions: Harion startup hooks · Rivals SkinChanger                   ║
 -- ║  Executor: Delta (iOS, Lua 5.1)    Game: Roblox Rivals                  ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
-print("UNCODE_START"); warn("UNCODE_START"); pcall(error, "UNCODE_START")
+warn("[UNCODE] Starting...")
 local function waitForLoadingScreen()
 	local players = game:GetService("Players")
 	local coreGui = game:GetService("CoreGui")
@@ -40,7 +40,9 @@ local function waitForLoadingScreen()
 	end
 
 	local clearSince
+	local startTime = os.clock()
 	repeat
+		if os.clock() - startTime >= 15 then break end  -- 15s max timeout
 		local loading = false
 		for _, root in ipairs({playerGui, coreGui}) do
 			for _, object in ipairs(root:GetDescendants()) do
@@ -57,9 +59,7 @@ local function waitForLoadingScreen()
 	until clearSince and os.clock() - clearSince >= 0.5
 end
 
-task.spawn(function() error("[UNCODE] Waiting for loading screen...") end)
 waitForLoadingScreen()
-task.spawn(function() error("[UNCODE] Loading screen done") end)
 
 -- Clear stale getgenv state so Ragebot does not auto-enable on re-run
 getgenv()._UNC_Ragebot  = nil
@@ -522,7 +522,7 @@ end
 UNCODELoadingScreen()
 
 ;(function()
-task.spawn(function() error("[UNCODE] UI library loading...") end)
+warn("[UNCODE] UI library loading...")
 local Library, Notifications, Themes
 do
     local ok, err = pcall(function()
