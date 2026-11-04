@@ -4,7 +4,7 @@
 -- ║  Additions: Harion startup hooks · Rivals SkinChanger                   ║
 -- ║  Executor: Delta (iOS, Lua 5.1)    Game: Roblox Rivals                  ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
-print("[UNCODE] Script started")
+warn("[UNCODE] Script started")
 local function waitForLoadingScreen()
 	local players = game:GetService("Players")
 	local coreGui = game:GetService("CoreGui")
@@ -57,9 +57,9 @@ local function waitForLoadingScreen()
 	until clearSince and os.clock() - clearSince >= 0.5
 end
 
-print("[UNCODE] Waiting for loading screen...")
+warn("[UNCODE] Waiting for loading screen...")
 waitForLoadingScreen()
-print("[UNCODE] Loading screen done")
+warn("[UNCODE] Loading screen done")
 
 -- Clear stale getgenv state so Ragebot does not auto-enable on re-run
 getgenv()._UNC_Ragebot  = nil
@@ -522,7 +522,7 @@ end
 UNCODELoadingScreen()
 
 ;(function()
-print("[UNCODE] UI library loading...")
+warn("[UNCODE] UI library loading...")
 local Library, Notifications, Themes
 do
     local ok, err = pcall(function()
@@ -537,7 +537,7 @@ do
         return
     end
 end
-print("[UNCODE] UI library loaded OK")
+warn("[UNCODE] UI library loaded OK")
 
 local Window = Library:Window({Name = "UNCODE v1"})
 
@@ -72246,5 +72246,5 @@ end
 task.delay(6, function() _enforceRFLoop(60) end)
 
 pcall(function() Notifications:Create({Name = "UNCODE v1: Rivals HvH — UNCODE loaded"}) end)
-print("[UNCODE] Loaded successfully")
+warn("[UNCODE] Loaded successfully")
 end)()
