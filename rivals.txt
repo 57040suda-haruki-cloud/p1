@@ -5837,6 +5837,303 @@ pcall(function()
     })
 end)
 
+
+-- ── SOL'S RNG STYLE AURA ─────────────────────────────────────────────────
+local HvHL8 = HvHTab:AddLeftGroupbox("Aura")
+local HvHR8 = HvHTab:AddRightGroupbox("Aura Config")
+
+do
+-- ── Runtime state ─────────────────────────────────────────────────────────
+local _auraCFG = {
+    enabled      = false,
+    style        = "Ring",          -- Ring | Glow | Both
+    color        = Color3.fromRGB(80, 160, 255),
+    rainbow      = false,
+    rainbowSpeed = 1,
+    ringSize     = 4,               -- stud radius of ring
+    ringThick    = 0.35,            -- ring tube thickness
+    ringCount    = 1,               -- 1-3 stacked rings
+    ringTilt     = 30,              -- X-axis tilt of ring plane
+    spinSpeed    = 90,              -- degrees/sec
+    glowEnabled  = false,
+    glowFill     = Color3.fromRGB(80, 160, 255),
+    glowFillT    = 0.6,             -- transparency 0=solid 1=invisible
+    glowOutline  = Color3.fromRGB(120, 200, 255),
+    glowOutlineT = 0.0,
+    bounce       = false,
+    bounceAmp    = 0.5,
+    bounceSpeed  = 2,
+}
+
+local _auraRings   = {}  -- {model=, parts={}} per ring
+local _auraHL      = nil -- Highlight instance
+local _auraConn    = nil -- RenderStepped connection
+local RS           = game:GetService("RunService")
+local LP           = game:GetService("Players").LocalPlayer
+local _rainbowH    = 0
+
+local function _getRoot()
+    local char = LP.Character
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+-- Build a torus ring from N thin parts arranged in a circle
+local function _makeRing(radius, thick, color, parent)
+    local N = 24
+    local parts = {}
+    for i = 1, N do
+        local p = Instance.new("Part")
+        p.Anchored        = true
+        p.CanCollide      = false
+        p.CastShadow      = false
+        p.Material        = Enum.Material.Neon
+        p.Color           = color
+        p.Size            = Vector3.new(thick, thick, (2 * math.pi * radius) / N + 0.05)
+        p.TopSurface      = Enum.SurfaceType.Smooth
+        p.BottomSurface   = Enum.SurfaceType.Smooth
+        p.Parent          = parent
+        table.insert(parts, p)
+    end
+    return parts
+end
+
+local function _destroyRings()
+    for _, r in ipairs(_auraRings) do
+        for _, p in ipairs(r) do pcall(function() p:Destroy() end) end
+    end
+    _auraRings = {}
+end
+
+local function _destroyHL()
+    if _auraHL then pcall(function() _auraHL:Destroy() end); _auraHL = nil end
+end
+
+local function _buildHL()
+    _destroyHL()
+    local char = LP.Character
+    if not char then return end
+    local hl = Instance.new("Highlight")
+    hl.FillColor           = _auraCFG.glowFill
+    hl.FillTransparency    = _auraCFG.glowFillT
+    hl.OutlineColor        = _auraCFG.glowOutline
+    hl.OutlineTransparency = _auraCFG.glowOutlineT
+    hl.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Adornee             = char
+    hl.Parent              = char
+    _auraHL = hl
+end
+
+local function _buildRings()
+    _destroyRings()
+    local folder = workspace
+    local n = math.clamp(math.floor(_auraCFG.ringCount), 1, 3)
+    for i = 1, n do
+        local offset = (i - 1) * (_auraCFG.ringThick * 2 + 0.1)
+        local parts = _makeRing(
+            _auraCFG.ringSize + offset,
+            _auraCFG.ringThick,
+            _auraCFG.color,
+            folder
+        )
+        table.insert(_auraRings, parts)
+    end
+end
+
+local function _stopAura()
+    if _auraConn then _auraConn:Disconnect(); _auraConn = nil end
+    _destroyRings()
+    _destroyHL()
+end
+
+local function _startAura()
+    _stopAura()
+    local style = _auraCFG.style
+    if style == "Glow" or style == "Both" then _buildHL() end
+    if style == "Ring" or style == "Both" then _buildRings() end
+
+    local spinAngle = 0
+    local bounceT   = 0
+    _auraConn = RS.RenderStepped:Connect(function(dt)
+        local root = _getRoot()
+        if not root then return end
+
+        -- Rainbow color cycle
+        if _auraCFG.rainbow then
+            _rainbowH = (_rainbowH + dt * _auraCFG.rainbowSpeed * 60) % 360
+            _auraCFG.color = Color3.fromHSV(_rainbowH / 360, 1, 1)
+            _auraCFG.glowFill    = _auraCFG.color
+            _auraCFG.glowOutline = _auraCFG.color
+            if _auraHL then
+                _auraHL.FillColor    = _auraCFG.glowFill
+                _auraHL.OutlineColor = _auraCFG.glowOutline
+            end
+        end
+
+        -- Bounce offset
+        local yOff = 0
+        if _auraCFG.bounce then
+            bounceT = bounceT + dt * _auraCFG.bounceSpeed
+            yOff    = math.sin(bounceT) * _auraCFG.bounceAmp
+        end
+
+        -- Spin rings
+        if #_auraRings > 0 then
+            spinAngle = (spinAngle + dt * _auraCFG.spinSpeed) % 360
+            local basePos = root.Position + Vector3.new(0, yOff, 0)
+            local tiltRad  = math.rad(_auraCFG.ringTilt)
+            local N = 24
+
+            for ri, ringParts in ipairs(_auraRings) do
+                local ringOffset = (ri - 1) * (_auraCFG.ringThick * 2 + 0.1)
+                local r = _auraCFG.ringSize + ringOffset
+                local extraSpin = (ri - 1) * 60  -- stagger multi-rings
+
+                for i, p in ipairs(ringParts) do
+                    if p.Parent == nil then
+                        p.Parent = workspace
+                    end
+                    local ang = math.rad((i - 1) / N * 360 + spinAngle + extraSpin)
+                    local x   = math.cos(ang) * r
+                    local z   = math.sin(ang) * r
+                    -- Apply tilt around X axis
+                    local y   = math.sin(ang) * math.sin(tiltRad) * r
+                    local zt  = z * math.cos(tiltRad)
+                    local pos = basePos + Vector3.new(x, y, zt)
+                    local lookAng = ang + math.pi / 2
+                    local lx = -math.sin(lookAng)
+                    local lz = math.cos(lookAng) * math.cos(tiltRad)
+                    local ly = math.cos(lookAng) * math.sin(tiltRad)
+                    p.CFrame = CFrame.new(pos, pos + Vector3.new(lx, ly, lz))
+                    p.Color  = _auraCFG.color
+                end
+            end
+        end
+    end)
+end
+
+-- Rebuild when char respawns
+LP.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if _auraCFG.enabled then
+        if _auraCFG.style == "Glow" or _auraCFG.style == "Both" then _buildHL() end
+    end
+end)
+
+-- ── UI ─────────────────────────────────────────────────────────────────
+HvHL8:AddToggle("AuraEnabled", {
+    Text    = "Enable Aura",
+    Default = false,
+    Callback = function(v)
+        _auraCFG.enabled = v
+        if v then _startAura() else _stopAura() end
+    end
+})
+HvHL8:AddDropdown("AuraStyle", {
+    Text    = "Aura Style",
+    Values  = {"Ring", "Glow", "Both"},
+    Default = 1,
+    Callback = function(v)
+        _auraCFG.style = v
+        if _auraCFG.enabled then _startAura() end
+    end
+})
+pcall(function()
+    HvHL8:AddColor("AuraColor", {
+        Text    = "Aura Color",
+        Default = Color3.fromRGB(80, 160, 255),
+        Callback = function(v)
+            _auraCFG.color        = v
+            _auraCFG.glowFill     = v
+            _auraCFG.glowOutline  = v
+            if _auraHL then
+                _auraHL.FillColor    = v
+                _auraHL.OutlineColor = v
+            end
+        end
+    })
+end)
+HvHL8:AddToggle("AuraRainbow", {
+    Text    = "Rainbow Mode",
+    Default = false,
+    Callback = function(v) _auraCFG.rainbow = v end
+})
+HvHL8:AddSlider("AuraRainbowSpeed", {
+    Text    = "Rainbow Speed",
+    Default = 10, Min = 1, Max = 50, Rounding = 0,
+    Callback = function(v) _auraCFG.rainbowSpeed = v / 10 end
+})
+HvHL8:AddSlider("AuraRingSize", {
+    Text    = "Ring Size (studs)",
+    Default = 40, Min = 10, Max = 120, Rounding = 0,
+    Callback = function(v)
+        _auraCFG.ringSize = v / 10
+        if _auraCFG.enabled then _startAura() end
+    end
+})
+HvHL8:AddSlider("AuraRingThick", {
+    Text    = "Ring Thickness",
+    Default = 4, Min = 1, Max = 15, Rounding = 0,
+    Callback = function(v)
+        _auraCFG.ringThick = v / 10
+        if _auraCFG.enabled then _startAura() end
+    end
+})
+HvHL8:AddSlider("AuraRingCount", {
+    Text    = "Ring Count",
+    Default = 1, Min = 1, Max = 3, Rounding = 0,
+    Callback = function(v)
+        _auraCFG.ringCount = v
+        if _auraCFG.enabled then _startAura() end
+    end
+})
+HvHR8:AddSlider("AuraSpinSpeed", {
+    Text    = "Spin Speed (deg/s)",
+    Default = 90, Min = 0, Max = 360, Rounding = 0,
+    Callback = function(v) _auraCFG.spinSpeed = v end
+})
+HvHR8:AddSlider("AuraRingTilt", {
+    Text    = "Ring Tilt (deg)",
+    Default = 30, Min = 0, Max = 90, Rounding = 0,
+    Callback = function(v)
+        _auraCFG.ringTilt = v
+    end
+})
+HvHR8:AddToggle("AuraBounce", {
+    Text    = "Bounce Effect",
+    Default = false,
+    Callback = function(v) _auraCFG.bounce = v end
+})
+HvHR8:AddSlider("AuraBounceSpeed", {
+    Text    = "Bounce Speed",
+    Default = 20, Min = 5, Max = 60, Rounding = 0,
+    Callback = function(v) _auraCFG.bounceSpeed = v / 10 end
+})
+HvHR8:AddSlider("AuraBounceAmp", {
+    Text    = "Bounce Height",
+    Default = 5, Min = 1, Max = 20, Rounding = 0,
+    Callback = function(v) _auraCFG.bounceAmp = v / 10 end
+})
+-- Glow (Highlight) settings
+HvHR8:AddDivider()
+HvHR8:AddLabel("── Glow Settings ──")
+HvHR8:AddSlider("AuraGlowFillT", {
+    Text    = "Glow Fill Opacity",
+    Default = 40, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v)
+        _auraCFG.glowFillT = 1 - (v / 100)
+        if _auraHL then _auraHL.FillTransparency = _auraCFG.glowFillT end
+    end
+})
+HvHR8:AddSlider("AuraGlowOutlineT", {
+    Text    = "Glow Outline Opacity",
+    Default = 100, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v)
+        _auraCFG.glowOutlineT = 1 - (v / 100)
+        if _auraHL then _auraHL.OutlineTransparency = _auraCFG.glowOutlineT end
+    end
+})
+
+end -- do
 -- ── SKINCHANGER (Visual tab) ──────────────────────────────────────
 -- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
 local SK  = HvHTab:AddLeftGroupbox("SkinChanger")
