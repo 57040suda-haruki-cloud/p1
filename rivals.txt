@@ -4202,7 +4202,7 @@ SKR:AddLabel("Rivals-Skinchanger/skins.txt")
 --  Window suppressed; config controlled via ReactiveStore.
 -- ============================================================
 
-do -- Combat/HvH UI scope (register isolation)
+;(function() -- Combat/HvH UI scope (register isolation)
 
 -- Combat tab: Silent Aim, Aimbot, Visuals
 local HvHTab   = Tabs.Combat
@@ -4797,7 +4797,7 @@ HvHR4:AddToggle("WeaponHandling", {
     Callback = function(v) _kSet({"WeaponHandling","Enabled"}, v) end
 })
 
-end -- HvH UI scope
+end)() -- HvH UI scope
 
 -- ── ESP TAB (full Kicia ESP ports) ───────────────────────────────────────
 pcall(function()
