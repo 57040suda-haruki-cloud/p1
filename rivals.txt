@@ -5660,6 +5660,183 @@ HvHL6:AddSlider("SvMinVol", {
 -- ║  Combat → Enemy Info / Info Settings                                ║
 -- ╚═══════════════════════════════════════════════════════════════════════╝
 
+
+-- ── WEAPON VISUALS (ViewModelOffset / Highlight / Wireframe / Chams) ──────
+local HvHL7 = HvHTab:AddLeftGroupbox("Weapon Visuals")
+local HvHR7 = HvHTab:AddRightGroupbox("Weapon Config")
+
+-- ── Viewmodel Position ──────────────────────────────────────────────────
+HvHL7:AddToggle("VmOffsetEnabled", {
+    Text = "Viewmodel Position",
+    Default = false,
+    Callback = function(v) _kSet({"ViewModelOffset","Enabled"}, v) end
+})
+HvHL7:AddSlider("VmOffsetX", {
+    Text = "X Offset",
+    Default = 0, Min = -75, Max = 75, Rounding = 2,
+    Callback = function(v) _kSet({"ViewModelOffset","X"}, v / 10) end
+})
+HvHL7:AddSlider("VmOffsetY", {
+    Text = "Y Offset",
+    Default = 0, Min = -75, Max = 75, Rounding = 2,
+    Callback = function(v) _kSet({"ViewModelOffset","Y"}, v / 10) end
+})
+HvHL7:AddSlider("VmOffsetZ", {
+    Text = "Z Offset",
+    Default = 0, Min = -75, Max = 75, Rounding = 2,
+    Callback = function(v) _kSet({"ViewModelOffset","Z"}, v / 10) end
+})
+HvHL7:AddSlider("VmPitch", {
+    Text = "Pitch",
+    Default = 0, Min = -180, Max = 180, Rounding = 0,
+    Callback = function(v) _kSet({"ViewModelOffset","Pitch"}, v) end
+})
+HvHL7:AddSlider("VmYaw", {
+    Text = "Yaw",
+    Default = 0, Min = -180, Max = 180, Rounding = 0,
+    Callback = function(v) _kSet({"ViewModelOffset","Yaw"}, v) end
+})
+HvHL7:AddSlider("VmRoll", {
+    Text = "Roll",
+    Default = 0, Min = -180, Max = 180, Rounding = 0,
+    Callback = function(v) _kSet({"ViewModelOffset","Roll"}, v) end
+})
+
+-- ── Arms Highlight ──────────────────────────────────────────────────────
+HvHL7:AddDivider()
+HvHL7:AddLabel("── Arms Highlight ──")
+HvHL7:AddToggle("VmArmsHlEnabled", {
+    Text = "Arms Highlight",
+    Default = false,
+    Callback = function(v) _kSet({"ViewModelHighlight","Arms","Enabled"}, v) end
+})
+pcall(function()
+    HvHL7:AddColor("VmArmsHlColor", {
+        Text = "Arms Fill Color",
+        Default = Color3.fromRGB(255, 255, 255),
+        Callback = function(v) _kSet({"ViewModelHighlight","Arms","FillColor"}, v) end
+    })
+end)
+HvHL7:AddSlider("VmArmsHlFillT", {
+    Text = "Arms Fill Transparency",
+    Default = 50, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"ViewModelHighlight","Arms","FillTransparency"}, v / 100) end
+})
+HvHL7:AddToggle("VmArmsHlAot", {
+    Text = "Arms Render Above",
+    Default = false,
+    Callback = function(v) _kSet({"ViewModelHighlight","Arms","AlwaysOnTop"}, v) end
+})
+
+-- ── Held Item Highlight ─────────────────────────────────────────────────
+HvHL7:AddDivider()
+HvHL7:AddLabel("── Held Item Highlight ──")
+HvHL7:AddToggle("VmItemHlEnabled", {
+    Text = "Item Highlight",
+    Default = false,
+    Callback = function(v) _kSet({"ViewModelHighlight","Item","Enabled"}, v) end
+})
+pcall(function()
+    HvHL7:AddColor("VmItemHlColor", {
+        Text = "Item Fill Color",
+        Default = Color3.fromRGB(255, 255, 255),
+        Callback = function(v) _kSet({"ViewModelHighlight","Item","FillColor"}, v) end
+    })
+end)
+HvHL7:AddSlider("VmItemHlFillT", {
+    Text = "Item Fill Transparency",
+    Default = 50, Min = 0, Max = 100, Rounding = 0,
+    Callback = function(v) _kSet({"ViewModelHighlight","Item","FillTransparency"}, v / 100) end
+})
+HvHL7:AddToggle("VmItemHlAot", {
+    Text = "Item Render Above",
+    Default = false,
+    Callback = function(v) _kSet({"ViewModelHighlight","Item","AlwaysOnTop"}, v) end
+})
+
+-- ── Wireframe ───────────────────────────────────────────────────────────
+HvHR7:AddLabel("── Wireframe ──")
+HvHR7:AddToggle("VmArmsWfEnabled", {
+    Text = "Arms Wireframe",
+    Default = false,
+    Callback = function(v) _kSet({"ViewModelWireframe","Arms","Enabled"}, v) end
+})
+pcall(function()
+    HvHR7:AddColor("VmArmsWfColor", {
+        Text = "Arms Wire Color",
+        Default = Color3.fromRGB(255, 255, 255),
+        Callback = function(v) _kSet({"ViewModelWireframe","Arms","Color"}, v) end
+    })
+end)
+HvHR7:AddSlider("VmArmsWfWidth", {
+    Text = "Arms Wire Width",
+    Default = 5, Min = 1, Max = 20, Rounding = 0,
+    Callback = function(v) _kSet({"ViewModelWireframe","Arms","Width"}, v / 1000) end
+})
+HvHR7:AddToggle("VmItemWfEnabled", {
+    Text = "Item Wireframe",
+    Default = false,
+    Callback = function(v) _kSet({"ViewModelWireframe","Item","Enabled"}, v) end
+})
+pcall(function()
+    HvHR7:AddColor("VmItemWfColor", {
+        Text = "Item Wire Color",
+        Default = Color3.fromRGB(255, 255, 255),
+        Callback = function(v) _kSet({"ViewModelWireframe","Item","Color"}, v) end
+    })
+end)
+HvHR7:AddSlider("VmItemWfWidth", {
+    Text = "Item Wire Width",
+    Default = 5, Min = 1, Max = 20, Rounding = 0,
+    Callback = function(v) _kSet({"ViewModelWireframe","Item","Width"}, v / 1000) end
+})
+
+-- ── Character / Arms / Item Chams ───────────────────────────────────────
+HvHR7:AddDivider()
+HvHR7:AddLabel("── Chams ──")
+HvHR7:AddToggle("VmCharChamEnabled", {
+    Text = "Character Chams",
+    Default = false,
+    Callback = function(v) _kSet({"Chams","Character","Enabled"}, v) end
+})
+pcall(function()
+    HvHR7:AddColor("VmCharChamColor", {
+        Text = "Character Chams Color",
+        Default = Color3.fromRGB(255, 255, 255),
+        Callback = function(v) _kSet({"Chams","Character","Color"}, v) end
+    })
+end)
+HvHR7:AddDropdown("VmCharChamMat", {
+    Text = "Character Material",
+    Values = {"Ghost", "Neon", "ForceField", "Glass", "SmoothPlastic"},
+    Default = 1,
+    Callback = function(v) _kSet({"Chams","Character","Material"}, v) end
+})
+HvHR7:AddToggle("VmArmsChamEnabled", {
+    Text = "Arms Chams",
+    Default = false,
+    Callback = function(v) _kSet({"Chams","Arms","Enabled"}, v) end
+})
+pcall(function()
+    HvHR7:AddColor("VmArmsChamColor", {
+        Text = "Arms Chams Color",
+        Default = Color3.fromRGB(255, 255, 255),
+        Callback = function(v) _kSet({"Chams","Arms","Color"}, v) end
+    })
+end)
+HvHR7:AddToggle("VmItemChamEnabled", {
+    Text = "Held Item Chams",
+    Default = false,
+    Callback = function(v) _kSet({"Chams","Item","Enabled"}, v) end
+})
+pcall(function()
+    HvHR7:AddColor("VmItemChamColor", {
+        Text = "Item Chams Color",
+        Default = Color3.fromRGB(255, 255, 255),
+        Callback = function(v) _kSet({"Chams","Item","Color"}, v) end
+    })
+end)
+
 -- ── SKINCHANGER (Visual tab) ──────────────────────────────────────
 -- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
 local SK  = HvHTab:AddLeftGroupbox("SkinChanger")
