@@ -5863,11 +5863,27 @@ local _auraCFG = {
     bounce       = false,
     bounceAmp    = 0.5,
     bounceSpeed  = 2,
+    assetIdx     = 1,     -- index into AURA_ASSET_LIST
 }
+
+-- Sol's RNG aura models from Creator Store (aura-only assets)
+local AURA_ASSET_LIST = {
+    { name = "AGRESSION",        id = 79836629707795  },
+    { name = "Equinox",          id = 80850155766182  },
+    { name = "1m Star",          id = 124591035717333 },
+    { name = "Effect Pack",      id = 17298077079     },
+    { name = "Aura RNG",         id = 16667258916     },
+}
+local AURA_ASSET_NAMES = (function()
+    local t = {}
+    for _, v in ipairs(AURA_ASSET_LIST) do t[#t+1] = v.name end
+    return t
+end)()
 
 local _auraRings   = {}  -- {model=, parts={}} per ring
 local _auraHL      = nil -- Highlight instance
 local _auraConn    = nil -- RenderStepped connection
+local _auraModel   = nil -- loaded Creator Store model
 local RS           = game:GetService("RunService")
 local LP           = game:GetService("Players").LocalPlayer
 local _rainbowH    = 0
@@ -5908,6 +5924,31 @@ local function _destroyHL()
     if _auraHL then pcall(function() _auraHL:Destroy() end); _auraHL = nil end
 end
 
+local _InsertSvc = game:GetService("InsertService")
+local function _unloadAssetAura()
+    if _auraModel then
+        pcall(function() _auraModel:Destroy() end)
+        _auraModel = nil
+    end
+end
+local function _loadAssetAura(assetId)
+    _unloadAssetAura()
+    local char = LP.Character
+    if not char then return end
+    local ok, result = pcall(function()
+        local pkg = _InsertSvc:LoadAsset(assetId)
+        local model = pkg:FindFirstChildWhichIsA("Model") or pkg:GetChildren()[1]
+        if model then
+            model.Parent = char
+            _auraModel = model
+        end
+        pkg:Destroy()
+    end)
+    if not ok then
+        warn("[Aura] LoadAsset failed for id " .. tostring(assetId) .. ": " .. tostring(result))
+    end
+end
+
 local function _buildHL()
     _destroyHL()
     local char = LP.Character
@@ -5943,11 +5984,18 @@ local function _stopAura()
     if _auraConn then _auraConn:Disconnect(); _auraConn = nil end
     _destroyRings()
     _destroyHL()
+    _unloadAssetAura()
 end
 
 local function _startAura()
     _stopAura()
     local style = _auraCFG.style
+    if style == "Asset" then
+        local idx = _auraCFG.assetIdx or 1
+        local entry = AURA_ASSET_LIST[math.clamp(idx, 1, #AURA_ASSET_LIST)]
+        if entry then _loadAssetAura(entry.id) end
+        return
+    end
     if style == "Glow" or style == "Both" then _buildHL() end
     if style == "Ring" or style == "Both" then _buildRings() end
 
@@ -6014,8 +6062,13 @@ end
 -- Rebuild when char respawns
 LP.CharacterAdded:Connect(function()
     task.wait(0.5)
-    if _auraCFG.enabled then
+    if not _auraCFG.enabled then return end
+    if _auraCFG.style == "Asset" then
+        local entry = AURA_ASSET_LIST[math.clamp(_auraCFG.assetIdx or 1, 1, #AURA_ASSET_LIST)]
+        if entry then _loadAssetAura(entry.id) end
+    else
         if _auraCFG.style == "Glow" or _auraCFG.style == "Both" then _buildHL() end
+        if _auraCFG.style == "Ring" or _auraCFG.style == "Both" then _buildRings() end
     end
 end)
 
@@ -6030,11 +6083,23 @@ HvHL8:AddToggle("AuraEnabled", {
 })
 HvHL8:AddDropdown("AuraStyle", {
     Text    = "Aura Style",
-    Values  = {"Ring", "Glow", "Both"},
+    Values  = {"Ring", "Glow", "Both", "Asset"},
     Default = 1,
     Callback = function(v)
         _auraCFG.style = v
         if _auraCFG.enabled then _startAura() end
+    end
+})
+HvHL8:AddDropdown("AuraAsset", {
+    Text    = "Asset Aura",
+    Values  = AURA_ASSET_NAMES,
+    Default = 1,
+    Tooltip = "Active only when Style = Asset",
+    Callback = function(v)
+        for i, entry in ipairs(AURA_ASSET_LIST) do
+            if entry.name == v then _auraCFG.assetIdx = i; break end
+        end
+        if _auraCFG.enabled and _auraCFG.style == "Asset" then _startAura() end
     end
 })
 pcall(function()
