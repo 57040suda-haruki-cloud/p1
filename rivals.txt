@@ -3086,7 +3086,7 @@ Tabs.Defense       = _makeTab(Window:Tab({Name = "Defense"}))
 Tabs.Translocation = _makeTab(Window:Tab({Name = "Translocation"}))
 Tabs.SlingBypass   = _makeTab(Window:Tab({Name = "Sling Bypass"}))
 Tabs.Riot          = _makeTab(Window:Tab({Name = "Riot"}))
-Tabs.SkinChanger   = _makeTab(Window:Tab({Name = "SkinChanger"}))
+-- [moved to Visual tab] Tabs.SkinChanger   = _makeTab(Window:Tab({Name = "SkinChanger"}))
 Tabs.ESP           = _makeTab(Window:Tab({Name = "ESP"}))
 Tabs.WorldChanger  = _makeTab(Window:Tab({Name = "World"}))
 Tabs.Settings      = _makeTab(Window:Tab({Name = "Settings"}))
@@ -4172,28 +4172,6 @@ local _skSaveConfig, _skLoadConfig
     end  -- end CosmeticLibrary check
 end)()  -- end skinchanger function scope
 
--- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
-local SK  = Tabs.SkinChanger:AddLeftGroupbox("SkinChanger")
-local SKR = Tabs.SkinChanger:AddRightGroupbox("Info")
-
-SK:AddLabel("Status: " .. (_skLoadConfig and "Active ✓" or "Unavailable"))
-SK:AddButton("Reload Config", function()
-    if _skLoadConfig then pcall(_skLoadConfig) end
-    Notify("SkinChanger config reloaded", 3)
-end)
-SK:AddButton("Save Config", function()
-    if _skSaveConfig then pcall(_skSaveConfig) end
-    Notify("SkinChanger config saved", 3)
-end)
-
-SKR:AddLabel("UNCODE v1 SkinChanger")
-SKR:AddLabel("Unlocks all Rivals cosmetics")
-SKR:AddLabel("locally — no server-side changes.")
-SKR:AddLabel("Use the in-game shop / wardrobe")
-SKR:AddLabel("UI to equip skins, charms, wraps.")
-SKR:AddLabel("Config saved to:")
-SKR:AddLabel("Rivals-Skinchanger/skins.txt")
-
 
 
 -- ============================================================
@@ -4796,6 +4774,915 @@ HvHR4:AddToggle("WeaponHandling", {
     Default = false,
     Callback = function(v) _kSet({"WeaponHandling","Enabled"}, v) end
 })
+
+
+-- Translation helper (defaults to English)
+local function _t(jp, en) return en end
+-- ── UE VISUALS (from ue source) ──────────────────────────────────
+-- ESP, Chams, Wireframe, Radar, Hitbox Vis, Rainbow Chams, Distance Color ESP, Wallbang ESP
+-- ESP state table (mirrors what we've set in KiciaStore)
+local _espState = {
+    Name         = false,
+    HealthBar    = false,
+    Box          = false,
+    Tracer       = false,
+    Skeleton     = false,
+    FilledBox    = false,
+    HealthNumber = false,
+    HeldWeapon   = false,
+    AmmoBar      = false,
+    Distance     = false,
+    HeadMarker   = false,
+    Chams        = false,
+}
+HvHL4:AddToggle("EspEnabled", {
+    Text = "Player ESP",
+    Default = false,
+    Callback = function(v)
+        _kSet({"Esp","Main","Enabled"}, v)
+        _kSet({"Esp","Enemy","Enabled"}, v)
+        _kSet({"Esp","Team","Enabled"}, v)
+        -- Push sub-item states now that the master is confirmed on/off
+        for key, state in pairs(_espState) do
+            _kSet({"Esp","Enemy",key,"Enabled"}, v and state)
+            _kSet({"Esp","Team", key,"Enabled"}, v and state)
+        end
+    end
+})
+HvHL4:AddToggle("EspName", {
+    Text = "ESP: Name",
+    Default = false,
+    Callback = function(v)
+        _espState.Name = v
+        _kSet({"Esp","Enemy","Name","Enabled"}, v)
+        _kSet({"Esp","Team","Name","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspHealth", {
+    Text = "ESP: Health Bar",
+    Default = false,
+    Callback = function(v)
+        _espState.HealthBar = v
+        _kSet({"Esp","Enemy","HealthBar","Enabled"}, v)
+        _kSet({"Esp","Team","HealthBar","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspBox", {
+    Text = "ESP: Bounding Box",
+    Default = false,
+    Callback = function(v)
+        _espState.Box = v
+        _kSet({"Esp","Enemy","Box","Enabled"}, v)
+        _kSet({"Esp","Team","Box","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspTracer", {
+    Text = "ESP: Tracer",
+    Default = false,
+    Callback = function(v)
+        _espState.Tracer = v
+        _kSet({"Esp","Enemy","Tracer","Enabled"}, v)
+        _kSet({"Esp","Team","Tracer","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspSkeleton", {
+    Text = "ESP: Skeleton",
+    Default = false,
+    Callback = function(v)
+        _espState.Skeleton = v
+        _kSet({"Esp","Enemy","Skeleton","Enabled"}, v)
+        _kSet({"Esp","Team","Skeleton","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspFilledBox", {
+    Text = "ESP: Filled Box",
+    Default = false,
+    Callback = function(v)
+        _espState.FilledBox = v
+        _kSet({"Esp","Enemy","FilledBox","Enabled"}, v)
+        _kSet({"Esp","Team","FilledBox","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspHealthNum", {
+    Text = "ESP: Health Number",
+    Default = false,
+    Callback = function(v)
+        _espState.HealthNumber = v
+        _kSet({"Esp","Enemy","HealthNumber","Enabled"}, v)
+        _kSet({"Esp","Team","HealthNumber","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspHeldWeapon", {
+    Text = "ESP: Held Weapon",
+    Default = false,
+    Callback = function(v)
+        _espState.HeldWeapon = v
+        _kSet({"Esp","Enemy","HeldWeapon","Enabled"}, v)
+        _kSet({"Esp","Team","HeldWeapon","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspAmmoBar", {
+    Text = "ESP: Ammo Bar",
+    Default = false,
+    Callback = function(v)
+        _espState.AmmoBar = v
+        _kSet({"Esp","Enemy","AmmoBar","Enabled"}, v)
+        _kSet({"Esp","Team","AmmoBar","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspDistance", {
+    Text = "ESP: Distance",
+    Default = false,
+    Callback = function(v)
+        _espState.Distance = v
+        _kSet({"Esp","Enemy","Distance","Enabled"}, v)
+        _kSet({"Esp","Team","Distance","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspHeadMarker", {
+    Text = "ESP: Head Marker",
+    Default = false,
+    Callback = function(v)
+        _espState.HeadMarker = v
+        _kSet({"Esp","Enemy","HeadMarker","Enabled"}, v)
+        _kSet({"Esp","Team","HeadMarker","Enabled"}, v)
+    end
+})
+HvHL4:AddToggle("EspChams", {
+    Text = "ESP: Chams",
+    Default = false,
+    Tooltip = "Render enemies through walls with a highlight material.",
+    Callback = function(v)
+        _espState.Chams = v
+        _kSet({"Esp","Enemy","Chams","Enabled"}, v)
+        _kSet({"Esp","Team","Chams","Enabled"}, v)
+    end
+})
+
+-- ── WIREFRAME ─────────────────────────────────────────────────
+do
+-- ╔══════════════════════════════════════════════════════════════════╗
+-- ║  WIREFRAME ESP                                                  ║
+-- ║  Highlight(FillTransparency=1) を敵キャラ全パーツに適用         ║
+-- ║  → 壁越しにシルエット輪郭が見える擬似ワイヤーフレーム           ║
+-- ╚══════════════════════════════════════════════════════════════════╝
+local _wfCFG = {
+    enabled       = false,
+    color         = Color3.fromRGB(255, 50, 50),   -- デフォルト赤
+    thickness     = 2,                              -- 輪郭の太さ (1-5)
+    wallhack      = true,                           -- 壁越し表示
+    selfOnly      = false,                          -- 自分だけ非表示
+    teamVisible   = false,                          -- 味方も表示
+}
+
+local _wfHighlights = {}  -- [player] = Highlight instance
+local _wfConn       = nil
+local _wfLP         = game:GetService("Players").LocalPlayer
+
+local function _wfRemove(plr)
+    local hl = _wfHighlights[plr]
+    if hl then
+        pcall(function() hl:Destroy() end)
+        _wfHighlights[plr] = nil
+    end
+end
+
+local function _wfApply(plr)
+    if not _wfCFG.enabled then return end
+    if plr == _wfLP and not _wfCFG.selfOnly then return end
+    _wfRemove(plr)
+    pcall(function()
+        local char = plr.Character
+        if not char then return end
+        local hl = Instance.new("Highlight")
+        hl.FillTransparency    = 1                          -- 塗り潰しなし → ワイヤーフレーム風
+        hl.OutlineColor        = _wfCFG.color
+        hl.OutlineTransparency = 0
+        hl.DepthMode = _wfCFG.wallhack
+            and Enum.HighlightDepthMode.AlwaysOnTop
+            or  Enum.HighlightDepthMode.Occluded
+        hl.Adornee = char
+        hl.Parent  = char
+        _wfHighlights[plr] = hl
+    end)
+end
+
+local function _wfClear()
+    for plr, _ in pairs(_wfHighlights) do
+        _wfRemove(plr)
+    end
+end
+
+local function _wfStart()
+    _wfConn = game:GetService("RunService").Heartbeat:Connect(function()
+        for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
+            repeat
+                if plr == _wfLP then break end
+                local isTeam = false
+                pcall(function()
+                    isTeam = (plr.Team == _wfLP.Team)
+                end)
+                if isTeam and not _wfCFG.teamVisible then
+                    _wfRemove(plr)
+                    break
+                end
+                -- charが変わったら再適用
+                local char = plr.Character
+                local hl   = _wfHighlights[plr]
+                if not hl or not hl.Parent or hl.Adornee ~= char then
+                    _wfApply(plr)
+                else
+                    -- 色・壁越し設定をリアルタイム反映
+                    hl.OutlineColor = _wfCFG.color
+                    hl.DepthMode = _wfCFG.wallhack
+                        and Enum.HighlightDepthMode.AlwaysOnTop
+                        or  Enum.HighlightDepthMode.Occluded
+                end
+            until true
+        end
+        -- 抜けたプレイヤーのクリーンアップ
+        for plr, _ in pairs(_wfHighlights) do
+            if not plr.Parent then _wfRemove(plr) end
+        end
+    end)
+end
+
+local function _wfStop()
+    if _wfConn then _wfConn:Disconnect(); _wfConn = nil end
+    _wfClear()
+end
+
+-- ── UI ──────────────────────────────────────────────────────
+HvHL4:AddToggle("WireframeEnabled", {
+    Text    = _t("ワイヤーフレーム ESP","Wireframe ESP"),
+    Default = false,
+    Tooltip = _t(
+        "敵のシルエット輪郭を壁越しに表示（擬似ワイヤーフレーム）",
+        "Show enemy outlines through walls (pseudo-wireframe)."
+    ),
+    Callback = function(v)
+        _wfCFG.enabled = v
+        if v then _wfStart() else _wfStop() end
+        Notification.new({
+            Title   = "Wireframe ESP",
+            Content = _t(
+                "ワイヤーフレーム "..(v and "ON 🔲" or "OFF"),
+                "Wireframe "..(v and "ON 🔲" or "OFF")
+            ),
+            Duration = 1.5,
+        })
+    end,
+})
+
+HvHL4:AddToggle("WireframeWallhack", {
+    Text    = _t("壁越し表示","Wallhack (AlwaysOnTop)"),
+    Default = true,
+    Tooltip = _t("ONで壁を貫通して輪郭表示","Show outlines through walls."),
+    Callback = function(v) _wfCFG.wallhack = v end,
+})
+
+HvHL4:AddToggle("WireframeTeam", {
+    Text    = _t("味方も表示","Show Teammates"),
+    Default = false,
+    Callback = function(v) _wfCFG.teamVisible = v end,
+})
+
+-- ColorpickerはVisual ConfigのHvHR4側に追加
+HvHR4:AddColorpicker("WireframeColor", {
+    Text    = _t("ワイヤーフレーム色","Wireframe Color"),
+    Default = Color3.fromRGB(255, 50, 50),
+    Callback = function(v) _wfCFG.color = v end,
+})
+
+HvHR4:AddSlider("WireframeThickness", {
+    Text    = _t("輪郭の太さ","Outline Thickness"),
+    Default = 2, Min = 1, Max = 5, Rounding = 0,
+    Tooltip = _t("ハイライト輪郭の太さ (1-5)","Highlight outline thickness (1-5)."),
+    Callback = function(v)
+        _wfCFG.thickness = v
+        -- Highlightは太さプロパティ未公開のため、再適用で反映
+        if _wfCFG.enabled then
+            _wfClear()
+            for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
+                if plr ~= _wfLP then _wfApply(plr) end
+            end
+        end
+    end,
+})
+
+end -- Wireframe scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Player Radar
+-- ═══════════════════════════════════════════════════════════════
+do -- Player Radar scope
+local _radarCFG = { enabled=false, range=500,
+    selfColor=Color3.fromRGB(0,255,0), enemyColor=Color3.fromRGB(255,50,50) }
+local _radarGui = nil
+local _radarCon = nil
+local _radarRS  = game:GetService("RunService")
+local _radarP   = game:GetService("Players")
+local RADAR_SIZE = 200
+
+local function _radarBuild()
+    pcall(function()
+        if _radarGui then _radarGui:Destroy(); _radarGui = nil end
+        local sg = Instance.new("ScreenGui")
+        sg.Name = "UNC_RadarHUD"
+        sg.ResetOnSpawn = false
+        sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        sg.DisplayOrder = 15
+        pcall(function() sg.Parent = game:GetService("CoreGui") end)
+        if not sg.Parent then sg.Parent = _radarP.LocalPlayer.PlayerGui end
+        _radarGui = sg
+
+        local bg = Instance.new("Frame")
+        bg.Name = "RadarBG"
+        bg.Size = UDim2.new(0, RADAR_SIZE, 0, RADAR_SIZE)
+        bg.Position = UDim2.new(0, 20, 0.5, -(RADAR_SIZE/2))
+        bg.BackgroundColor3 = Color3.fromRGB(8,8,8)
+        bg.BackgroundTransparency = 0.35
+        bg.BorderSizePixel = 0
+        bg.Parent = sg
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(1, 0)
+        corner.Parent = bg
+
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, 0, 0, 14)
+        lbl.Position = UDim2.new(0, 0, 0, 2)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = "RADAR"
+        lbl.TextColor3 = Color3.fromRGB(200,200,200)
+        lbl.TextSize = 11
+        lbl.Font = Enum.Font.GothamBold
+        lbl.Parent = bg
+
+        -- 自分 (中心)
+        local sd = Instance.new("Frame")
+        sd.Name = "SelfDot"
+        sd.Size = UDim2.new(0, 7, 0, 7)
+        sd.Position = UDim2.new(0.5, -3, 0.5, -3)
+        sd.BackgroundColor3 = _radarCFG.selfColor
+        sd.BorderSizePixel = 0
+        local sc = Instance.new("UICorner"); sc.CornerRadius = UDim.new(1,0); sc.Parent = sd
+        sd.Parent = bg
+    end)
+end
+
+HvHL4:AddToggle("RadarEnabled", { Text=_t("プレイヤーレーダー","Player Radar"), Default=false,
+    Tooltip=_t("ミニマップ風に敵位置をリアルタイム表示","Show enemy positions on a mini-map radar"),
+    Callback = function(v)
+        _radarCFG.enabled = v
+        if v then
+            _radarBuild()
+            _radarCon = _radarRS.Heartbeat:Connect(function()
+                if not _radarCFG.enabled or not _radarGui then return end
+                local bg = _radarGui:FindFirstChild("RadarBG")
+                if not bg then return end
+                for _, c in ipairs(bg:GetChildren()) do
+                    if c.Name:sub(1,8) == "EnemyDot" then c:Destroy() end
+                end
+                local lp   = _radarP.LocalPlayer
+                local char = lp.Character
+                if not char then return end
+                local hrp  = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                local cf = hrp.CFrame
+                for _, p in ipairs(_radarP:GetPlayers()) do
+                    if p ~= lp and p.Character then
+                        local phrp = p.Character:FindFirstChild("HumanoidRootPart")
+                        local phum = p.Character:FindFirstChildOfClass("Humanoid")
+                        if phrp and phum and phum.Health > 0 then
+                            local rel = cf:PointToObjectSpace(phrp.Position)
+                            local rx  = math.clamp(rel.X / _radarCFG.range, -1, 1)
+                            local rz  = math.clamp(rel.Z / _radarCFG.range, -1, 1)
+                            local dot = Instance.new("Frame")
+                            dot.Name = "EnemyDot_"..p.Name
+                            dot.Size = UDim2.new(0, 6, 0, 6)
+                            dot.Position = UDim2.new(0.5 + rx*0.44, -3, 0.5 + rz*0.44, -3)
+                            dot.BackgroundColor3 = _radarCFG.enemyColor
+                            dot.BorderSizePixel = 0
+                            local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(1,0); dc.Parent = dot
+                            dot.Parent = bg
+                        end
+                    end
+                end
+            end)
+        else
+            if _radarCon then _radarCon:Disconnect(); _radarCon = nil end
+            if _radarGui then _radarGui:Destroy(); _radarGui = nil end
+        end
+    end })
+HvHR4:AddSlider("RadarRange", { Text=_t("レーダー範囲 (studs)","Radar Range (studs)"),
+    Default=500, Min=50, Max=2000, Rounding=0,
+    Callback = function(v) _radarCFG.range = v end })
+end -- Player Radar scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Hitbox Visualizer
+-- ═══════════════════════════════════════════════════════════════
+do -- Hitbox Visualizer scope
+local _hvCFG  = { enabled=false, headOnly=false, color=Color3.fromRGB(255,200,0) }
+local _hvBoxes = {}
+local _hvCon  = nil
+local _hvRS   = game:GetService("RunService")
+local _hvP    = game:GetService("Players")
+
+local function _hvClear()
+    for _, b in pairs(_hvBoxes) do pcall(function() b:Destroy() end) end
+    _hvBoxes = {}
+end
+
+HvHL4:AddToggle("HitboxVisEnabled", { Text=_t("ヒットボックス可視化","Hitbox Visualizer"), Default=false,
+    Tooltip=_t("敵のヒットボックスをSelectionBoxで表示","Show enemy hitboxes via SelectionBox"),
+    Callback = function(v)
+        _hvCFG.enabled = v
+        if v then
+            _hvCon = _hvRS.Heartbeat:Connect(function()
+                if not _hvCFG.enabled then return end
+                _hvClear()
+                local lp = _hvP.LocalPlayer
+                for _, p in ipairs(_hvP:GetPlayers()) do
+                    if p ~= lp and p.Character then
+                        local phum = p.Character:FindFirstChildOfClass("Humanoid")
+                        if phum and phum.Health > 0 then
+                            local parts = _hvCFG.headOnly
+                                and { p.Character:FindFirstChild("Head") }
+                                or  p.Character:GetChildren()
+                            for _, part in ipairs(parts) do
+                                if part and part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                                    local sb = Instance.new("SelectionBox")
+                                    sb.Adornee             = part
+                                    sb.Color3              = _hvCFG.color
+                                    sb.LineThickness       = 0.05
+                                    sb.SurfaceTransparency = 0.8
+                                    sb.SurfaceColor3       = _hvCFG.color
+                                    sb.Parent              = workspace
+                                    table.insert(_hvBoxes, sb)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if _hvCon then _hvCon:Disconnect(); _hvCon = nil end
+            _hvClear()
+        end
+    end })
+HvHL4:AddToggle("HitboxVisHeadOnly", { Text=_t("頭部のみ","Head Only"), Default=false,
+    Callback = function(v) _hvCFG.headOnly = v end })
+HvHR4:AddColorpicker("HitboxVisColor", { Text=_t("ヒットボックス色","Hitbox Color"),
+    Default=Color3.fromRGB(255,200,0),
+    Callback = function(v) _hvCFG.color = v end })
+end -- Hitbox Visualizer scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Rainbow Chams
+-- ═══════════════════════════════════════════════════════════════
+do -- Rainbow Chams scope
+local _rbCFG = { enabled=false, speed=1.0 }
+local _rbCon = nil
+local _rbRS  = game:GetService("RunService")
+local _rbP   = game:GetService("Players")
+
+HvHL4:AddToggle("RainbowChamsEnabled", { Text=_t("レインボーチャムス","Rainbow Chams"), Default=false,
+    Tooltip=_t("チャムスの色が自動で変わる","Chams color cycles through the rainbow"),
+    Callback = function(v)
+        _rbCFG.enabled = v
+        if v then
+            _rbCon = _rbRS.Heartbeat:Connect(function()
+                if not _rbCFG.enabled then return end
+                local hue     = (tick() * _rbCFG.speed) % 1
+                local rbColor = Color3.fromHSV(hue, 1, 1)
+                local lp = _rbP.LocalPlayer
+                for _, p in ipairs(_rbP:GetPlayers()) do
+                    if p ~= lp and p.Character then
+                        for _, hl in ipairs(p.Character:GetDescendants()) do
+                            if hl:IsA("Highlight") then
+                                hl.FillColor    = rbColor
+                                hl.OutlineColor = rbColor
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if _rbCon then _rbCon:Disconnect(); _rbCon = nil end
+        end
+    end })
+HvHR4:AddSlider("RainbowChamsSpeed", { Text=_t("色変化速度","Color Cycle Speed"),
+    Default=1, Min=0.1, Max=10, Rounding=1,
+    Callback = function(v) _rbCFG.speed = v end })
+end -- Rainbow Chams scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Distance-Based ESP Color
+-- ═══════════════════════════════════════════════════════════════
+do -- Distance Color ESP scope
+local _dcCFG  = { enabled=false, nearDist=30, farDist=200 }
+local _dcCon  = nil
+local _dcRS   = game:GetService("RunService")
+local _dcP    = game:GetService("Players")
+
+HvHL4:AddToggle("DistColorEnabled", { Text=_t("距離別ESPカラー","Distance Color ESP"), Default=false,
+    Tooltip=_t("近い敵=赤、遠い敵=青に自動グラデーション","Near=red far=blue gradient on highlights"),
+    Callback = function(v)
+        _dcCFG.enabled = v
+        if v then
+            _dcCon = _dcRS.Heartbeat:Connect(function()
+                if not _dcCFG.enabled then return end
+                local lp = _dcP.LocalPlayer
+                local char = lp.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                for _, p in ipairs(_dcP:GetPlayers()) do
+                    if p ~= lp and p.Character then
+                        local phrp = p.Character:FindFirstChild("HumanoidRootPart")
+                        if phrp then
+                            local d     = (hrp.Position - phrp.Position).Magnitude
+                            local t     = math.clamp((d - _dcCFG.nearDist) / (_dcCFG.farDist - _dcCFG.nearDist), 0, 1)
+                            -- near=赤(0°) far=青(240°)
+                            local hue   = t * (240/360)
+                            local color = Color3.fromHSV(hue, 1, 1)
+                            for _, hl in ipairs(p.Character:GetDescendants()) do
+                                if hl:IsA("Highlight") then
+                                    hl.OutlineColor = color
+                                    if hl.FillTransparency < 1 then hl.FillColor = color end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if _dcCon then _dcCon:Disconnect(); _dcCon = nil end
+        end
+    end })
+HvHR4:AddSlider("DistColorNear", { Text=_t("近距離しきい値 (studs)","Near Threshold (studs)"),
+    Default=30, Min=5, Max=100, Rounding=0, Callback = function(v) _dcCFG.nearDist = v end })
+HvHR4:AddSlider("DistColorFar",  { Text=_t("遠距離しきい値 (studs)","Far Threshold (studs)"),
+    Default=200, Min=50, Max=1000, Rounding=0, Callback = function(v) _dcCFG.farDist = v end })
+end -- Distance Color ESP scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Wallbang ESP
+-- ═══════════════════════════════════════════════════════════════
+do -- Wallbang ESP scope
+local _wbCFG  = { enabled=false, color=Color3.fromRGB(255,120,0), maxThick=0.5 }
+local _wbCon  = nil
+local _wbRS   = game:GetService("RunService")
+local _wbP    = game:GetService("Players")
+
+-- 貫通可能マテリアルセット (薄い壁・窓・金属メッシュ等)
+local _wbPenetrableMats = {
+    [Enum.Material.Glass]       = true,
+    [Enum.Material.SmoothPlastic] = true,
+    [Enum.Material.Metal]       = true,
+    [Enum.Material.Foil]        = true,
+}
+
+HvHL4:AddToggle("WallbangEnabled", { Text=_t("ウォールバングESP","Wallbang ESP"), Default=false,
+    Tooltip=_t("貫通可能な壁をオレンジハイライト表示","Highlight walls you can shoot through"),
+    Callback = function(v)
+        _wbCFG.enabled = v
+        if v then
+            _wbCon = _wbRS.Heartbeat:Connect(function()
+                if not _wbCFG.enabled then return end
+                local lp  = _wbP.LocalPlayer
+                local char = lp.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                -- 全プレイヤーとの間にある壁をチェック
+                for _, p in ipairs(_wbP:GetPlayers()) do
+                    if p ~= lp and p.Character then
+                        local phrp = p.Character:FindFirstChild("HumanoidRootPart")
+                        if phrp then
+                            local origin = hrp.Position
+                            local target = phrp.Position
+                            local dir    = (target - origin)
+                            local ray    = Ray.new(origin, dir)
+                            local ignoreList = {char, p.Character}
+                            local hit, _ = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
+                            if hit and _wbPenetrableMats[hit.Material] and hit.Size.Magnitude <= _wbCFG.maxThick * 50 then
+                                -- 貫通可能な壁をハイライト
+                                local existing = hit:FindFirstChildOfClass("SelectionBox")
+                                if not existing then
+                                    local sb = Instance.new("SelectionBox")
+                                    sb.Adornee             = hit
+                                    sb.Color3              = _wbCFG.color
+                                    sb.LineThickness       = 0.08
+                                    sb.SurfaceColor3       = _wbCFG.color
+                                    sb.SurfaceTransparency = 0.5
+                                    sb.Parent              = workspace
+                                    task.delay(0.5, function() pcall(function() sb:Destroy() end) end)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if _wbCon then _wbCon:Disconnect(); _wbCon = nil end
+        end
+    end })
+HvHR4:AddColorpicker("WallbangColor", { Text=_t("ウォールバング色","Wallbang Color"),
+    Default=Color3.fromRGB(255,120,0),
+    Callback = function(v) _wbCFG.color = v end })
+end -- Wallbang ESP scope
+
+-- ═══════════════════════════════════════════════════════════════
+--  UNCODE v1 ·  Respawn Predictor
+-- ═══════════════════════════════════════════════════════════════
+do -- Respawn Predictor scope
+local _rpCFG  = { enabled=false, showTimer=true }
+local _rpBills = {}
+local _rpCon   = nil
+local _rpRS    = game:GetService("RunService")
+local _rpP     = game:GetService("Players")
+
+local function _rpClear()
+    for _, b in pairs(_rpBills) do pcall(function() b:Destroy() end) end
+    _rpBills = {}
+end
+
+local function _rpShowSpawn(spawnPart, label)
+    pcall(function()
+        local bb = Instance.new("BillboardGui")
+        bb.Size  = UDim2.new(0, 100, 0, 30)
+        bb.StudsOffset = Vector3.new(0, 3, 0)
+        bb.Adornee = spawnPart
+        bb.AlwaysOnTop = true
+        bb.Parent = workspace
+        local tl = Instance.new("TextLabel")
+        tl.Size   = UDim2.new(1, 0, 1, 0)
+        tl.Text   = label
+        tl.TextColor3 = Color3.fromRGB(255,200,0)
+        tl.TextSize = 14
+        tl.Font   = Enum.Font.GothamBold
+        tl.BackgroundTransparency = 1
+        tl.Parent = bb
+        table.insert(_rpBills, bb)
+    end)
+end
+
+HvHL4:AddToggle("RespawnPredEnabled", { Text=_t("リスポーン予測","Respawn Predictor"), Default=false,
+    Tooltip=_t("スポーン地点を予測表示","Predict and highlight enemy spawn locations"),
+    Callback = function(v)
+        _rpCFG.enabled = v
+        if v then
+            _rpClear()
+            -- スポーンロケーションを全収集
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("SpawnLocation") then
+                    _rpShowSpawn(obj, _t("⟳ SPAWN","⟳ SPAWN"))
+                end
+            end
+            -- 死亡検知 → 該当スポーン強調
+            _rpCon = _rpP.PlayerRemoving:Connect(function()
+                _rpClear()
+            end)
+        else
+            if _rpCon then _rpCon:Disconnect(); _rpCon = nil end
+            _rpClear()
+        end
+    end })
+HvHL4:AddToggle("RespawnPredTimer", { Text=_t("リスポーンタイマー表示","Show Respawn Timer"), Default=true,
+    Callback = function(v) _rpCFG.showTimer = v end })
+end -- Respawn Predictor scope
+
+-- ── VISUAL CONFIG (right side) ────────────────────────────────
+HvHR4:AddToggle("CxEnabled", {
+    Text = "Custom Crosshair",
+    Default = false,
+    Callback = function(v) _kSet({"CustomCrosshair","Enabled"}, v) end
+})
+HvHR4:AddDropdown("CxStyle", {
+    Text = "Crosshair Style",
+    Values = {"Lines", "Image"},
+    Default = 1,
+    Callback = function(v) _kSet({"CustomCrosshair","Style"}, v) end
+})
+HvHR4:AddToggle("CxHitFeedback", {
+    Text = "Hit Feedback",
+    Default = true,
+    Callback = function(v) _kSet({"HitFeedback","Enabled"}, v) end
+})
+HvHR4:AddToggle("WvEnabled", {
+    Text = "Weapon Visuals",
+    Default = false,
+    Callback = function(v) _kSet({"WeaponVisuals","Enabled"}, v) end
+})
+HvHR4:AddToggle("CamEnabled", {
+    Text = "Custom Camera FOV",
+    Default = false,
+    Callback = function(v) _kSet({"CameraFov","Enabled"}, v) end
+})
+HvHR4:AddSlider("CamFov", {
+    Text = "Camera FOV",
+    Default = 70,
+    Min = 40, Max = 120, Rounding = 0,
+    Callback = function(v) _kSet({"CameraFov","Value"}, v) end
+})
+HvHR4:AddToggle("SoundEsp", {
+    Text = "Sound ESP",
+    Default = false,
+    Callback = function(v) _kSet({"SoundEsp","Enabled"}, v) end
+})
+HvHR4:AddToggle("FireAssist", {
+    Text = "Fire Assist",
+    Default = false,
+    Callback = function(v) _kSet({"FireAssist","Enabled"}, v) end
+})
+HvHR4:AddToggle("WeaponHandling", {
+    Text = "Weapon Handling",
+    Default = false,
+    Callback = function(v) _kSet({"WeaponHandling","Enabled"}, v) end
+})
+
+-- ── BULLET TRACERS ────────────────────────────────────────────
+local HvHL5 = HvHTab:AddLeftGroupbox("Bullet Tracers")
+local HvHR5 = HvHTab:AddRightGroupbox("Hit / Elim Feedback")
+local HvHL6 = HvHTab:AddLeftGroupbox("Sound Visualizer")
+
+
+HvHL5:AddToggle("BtEnabled", {
+    Text = "Bullet Tracers",
+    Default = false,
+    Tooltip = "Show tracer lines from you to where your bullets go.",
+    Callback = function(v) _kSet({"BulletTracers","Enabled"}, v) end
+})
+HvHL5:AddSlider("BtWidth", {
+    Text = "Tracer Width",
+    Default = 10,
+    Min = 2, Max = 50, Rounding = 0,
+    Tooltip = "Width of the tracer lines (in hundredths of a stud).",
+    Callback = function(v) _kSet({"BulletTracers","Width"}, v / 100) end
+})
+HvHL5:AddSlider("BtLifetime", {
+    Text = "Tracer Lifetime",
+    Default = 10,
+    Min = 1, Max = 50, Rounding = 0,
+    Suffix = "× 0.1s",
+    Callback = function(v) _kSet({"BulletTracers","Lifetime"}, v / 10) end
+})
+HvHL5:AddSlider("BtFadeTime", {
+    Text = "Fade Time",
+    Default = 3,
+    Min = 0, Max = 30, Rounding = 0,
+    Suffix = "× 0.1s",
+    Callback = function(v) _kSet({"BulletTracers","FadeTime"}, v / 10) end
+})
+
+-- ── HIT / ELIMINATION FEEDBACK ────────────────────────────────
+HvHR5:AddToggle("PhEnabled", {
+    Text = "Player Hit Feedback",
+    Default = false,
+    Tooltip = "Enable all hit feedback effects.",
+    Callback = function(v) _kSet({"PlayerHit","Enabled"}, v) end
+})
+HvHR5:AddToggle("PhSound", {
+    Text = "Hit Sound",
+    Default = false,
+    Tooltip = "Play a sound on player hit.",
+    Callback = function(v) _kSet({"PlayerHit","Sound","Enabled"}, v) end
+})
+HvHR5:AddSlider("PhSoundVol", {
+    Text = "Hit Sound Volume",
+    Default = 80,
+    Min = 0, Max = 100, Rounding = 0, Suffix = "%",
+    Tooltip = "Volume of the hit sound.",
+    Callback = function(v) _kSet({"PlayerHit","Sound","Volume"}, v / 100) end
+})
+HvHR5:AddSlider("PhSoundPitch", {
+    Text = "Hit Sound Pitch",
+    Default = 10,
+    Min = 5, Max = 20, Rounding = 0,
+    Tooltip = "Pitch of the hit sound (×0.1). 10 = normal.",
+    Callback = function(v) _kSet({"PlayerHit","Sound","Pitch"}, v / 10) end
+})
+HvHR5:AddDropdown("PhSoundType", {
+    Text = "Hit Sound Type",
+    Values = {"Default", "Headshot", "Blip", "Ding", "Thud", "Crack", "Pop"},
+    Default = 1,
+    Tooltip = "Which sound plays on hit.",
+    Callback = function(v) _kSet({"PlayerHit","Sound","Name"}, v) end
+})
+HvHR5:AddToggle("PhHeadshotSound", {
+    Text = "Headshot Distinct Sound",
+    Default = false,
+    Tooltip = "Play a different sound for headshots.",
+    Callback = function(v) _kSet({"PlayerHit","Sound","HeadshotDistinct"}, v) end
+})
+HvHR5:AddToggle("PhChams", {
+    Text = "Hit Chams Flash",
+    Default = false,
+    Callback = function(v) _kSet({"PlayerHit","Chams","Enabled"}, v) end
+})
+HvHR5:AddToggle("PhFlash", {
+    Text = "Hit Screen Flash",
+    Default = false,
+    Callback = function(v) _kSet({"PlayerHit","HitFlash","Enabled"}, v) end
+})
+HvHR5:AddToggle("PeEnabled", {
+    Text = "Elimination Feedback",
+    Default = false,
+    Tooltip = "Enable all kill/elimination feedback effects.",
+    Callback = function(v) _kSet({"PlayerElimination","Enabled"}, v) end
+})
+HvHR5:AddToggle("PeSound", {
+    Text = "Kill Sound",
+    Default = false,
+    Tooltip = "Play a sound on kill.",
+    Callback = function(v) _kSet({"PlayerElimination","Sound","Enabled"}, v) end
+})
+HvHR5:AddSlider("PeSoundVol", {
+    Text = "Kill Sound Volume",
+    Default = 100,
+    Min = 0, Max = 100, Rounding = 0, Suffix = "%",
+    Tooltip = "Volume of the kill sound.",
+    Callback = function(v) _kSet({"PlayerElimination","Sound","Volume"}, v / 100) end
+})
+HvHR5:AddSlider("PeSoundPitch", {
+    Text = "Kill Sound Pitch",
+    Default = 10,
+    Min = 5, Max = 20, Rounding = 0,
+    Tooltip = "Pitch of the kill sound (×0.1). 10 = normal.",
+    Callback = function(v) _kSet({"PlayerElimination","Sound","Pitch"}, v / 10) end
+})
+HvHR5:AddDropdown("PeSoundType", {
+    Text = "Kill Sound Type",
+    Values = {"Default", "Headshot", "Blip", "Ding", "Thud", "Crack", "Pop"},
+    Default = 1,
+    Tooltip = "Which sound plays on kill.",
+    Callback = function(v) _kSet({"PlayerElimination","Sound","Name"}, v) end
+})
+HvHR5:AddToggle("PeChams", {
+    Text = "Kill Chams Flash",
+    Default = false,
+    Callback = function(v) _kSet({"PlayerElimination","Chams","Enabled"}, v) end
+})
+HvHR5:AddToggle("PeFlash", {
+    Text = "Kill Screen Flash",
+    Default = false,
+    Callback = function(v) _kSet({"PlayerElimination","KillFlash","Enabled"}, v) end
+})
+
+-- ── SOUND VISUALIZER ──────────────────────────────────────────
+HvHL6:AddToggle("SvEnabled", {
+    Text = "Sound Visualizer",
+    Default = false,
+    Tooltip = "Show visual indicators for enemy sounds (footsteps etc.).",
+    Callback = function(v) _kSet({"SoundVisualizer","Enabled"}, v) end
+})
+HvHL6:AddDropdown("SvSource", {
+    Text = "Sound Source Filter",
+    Values = {"All", "Enemies", "Team", "Self"},
+    Default = 2,
+    Tooltip = "Whose sounds to visualize.",
+    Callback = function(v) _kSet({"SoundVisualizer","Source"}, v) end
+})
+HvHL6:AddSlider("SvMinVol", {
+    Text = "Minimum Volume",
+    Default = 10,
+    Min = 0, Max = 100, Rounding = 0,
+    Suffix = "%",
+    Tooltip = "Only show sounds louder than this threshold.",
+    Callback = function(v) _kSet({"SoundVisualizer","MinVolume"}, v / 100) end
+})
+
+-- ╔═══════════════════════════════════════════════════════════════════════╗
+-- ║  ENEMY INFO DISPLAY                                                  ║
+-- ║  相手の武器・レベル・ランク・体力をキャラ頭上に表示                  ║
+-- ║  Combat → Enemy Info / Info Settings                                ║
+-- ╚═══════════════════════════════════════════════════════════════════════╝
+
+-- ── SKINCHANGER (Visual tab) ──────────────────────────────────────
+-- ── SkinChanger Tab UI ───────────────────────────────────────────────────────
+local SK  = HvHTab:AddLeftGroupbox("SkinChanger")
+local SKR = HvHTab:AddRightGroupbox("Info")
+
+SK:AddLabel("Status: " .. (_skLoadConfig and "Active ✓" or "Unavailable"))
+SK:AddButton("Reload Config", function()
+    if _skLoadConfig then pcall(_skLoadConfig) end
+    Notify("SkinChanger config reloaded", 3)
+end)
+SK:AddButton("Save Config", function()
+    if _skSaveConfig then pcall(_skSaveConfig) end
+    Notify("SkinChanger config saved", 3)
+end)
+
+SKR:AddLabel("UNCODE v1 SkinChanger")
+SKR:AddLabel("Unlocks all Rivals cosmetics")
+SKR:AddLabel("locally — no server-side changes.")
+SKR:AddLabel("Use the in-game shop / wardrobe")
+SKR:AddLabel("UI to equip skins, charms, wraps.")
+SKR:AddLabel("Config saved to:")
+SKR:AddLabel("Rivals-Skinchanger/skins.txt")
+
 
 end)() -- HvH UI scope
 
