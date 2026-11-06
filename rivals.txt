@@ -606,6 +606,10 @@ _status("Library OK - opening window...")
 _notify("UNCODE", "UI loading...")
 
 local Window = Library:Window({Name = "UNCODE v1"})
+-- Force the window visible immediately (Bbot starts hidden by default; keybind is RightShift on PC)
+task.defer(function()
+    pcall(function() Window:SetVisible(true) end)
+end)
 _status("UI ready!")
 _notify("UNCODE", "UI ready!")
 
