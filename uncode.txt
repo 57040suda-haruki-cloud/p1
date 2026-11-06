@@ -39572,9 +39572,7 @@ Coco:AddSlider('CoconutDamping', {
     Max = 500,
     Rounding = 0,
 })
-
-do
-	end
+	end -- COCONUTS TOY
 
 	do
 		-- OBJECT FLINGER (from 9rr)
