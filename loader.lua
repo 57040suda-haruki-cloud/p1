@@ -3,35 +3,43 @@
 
 local BASE = "https://raw.githubusercontent.com/57040suda-haruki-cloud/p1/main/"
 
--- Game detection: check for Rivals or FTAP specific objects
+local RS = game:GetService("ReplicatedStorage")
+
+-- Debug: log what we see
+warn("[LOADER] PlaceId: " .. tostring(game.PlaceId))
+warn("[LOADER] RS.Rivals: "    .. tostring(RS:FindFirstChild("Rivals")))
+warn("[LOADER] RS.RivalsInfo: " .. tostring(RS:FindFirstChild("RivalsInfo")))
+warn("[LOADER] RS.GrabEvents: " .. tostring(RS:FindFirstChild("GrabEvents")))
+warn("[LOADER] RS.MenuToys: "  .. tostring(RS:FindFirstChild("MenuToys")))
+
+-- Game detection: FTAP first (GrabEvents/MenuToys are reliable)
+local function isFTAP()
+    local ok, result = pcall(function()
+        return RS:FindFirstChild("GrabEvents") ~= nil
+            or RS:FindFirstChild("MenuToys") ~= nil
+    end)
+    return ok and result
+end
+
 local function isRivals()
     local ok, result = pcall(function()
-        return game:GetService("ReplicatedStorage"):FindFirstChild("Rivals") ~= nil
-            or game:GetService("ReplicatedStorage"):FindFirstChild("RivalsInfo") ~= nil
+        return RS:FindFirstChild("Rivals") ~= nil
+            or RS:FindFirstChild("RivalsInfo") ~= nil
             or (game.PlaceId == 17017769292)
     end)
     return ok and result
 end
 
-local function isFTAP()
-    local ok, result = pcall(function()
-        return game:GetService("ReplicatedStorage"):FindFirstChild("GrabEvents") ~= nil
-            or game:GetService("ReplicatedStorage"):FindFirstChild("MenuToys") ~= nil
-    end)
-    return ok and result
-end
-
 local scriptUrl
-if isRivals() then
-    scriptUrl = BASE .. "rivals.txt"
-    warn("[LOADER] Game: Rivals")
-elseif isFTAP() then
+if isFTAP() then
     scriptUrl = BASE .. "uncode.txt"
     warn("[LOADER] Game: Fling Things and People")
+elseif isRivals() then
+    scriptUrl = BASE .. "rivals.txt"
+    warn("[LOADER] Game: Rivals")
 else
-    -- Fallback: check by PlaceId manually or default to FTAP
-    scriptUrl = BASE .. "uncode.txt"
-    warn("[LOADER] Game: Unknown (defaulting to FTAP)")
+    scriptUrl = BASE .. "rivals.txt"
+    warn("[LOADER] Game: Unknown (defaulting to Rivals)")
 end
 
 local ok, content = pcall(function() return game:HttpGet(scriptUrl) end)
