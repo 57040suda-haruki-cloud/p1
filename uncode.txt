@@ -37620,6 +37620,7 @@ EnvBox:AddDropdown("TypingSoundDropdown", {
 
 	do
 		-- THIRD PARTY PROTECTION (from 9rr)
+tppTargets = tppTargets or {}  -- initialize before the update loop references it
 DefT = tbl15.Invincibility:AddRightGroupbox("Third Party Protection", "shield")
 
     tppDropdown = DefT:AddDropdown("TPPTarget", {
@@ -37644,7 +37645,7 @@ DefT = tbl15.Invincibility:AddRightGroupbox("Third Party Protection", "shield")
 
     DefT:AddButton({
         Text = "Refresh Players",
-        Func = refreshPlayers
+        Func = function() if refreshPlayers then refreshPlayers() end end
     })
 
     DefT:AddButton({
@@ -37865,11 +37866,12 @@ DefT = tbl15.Invincibility:AddRightGroupbox("Third Party Protection", "shield")
         end
     })
 
-    refreshPlayers()
-    Players.PlayerAdded:Connect(refreshPlayers)
+    -- refreshPlayers is defined later (global); defer so it exists when called
+    task.defer(function() if refreshPlayers then refreshPlayers() end end)
+    Players.PlayerAdded:Connect(function() if refreshPlayers then refreshPlayers() end end)
     Players.PlayerRemoving:Connect(function()
         task.wait(0.1)
-        refreshPlayers()
+        if refreshPlayers then refreshPlayers() end
     end)
 end
 
@@ -46068,7 +46070,7 @@ do
     SpawnToy = R.MenuToys.SpawnToyRemoteFunction
     StickyEvent = R.PlayerEvents.StickyPartEvent
 
-    local function refreshPlayers()
+    function refreshPlayers()  -- global so TPP UI section can call it via task.defer
         list = {}
         for _, pl in ipairs(Players:GetPlayers()) do
             if pl ~= plr then
