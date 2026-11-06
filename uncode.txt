@@ -36168,6 +36168,7 @@ Escape Timer: %*]]
 
 	do
 		-- COSMETICS (from 9rr)
+local LocalPlayer = localPlayer  -- alias: 9rr code uses capital-L LocalPlayer
 CosmeticGroup = tbl15.Player:AddRightGroupbox("Cosmetics", "sparkle")
 
 FakeCosmeticsEnabled = false
