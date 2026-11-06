@@ -570,13 +570,13 @@ UNCODELoadingScreen()
 ;(function()
 _status("Downloading UI library...")
 _notify("UNCODE", "Downloading UI...")
-local Library, Notifications, Themes
+local Library
 do
     local loadFinished = false
     local loadError = nil
     task.spawn(function()
         local ok, err = pcall(function()
-            Library, Notifications, Themes = loadstring(game:HttpGet("https://raw.githubusercontent.com/i77lhm/Libraries/refs/heads/main/Bbot/Library.lua"))()
+            Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/i77lhm/Libraries/refs/heads/main/Obsidian/Library.lua"))()
         end)
         if not ok then loadError = err end
         loadFinished = true
@@ -605,166 +605,16 @@ end
 _status("Library OK - opening window...")
 _notify("UNCODE", "UI loading...")
 
-local Window = Library:Window({Name = "UNCODE v1"})
--- Force the window visible immediately (Bbot starts hidden by default; keybind is RightShift on PC)
-task.defer(function()
-    pcall(function() Window:SetVisible(true) end)
-end)
+local Window = Library:CreateWindow({
+    Title = "UNCODE v1",
+    Center = true,
+    AutoShow = true,
+})
 _status("UI ready!")
 _notify("UNCODE", "UI ready!")
 
--- Bbot compatibility shim: makes Bbot look like the old Obsidian API
--- so all existing :AddToggle/:AddSlider/:AddDropdown/etc. calls work unchanged.
-local _bbotObjects = {}
-
-local function _getProxy(key)
-    local proxy = {}
-    setmetatable(proxy, {
-        __index = function(_, k)
-            if k == "Value" then return Library.Flags[key] end
-        end
-    })
-    function proxy:SetValue(v)
-        local s = Library.ConfigFlags and Library.ConfigFlags[key]
-        if s then pcall(s, v) else Library.Flags[key] = v end
-    end
-    function proxy:SetValues(vals)
-        local obj = _bbotObjects[key]
-        if obj and obj.RefreshOptions then
-            pcall(function() obj.RefreshOptions(vals) end)
-        end
-    end
-    return proxy
-end
-
-local _proxyCache = {}
-local function _proxy(key)
-    if not _proxyCache[key] then _proxyCache[key] = _getProxy(key) end
-    return _proxyCache[key]
-end
-
-local Toggles = setmetatable({}, { __index = function(_, k) return _proxy(k) end, __newindex = rawset })
-local Options  = setmetatable({}, { __index = function(_, k) return _proxy(k) end, __newindex = rawset })
-
-local function _makeGroupbox(section)
-    local GW = {}
-    setmetatable(GW, { __index = section })
-
-    function GW:AddToggle(key, props)
-        props = props or {}
-        local bbT = section:Toggle({
-            Name     = props.Text    or key,
-            Flag     = key,
-            Default  = props.Default or false,
-            Callback = props.Callback or function() end,
-        })
-        _bbotObjects[key] = bbT
-        local tw = _proxy(key)
-        function tw:AddKeyPicker(kpKey, kpProps)
-            pcall(function()
-                kpProps = kpProps or {}
-                bbT:Keybind({
-                    Name        = kpProps.Text or kpKey,
-                    Flag        = kpKey,
-                    ShowInList  = not kpProps.NoUI,
-                    Callback    = function(b)
-                        if kpProps.SyncToggleState then
-                            local s = Library.ConfigFlags and Library.ConfigFlags[key]
-                            if s then pcall(s, not Library.Flags[key]) end
-                        end
-                    end,
-                })
-            end)
-            return tw
-        end
-        return tw
-    end
-
-    function GW:AddSlider(key, props)
-        props = props or {}
-        local rounding = props.Rounding or 0
-        local step = (rounding == 0) and 1 or (10 ^ (-rounding))
-        local bbS = section:Slider({
-            Name     = props.Text    or key,
-            Flag     = key,
-            Default  = props.Default or 0,
-            Min      = props.Min     or 0,
-            Max      = props.Max     or 100,
-            Decimal  = step,
-            Suffix   = props.Suffix  or "",
-            Callback = props.Callback or function() end,
-        })
-        _bbotObjects[key] = bbS
-        return _proxy(key)
-    end
-
-    function GW:AddDropdown(key, props)
-        props = props or {}
-        local bbD = section:Dropdown({
-            Name     = props.Text   or key,
-            Flag     = key,
-            Options  = props.Values or {},
-            Default  = props.Default,
-            Multi    = props.Multi  or false,
-            Callback = props.Callback or function() end,
-        })
-        _bbotObjects[key] = bbD
-        return _proxy(key)
-    end
-
-    function GW:AddButton(textOrProps, callback)
-        if type(textOrProps) == "table" then
-            section:Button({Name = textOrProps.Text or "Button", Callback = textOrProps.Func or function() end})
-        else
-            section:Button({Name = textOrProps or "Button", Callback = callback or function() end})
-        end
-    end
-
-    function GW:AddLabel(text)
-        pcall(function() section:Label({Name = text or ""}) end)
-        -- Return stub so :AddKeyPicker() chains silently (e.g. MenuKeybind line)
-        local lw = {}
-        function lw:AddKeyPicker() return lw end
-        return lw
-    end
-
-    function GW:AddDivider() end  -- no Bbot equivalent; skip
-
-    function GW:AddColorpicker(key, props)
-        props = props or {}
-        pcall(function()
-            local lbl = section:Label({Name = props.Text or key})
-            lbl:Colorpicker({Flag = key, Color = props.Default or Color3.new(1,1,1), Callback = props.Callback or function() end})
-        end)
-    end
-
-    function GW:AddTextBox(key, props)
-        props = props or {}
-        section:Textbox({
-            Name     = props.Text    or key,
-            Flag     = key,
-            Default  = props.Default or "",
-            Callback = props.Callback or function() end,
-        })
-    end
-
-    return GW
-end
-
-local function _makeTab(bbTab)
-    local TW = {}
-    setmetatable(TW, { __index = bbTab })
-    function TW:AddLeftGroupbox(name)
-        return _makeGroupbox(bbTab:Section({Name = name, Side = "Left"}))
-    end
-    function TW:AddRightGroupbox(name)
-        return _makeGroupbox(bbTab:Section({Name = name, Side = "Right"}))
-    end
-    return TW
-end
-
 local function Notify(text, duration)
-    pcall(function() Notifications:Create({Name = "UNCODE v1: " .. tostring(text)}) end)
+    pcall(function() Library:Notify("UNCODE v1", tostring(text), duration or 2) end)
 end
 
 local Players = game:GetService("Players")
@@ -3081,19 +2931,19 @@ end
 
 -- Tab order: VoidSpam → Combat → HvH → others → Settings(last)
 local Tabs = {}
-Tabs.VoidSpam      = _makeTab(Window:Tab({Name = "VoidSpam"}))
-Tabs.Combat        = _makeTab(Window:Tab({Name = "Combat"}))
-Tabs.HvH           = _makeTab(Window:Tab({Name = "HvH"}))
-Tabs.Orbit         = _makeTab(Window:Tab({Name = "Orbit"}))
-Tabs.Prediction    = _makeTab(Window:Tab({Name = "Prediction"}))
-Tabs.Defense       = _makeTab(Window:Tab({Name = "Defense"}))
-Tabs.Translocation = _makeTab(Window:Tab({Name = "Translocation"}))
-Tabs.SlingBypass   = _makeTab(Window:Tab({Name = "Sling Bypass"}))
-Tabs.Riot          = _makeTab(Window:Tab({Name = "Riot"}))
--- [moved to Visual tab] Tabs.SkinChanger   = _makeTab(Window:Tab({Name = "SkinChanger"}))
-Tabs.ESP           = _makeTab(Window:Tab({Name = "ESP"}))
-Tabs.WorldChanger  = _makeTab(Window:Tab({Name = "World"}))
-Tabs.Settings      = _makeTab(Window:Tab({Name = "Settings"}))
+Tabs.VoidSpam      = Window:AddTab("VoidSpam")
+Tabs.Combat        = Window:AddTab("Combat")
+Tabs.HvH           = Window:AddTab("HvH")
+Tabs.Orbit         = Window:AddTab("Orbit")
+Tabs.Prediction    = Window:AddTab("Prediction")
+Tabs.Defense       = Window:AddTab("Defense")
+Tabs.Translocation = Window:AddTab("Translocation")
+Tabs.SlingBypass   = Window:AddTab("Sling Bypass")
+Tabs.Riot          = Window:AddTab("Riot")
+-- [moved to Visual tab] Tabs.SkinChanger   = Window:AddTab("SkinChanger")
+Tabs.ESP           = Window:AddTab("ESP")
+Tabs.WorldChanger  = Window:AddTab("World")
+Tabs.Settings      = Window:AddTab("Settings")
 
 do
 local VG = Tabs.VoidSpam:AddLeftGroupbox("Void Control")
