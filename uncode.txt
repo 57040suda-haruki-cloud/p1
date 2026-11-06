@@ -17748,7 +17748,7 @@ do
 							ZoomCameraSmoothness = 9,
 							WaterYOffset = -4,
 							AspectRatio = 1,
-							TeleportLocation = workspace.Waypoints.BlueHouse,
+							TeleportLocation = (workspace:FindFirstChild("Waypoints") and workspace.Waypoints:FindFirstChild("BlueHouse")) or workspace.SpawnLocation,
 							SoundsExternalDelay = 0.1,
 							CustomNotificationSound = "97643101798871",
 							ShiftLockKey = "LeftAlt",
@@ -37874,8 +37874,6 @@ DefT = tbl15.Invincibility:AddRightGroupbox("Third Party Protection", "shield")
         if refreshPlayers then refreshPlayers() end
     end)
 end
-
-	end
 
 	do
 		local selectedPlayers = tbl7.SelectedPlayers
