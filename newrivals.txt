@@ -7217,11 +7217,8 @@ do -- Library
     end
 end
 --
--- Cleanup previous script instances on re-run
+-- Cleanup previous Orbis GUI instances on re-run (CoreGui only)
 pcall(function()
-    for _, v in ipairs(gethui():GetChildren()) do
-        if v:IsA("ScreenGui") and v.Name == string.char(0) then v:Destroy() end
-    end
     for _, v in ipairs(game:GetService("CoreGui"):GetChildren()) do
         if v.Name == "OrbisToggle" or v.Name == "OrbisLuaExec" then v:Destroy() end
     end
@@ -9403,7 +9400,7 @@ do
 
     local function espD(kind, props)
         local d = Drawing.new(kind)
-        d.Transparency = 0
+        pcall(function() d.Transparency = 0 end)
         for k,v in pairs(props) do d[k] = v end
         return d
     end
