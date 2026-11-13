@@ -7220,7 +7220,7 @@ end
 -- Cleanup previous script instances on re-run
 pcall(function()
     for _, v in ipairs(gethui():GetChildren()) do
-        if v:IsA("ScreenGui") and v.Name == " " then v:Destroy() end
+        if v:IsA("ScreenGui") and v.Name == string.char(0) then v:Destroy() end
     end
     for _, v in ipairs(game:GetService("CoreGui"):GetChildren()) do
         if v.Name == "OrbisToggle" or v.Name == "OrbisLuaExec" then v:Destroy() end
