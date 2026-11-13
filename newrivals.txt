@@ -7228,6 +7228,182 @@ local Configs = Window:CreateTab({Icon = "rbxassetid://15453364412"})
 local Lua = Window:CreateTab({Icon = "rbxassetid://18240049800"})
 
 -- ════════════════════════════════════════════════
+-- MOBILE TOGGLE BUTTON (floating UI toggle)
+-- ════════════════════════════════════════════════
+do
+    local _mtGui = Instance.new("ScreenGui")
+    _mtGui.Name = "OrbisToggle"
+    _mtGui.ResetOnSpawn = false
+    _mtGui.DisplayOrder = 999
+    _mtGui.IgnoreGuiInset = true
+    local ok, err = pcall(function()
+        _mtGui.Parent = game:GetService("CoreGui")
+    end)
+    if not ok then
+        _mtGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    end
+
+    local _mtBtn = Instance.new("TextButton")
+    _mtBtn.Name = "ToggleBtn"
+    _mtBtn.Size = UDim2.new(0, 44, 0, 44)
+    _mtBtn.Position = UDim2.new(0, 6, 0.5, -22)
+    _mtBtn.AnchorPoint = Vector2.new(0, 0)
+    _mtBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    _mtBtn.BorderSizePixel = 0
+    _mtBtn.Text = "☰"
+    _mtBtn.TextColor3 = Color3.fromRGB(220, 220, 255)
+    _mtBtn.TextSize = 20
+    _mtBtn.Font = Enum.Font.GothamBold
+    _mtBtn.Parent = _mtGui
+
+    local _corner = Instance.new("UICorner")
+    _corner.CornerRadius = UDim.new(0, 8)
+    _corner.Parent = _mtBtn
+
+    local _stroke = Instance.new("UIStroke")
+    _stroke.Color = Color3.fromRGB(80, 80, 180)
+    _stroke.Thickness = 1.5
+    _stroke.Parent = _mtBtn
+
+    _mtBtn.MouseButton1Click:Connect(function()
+        Window.Visible = not Window.Visible
+    end)
+end
+
+-- ════════════════════════════════════════════════
+-- LUA EXECUTOR (Lua tab content)
+-- ════════════════════════════════════════════════
+do
+    local _luaGui = Instance.new("ScreenGui")
+    _luaGui.Name = "OrbisLuaExec"
+    _luaGui.ResetOnSpawn = false
+    _luaGui.DisplayOrder = 998
+    _luaGui.IgnoreGuiInset = true
+    _luaGui.Enabled = false
+    local okL, _ = pcall(function()
+        _luaGui.Parent = game:GetService("CoreGui")
+    end)
+    if not okL then
+        _luaGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    end
+
+    local _luaFrame = Instance.new("Frame")
+    _luaFrame.Name = "ExecFrame"
+    _luaFrame.Size = UDim2.new(0, 460, 0, 300)
+    _luaFrame.Position = UDim2.new(0.5, -230, 0.5, -150)
+    _luaFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
+    _luaFrame.BorderSizePixel = 0
+    _luaFrame.Parent = _luaGui
+    local _fc = Instance.new("UICorner"); _fc.CornerRadius = UDim.new(0,10); _fc.Parent = _luaFrame
+    local _fs = Instance.new("UIStroke"); _fs.Color = Color3.fromRGB(60,60,160); _fs.Thickness = 1.5; _fs.Parent = _luaFrame
+
+    local _luaTitle = Instance.new("TextLabel")
+    _luaTitle.Size = UDim2.new(1, -50, 0, 30)
+    _luaTitle.Position = UDim2.new(0, 10, 0, 0)
+    _luaTitle.BackgroundTransparency = 1
+    _luaTitle.Text = "Lua Executor"
+    _luaTitle.TextColor3 = Color3.fromRGB(180, 180, 255)
+    _luaTitle.TextSize = 14
+    _luaTitle.Font = Enum.Font.GothamBold
+    _luaTitle.TextXAlignment = Enum.TextXAlignment.Left
+    _luaTitle.Parent = _luaFrame
+
+    local _luaClose = Instance.new("TextButton")
+    _luaClose.Size = UDim2.new(0, 28, 0, 28)
+    _luaClose.Position = UDim2.new(1, -34, 0, 1)
+    _luaClose.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+    _luaClose.BorderSizePixel = 0
+    _luaClose.Text = "✕"
+    _luaClose.TextColor3 = Color3.fromRGB(255, 255, 255)
+    _luaClose.TextSize = 14
+    _luaClose.Font = Enum.Font.GothamBold
+    _luaClose.Parent = _luaFrame
+    local _lcc = Instance.new("UICorner"); _lcc.CornerRadius = UDim.new(0,6); _lcc.Parent = _luaClose
+    _luaClose.MouseButton1Click:Connect(function() _luaGui.Enabled = false end)
+
+    local _luaBox = Instance.new("TextBox")
+    _luaBox.Size = UDim2.new(1, -20, 0, 200)
+    _luaBox.Position = UDim2.new(0, 10, 0, 36)
+    _luaBox.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
+    _luaBox.BorderSizePixel = 0
+    _luaBox.Text = ""
+    _luaBox.PlaceholderText = "-- Enter Lua code here..."
+    _luaBox.TextColor3 = Color3.fromRGB(200, 230, 200)
+    _luaBox.PlaceholderColor3 = Color3.fromRGB(80, 80, 100)
+    _luaBox.TextSize = 13
+    _luaBox.Font = Enum.Font.Code
+    _luaBox.MultiLine = true
+    _luaBox.TextXAlignment = Enum.TextXAlignment.Left
+    _luaBox.TextYAlignment = Enum.TextYAlignment.Top
+    _luaBox.ClearTextOnFocus = false
+    _luaBox.Parent = _luaFrame
+    local _lbc = Instance.new("UICorner"); _lbc.CornerRadius = UDim.new(0,6); _lbc.Parent = _luaBox
+    local _lbs = Instance.new("UIStroke"); _lbs.Color = Color3.fromRGB(40,40,80); _lbs.Thickness = 1; _lbs.Parent = _luaBox
+    local _lbp = Instance.new("UIPadding"); _lbp.PaddingLeft = UDim.new(0,6); _lbp.PaddingTop = UDim.new(0,4); _lbp.Parent = _luaBox
+
+    local _luaStatus = Instance.new("TextLabel")
+    _luaStatus.Size = UDim2.new(1, -190, 0, 24)
+    _luaStatus.Position = UDim2.new(0, 10, 1, -34)
+    _luaStatus.BackgroundTransparency = 1
+    _luaStatus.Text = ""
+    _luaStatus.TextColor3 = Color3.fromRGB(100, 200, 100)
+    _luaStatus.TextSize = 12
+    _luaStatus.Font = Enum.Font.Gotham
+    _luaStatus.TextXAlignment = Enum.TextXAlignment.Left
+    _luaStatus.TextTruncate = Enum.TextTruncate.AtEnd
+    _luaStatus.Parent = _luaFrame
+
+    local function mkBtn(txt, x, col)
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(0, 84, 0, 28)
+        b.Position = UDim2.new(1, x, 1, -34)
+        b.BackgroundColor3 = col
+        b.BorderSizePixel = 0
+        b.Text = txt
+        b.TextColor3 = Color3.fromRGB(255,255,255)
+        b.TextSize = 13
+        b.Font = Enum.Font.GothamBold
+        b.Parent = _luaFrame
+        local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,6); c.Parent = b
+        return b
+    end
+
+    local _execBtn  = mkBtn("Execute", -178, Color3.fromRGB(40,100,200))
+    local _clearBtn = mkBtn("Clear",   -88,  Color3.fromRGB(60,60,80))
+
+    _execBtn.MouseButton1Click:Connect(function()
+        local code = _luaBox.Text
+        if code == "" then return end
+        local fn, err = loadstring(code)
+        if fn then
+            local ok2, runErr = pcall(fn)
+            if ok2 then
+                _luaStatus.TextColor3 = Color3.fromRGB(80, 220, 80)
+                _luaStatus.Text = "OK"
+            else
+                _luaStatus.TextColor3 = Color3.fromRGB(255, 80, 80)
+                _luaStatus.Text = "Error: "..tostring(runErr)
+            end
+        else
+            _luaStatus.TextColor3 = Color3.fromRGB(255, 180, 60)
+            _luaStatus.Text = "Syntax: "..tostring(err)
+        end
+    end)
+
+    _clearBtn.MouseButton1Click:Connect(function()
+        _luaBox.Text = ""
+        _luaStatus.Text = ""
+    end)
+
+    local lua_sec = Lua:Section({Name = "Executor", Size = 110, Side = "Left"})
+    lua_sec:Toggle({Name = "Open Lua Executor", Default = false,
+        Callback = function(v)
+            _luaGui.Enabled = v
+        end})
+    lua_sec:Toggle({Name = "Clear on Execute", Default = false})
+end
+
+-- ════════════════════════════════════════════════
 -- Rivals HvH content (gamesense API)
 -- ════════════════════════════════════════════════
 	local playeresp = Visuals:Section({Name = "Player ESP", Size = 264, Side = "Left"})
@@ -7767,58 +7943,119 @@ local autoload_sec = Configs:Section({Name = "Auto-Load", Size = 88, Side = "Rig
 local credits_sec  = Configs:Section({Name = "Credits",  Size = 80, Side = "Right"})
 
 do
-    local _cfgSlot = 1
-    savecfg_sec:Dropdown({Name = "Slot", Default = "Slot 1", Content = {"Slot 1","Slot 2","Slot 3","Slot 4","Slot 5"},
-        Callback = function(v) _cfgSlot = v end})
-    local _saveRef
-    _saveRef = savecfg_sec:Toggle({Name = "Save Config", Default = false, Callback = function(v)
-        if v then
-            pcall(function()
-                local Http = game:GetService("HttpService")
-                local ks   = getgenv()._UNC_KiciaStore
-                if ks and writefile then
-                    writefile("PuppyWare/orbis_slot"..tostring(_cfgSlot)..".json",
-                        Http:JSONEncode({slot = _cfgSlot}))
-                end
-            end)
-            task.defer(function()
-                if _saveRef and _saveRef.Set then pcall(function() _saveRef:Set(false) end) end
-            end)
-        end
-    end})
-    local _loadRef
-    _loadRef = savecfg_sec:Toggle({Name = "Load Config", Default = false, Callback = function(v)
-        if v then
-            pcall(function()
-                local fname = "PuppyWare/orbis_slot"..tostring(_cfgSlot)..".json"
-                if isfile and isfile(fname) then
-                    local _ = readfile(fname)
-                end
-            end)
-            task.defer(function()
-                if _loadRef and _loadRef.Set then pcall(function() _loadRef:Set(false) end) end
-            end)
-        end
-    end})
-    local _resetRef
-    _resetRef = savecfg_sec:Toggle({Name = "Reset to Default", Default = false,
-        Callback = function(v)
-            if v then
-                local ks = getgenv()._UNC_KiciaStore
-                if ks then
-                    pcall(function() ks:Set({"Ragebot","Enabled"},    false) end)
-                    pcall(function() ks:Set({"SilentAim","Enabled"},  false) end)
-                    pcall(function() ks:Set({"Aimbot","Enabled"},     false) end)
-                    pcall(function() ks:Set({"Triggerbot","Enabled"}, false) end)
-                    pcall(function() ks:Set({"Flickbot","Enabled"},   false) end)
-                end
-                task.defer(function()
-                    if _resetRef and _resetRef.Set then
-                        pcall(function() _resetRef:Set(false) end)
-                    end
-                end)
+    local Http = game:GetService("HttpService")
+    local CFG_FOLDER = "OrbisHvH"
+    local CFG_EXT    = ".json"
+
+    local function cfgPath(name)
+        return CFG_FOLDER .. "/" .. name .. CFG_EXT
+    end
+
+    local function ensureFolder()
+        pcall(function()
+            if not isfolder(CFG_FOLDER) then
+                makefolder(CFG_FOLDER)
             end
-        end})
+        end)
+    end
+
+    local function listConfigs()
+        local out = {}
+        pcall(function()
+            if isfolder and isfolder(CFG_FOLDER) then
+                for _, f in ipairs(listfiles(CFG_FOLDER)) do
+                    local n = tostring(f):match("[/\]([^/\]+)%.json$")
+                    if n then table.insert(out, n) end
+                end
+            end
+        end)
+        if #out == 0 then table.insert(out, "default") end
+        return out
+    end
+
+    -- Config name dropdown (shows saved configs)
+    local _cfgNames = listConfigs()
+    local _cfgName  = _cfgNames[1]
+    local _cfgDrop
+    _cfgDrop = savecfg_sec:Dropdown({
+        Name    = "Config",
+        Default = _cfgName,
+        Content = _cfgNames,
+        Callback = function(v) _cfgName = v end,
+    })
+
+    -- Save
+    local _saveRef
+    _saveRef = savecfg_sec:Toggle({Name = "Save", Default = false,
+        Callback = function(v)
+            if not v then return end
+            task.defer(function()
+                pcall(function() _saveRef:Set(false) end)
+            end)
+            pcall(function()
+                ensureFolder()
+                local cfg = Library:GetConfig()
+                writefile(cfgPath(_cfgName), cfg)
+                -- refresh list
+                local names = listConfigs()
+                _cfgNames = names
+            end)
+        end
+    })
+
+    -- Load
+    local _loadRef
+    _loadRef = savecfg_sec:Toggle({Name = "Load", Default = false,
+        Callback = function(v)
+            if not v then return end
+            task.defer(function()
+                pcall(function() _loadRef:Set(false) end)
+            end)
+            pcall(function()
+                local path = cfgPath(_cfgName)
+                if isfile and isfile(path) then
+                    local data = readfile(path)
+                    Library:LoadConfig(data)
+                end
+            end)
+        end
+    })
+
+    -- Delete
+    local _delRef
+    _delRef = savecfg_sec:Toggle({Name = "Delete", Default = false,
+        Callback = function(v)
+            if not v then return end
+            task.defer(function()
+                pcall(function() _delRef:Set(false) end)
+            end)
+            pcall(function()
+                local path = cfgPath(_cfgName)
+                if isfile and isfile(path) then
+                    delfile(path)
+                end
+                local names = listConfigs()
+                _cfgNames = names
+                _cfgName  = names[1]
+            end)
+        end
+    })
+
+    -- Refresh list
+    local _refRef
+    _refRef = savecfg_sec:Toggle({Name = "Refresh List", Default = false,
+        Callback = function(v)
+            if not v then return end
+            task.defer(function()
+                pcall(function() _refRef:Set(false) end)
+            end)
+            pcall(function()
+                local names = listConfigs()
+                _cfgNames = names
+                if #names > 0 then _cfgName = names[1] end
+            end)
+        end
+    })
 end
 
 autoload_sec:Toggle({Name = "Auto-Load on Join", Default = false})
@@ -9131,6 +9368,7 @@ do
 
     local function espD(kind, props)
         local d = Drawing.new(kind)
+        d.Transparency = 0
         for k,v in pairs(props) do d[k] = v end
         return d
     end
@@ -9143,26 +9381,26 @@ do
         local skel = {}
         for i = 1, #ESP_BONES do
             skel[i] = {
-                fill    = espD("Line",{Visible=false,Thickness=1,Color=Color3.new(1,1,1),ZIndex=3}),
-                outline = espD("Line",{Visible=false,Thickness=3,Color=Color3.new(0,0,0),ZIndex=2}),
+                fill    = espD("Line",{Visible=false,Thickness=1,Color=Color3.new(1,1,1)}),
+                outline = espD("Line",{Visible=false,Thickness=3,Color=Color3.new(0,0,0)}),
             }
         end
         local s = {
             player=player, char=nil, hrp=nil, hum=nil,
             health=100, parts={}, skel=skel, connections={}, lerpHP=1,
-            fill     = espD("Square",{Visible=false,Filled=true, Color=Color3.new(1,0,0),Transparency=0.6,ZIndex=1}),
-            boxShad  = espD("Square",{Visible=false,Filled=false,Color=Color3.new(0,0,0),Thickness=4,ZIndex=4}),
-            box      = espD("Square",{Visible=false,Filled=false,Color=Color3.new(1,0,0),Thickness=2,ZIndex=5}),
-            hpBarBg  = espD("Square",{Visible=false,Filled=true, Color=Color3.new(0,0,0),ZIndex=5}),
-            hpBar    = espD("Square",{Visible=false,Filled=true, Color=Color3.new(0,1,0),ZIndex=6}),
-            ammoBarBg= espD("Square",{Visible=false,Filled=true, Color=Color3.new(0,0,0),ZIndex=5}),
-            ammoBar  = espD("Square",{Visible=false,Filled=true, Color=Color3.fromRGB(80,160,255),ZIndex=6}),
-            tracer   = espD("Line",  {Visible=false,Thickness=1, Color=Color3.new(1,0,0),ZIndex=1}),
-            headMark = espD("Square",{Visible=false,Filled=true, Color=Color3.fromRGB(255,220,0),ZIndex=7}),
-            nameT    = espD("Text",  {Visible=false,Outline=true,Color=Color3.new(1,1,1),Center=true,Middle=true,Size=12,ZIndex=8}),
-            hpT      = espD("Text",  {Visible=false,Outline=true,Color=Color3.new(1,1,1),Center=true,Middle=true,Size=11,ZIndex=8}),
-            weaponT  = espD("Text",  {Visible=false,Outline=true,Color=Color3.new(1,1,1),Center=true,Middle=true,Size=11,ZIndex=8}),
-            distT    = espD("Text",  {Visible=false,Outline=true,Color=Color3.fromRGB(180,180,180),Center=true,Middle=true,Size=11,ZIndex=8}),
+            fill     = espD("Square",{Visible=false,Filled=true, Color=Color3.new(1,0,0),Transparency=0.6}),
+            boxShad  = espD("Square",{Visible=false,Filled=false,Color=Color3.new(0,0,0),Thickness=4}),
+            box      = espD("Square",{Visible=false,Filled=false,Color=Color3.new(1,0,0),Thickness=2}),
+            hpBarBg  = espD("Square",{Visible=false,Filled=true, Color=Color3.new(0,0,0)}),
+            hpBar    = espD("Square",{Visible=false,Filled=true, Color=Color3.new(0,1,0)}),
+            ammoBarBg= espD("Square",{Visible=false,Filled=true, Color=Color3.new(0,0,0)}),
+            ammoBar  = espD("Square",{Visible=false,Filled=true, Color=Color3.fromRGB(80,160,255)}),
+            tracer   = espD("Line",  {Visible=false,Thickness=1, Color=Color3.new(1,0,0)}),
+            headMark = espD("Square",{Visible=false,Filled=true, Color=Color3.fromRGB(255,220,0)}),
+            nameT    = espD("Text",  {Visible=false,Outline=true,Color=Color3.new(1,1,1),Center=true,Middle=true,Size=12}),
+            hpT      = espD("Text",  {Visible=false,Outline=true,Color=Color3.new(1,1,1),Center=true,Middle=true,Size=11}),
+            weaponT  = espD("Text",  {Visible=false,Outline=true,Color=Color3.new(1,1,1),Center=true,Middle=true,Size=11}),
+            distT    = espD("Text",  {Visible=false,Outline=true,Color=Color3.fromRGB(180,180,180),Center=true,Middle=true,Size=11}),
             highlight=nil, wireframe=nil,
         }
         s.drawings = {
@@ -9276,10 +9514,10 @@ do
             s.lerpHP    = s.lerpHP + (ratio - s.lerpHP) * 0.15
             local fillH = math.max(1, sz.Y * s.lerpHP)
             local hpCol = Color3.new(1 - s.lerpHP, 0.2 + s.lerpHP * 0.8, 0)
-            s.hpBarBg.Position = Vector2.new(tl.X - 5, tl.Y - 1)
-            s.hpBarBg.Size     = Vector2.new(3, sz.Y + 2)
-            s.hpBar.Position   = Vector2.new(tl.X - 5, tl.Y + sz.Y - fillH)
-            s.hpBar.Size       = Vector2.new(3, fillH)
+            s.hpBarBg.Position = Vector2.new(tl.X - 6, tl.Y - 1)
+            s.hpBarBg.Size     = Vector2.new(4, sz.Y + 2)
+            s.hpBar.Position   = Vector2.new(tl.X - 6, tl.Y + sz.Y - fillH)
+            s.hpBar.Size       = Vector2.new(4, fillH)
             s.hpBar.Color      = hpCol
         end
 
@@ -9299,9 +9537,9 @@ do
             local ratio = maxAmmo > 0 and math.clamp(ammo / maxAmmo, 0, 1) or 0
             local fillH = math.max(1, sz.Y * ratio)
             s.ammoBarBg.Position = Vector2.new(tl.X + sz.X + 2, tl.Y - 1)
-            s.ammoBarBg.Size     = Vector2.new(3, sz.Y + 2)
+            s.ammoBarBg.Size     = Vector2.new(4, sz.Y + 2)
             s.ammoBar.Position   = Vector2.new(tl.X + sz.X + 2, tl.Y + sz.Y - fillH)
-            s.ammoBar.Size       = Vector2.new(3, fillH)
+            s.ammoBar.Size       = Vector2.new(4, fillH)
         end
 
         -- tracer (bottom-center of screen to player feet)
