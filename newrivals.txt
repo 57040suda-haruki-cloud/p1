@@ -2862,6 +2862,7 @@ do -- Library
         local DropdownMainOutline = Library:CreateObject("Frame", {
             Name = "DropdownMainOutline",
             Position = UDim2.new(0, 0, 0, 0),
+            Size = UDim2.new(0, 0, 0, 0),
             BorderColor3 = Color3.fromRGB(0, 0, 0),
             ZIndex = 10,
             BorderSizePixel = 0,
@@ -7216,6 +7217,16 @@ do -- Library
     end
 end
 --
+-- Cleanup previous script instances on re-run
+pcall(function()
+    for _, v in ipairs(gethui():GetChildren()) do
+        if v:IsA("ScreenGui") and v.Name == " " then v:Destroy() end
+    end
+    for _, v in ipairs(game:GetService("CoreGui"):GetChildren()) do
+        if v.Name == "OrbisToggle" or v.Name == "OrbisLuaExec" then v:Destroy() end
+    end
+end)
+
 local Window = Library:Window({CloseBind = Enum.KeyCode.Insert})
 local Rage = Window:CreateTab({Icon = "rbxassetid://18248771514"})
 local AntiAim = Window:CreateTab({Icon = "rbxassetid://15453313321"})
@@ -7371,6 +7382,8 @@ do
     local _execBtn  = mkBtn("Execute", -178, Color3.fromRGB(40,100,200))
     local _clearBtn = mkBtn("Clear",   -88,  Color3.fromRGB(60,60,80))
 
+    local _clearOnExec = false
+
     _execBtn.MouseButton1Click:Connect(function()
         local code = _luaBox.Text
         if code == "" then return end
@@ -7388,6 +7401,9 @@ do
             _luaStatus.TextColor3 = Color3.fromRGB(255, 180, 60)
             _luaStatus.Text = "Syntax: "..tostring(err)
         end
+        if _clearOnExec then
+            _luaBox.Text = ""
+        end
     end)
 
     _clearBtn.MouseButton1Click:Connect(function()
@@ -7395,12 +7411,32 @@ do
         _luaStatus.Text = ""
     end)
 
+    -- Global API: _G.OrbisExec.open() / .close() / .exec(code)
+    getgenv().OrbisExec = {
+        open  = function() _luaGui.Enabled = true end,
+        close = function() _luaGui.Enabled = false end,
+        exec  = function(code)
+            local fn, err = loadstring(code)
+            if fn then
+                local ok2, runErr = pcall(fn)
+                return ok2, runErr
+            end
+            return false, err
+        end,
+    }
+
     local lua_sec = Lua:Section({Name = "Executor", Size = 110, Side = "Left"})
-    lua_sec:Toggle({Name = "Open Lua Executor", Default = false,
+    local _openRef
+    _openRef = lua_sec:Toggle({Name = "Open Lua Executor", Default = false,
         Callback = function(v)
             _luaGui.Enabled = v
         end})
-    lua_sec:Toggle({Name = "Clear on Execute", Default = false})
+    _luaClose.MouseButton1Click:Connect(function()
+        -- sync the gamesense toggle when X button is clicked
+        pcall(function() _openRef:Set(false) end)
+    end)
+    lua_sec:Toggle({Name = "Clear on Execute", Default = false,
+        Callback = function(v) _clearOnExec = v end})
 end
 
 -- ════════════════════════════════════════════════
@@ -7940,7 +7976,7 @@ tags_sec:Toggle({Name = "Rainbow Tags", Default = false})
 -- ══════════════════════════════════════════════════════════════════
 local savecfg_sec  = Configs:Section({Name = "Config",   Size = 144, Side = "Left"})
 local autoload_sec = Configs:Section({Name = "Auto-Load", Size = 88, Side = "Right"})
-local credits_sec  = Configs:Section({Name = "Credits",  Size = 80, Side = "Right"})
+
 
 do
     local Http = game:GetService("HttpService")
@@ -8062,8 +8098,7 @@ autoload_sec:Toggle({Name = "Auto-Load on Join", Default = false})
 autoload_sec:Toggle({Name = "Silent Load", Default = true})
 autoload_sec:Toggle({Name = "Show Notifications", Default = true})
 
-credits_sec:Toggle({Name = "Orbis HvH — Rivals", Default = false})
-credits_sec:Toggle({Name = "Powered by Kicia", Default = false})
+
 
 
 -- ══════════════════════════════════════════════════════════════════
