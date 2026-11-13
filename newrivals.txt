@@ -7436,6 +7436,27 @@ do
         Callback = function(v) _clearOnExec = v end})
 end
 
+-- Lua tab: removables / clean-up utilities
+do
+    local removables_sec = Lua:Section({Name = "Removables", Size = 160, Side = "Right"})
+    removables_sec:Toggle({Name = "No Camera Sway", Default = false, Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"ItemModifiers","NoCameraSway"}, v) end) end
+    end})
+    removables_sec:Toggle({Name = "No Hitmarker", Default = false, Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"Removables","NoHitmarker"}, v) end) end
+    end})
+    removables_sec:Toggle({Name = "No Gun Tracers", Default = false, Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"Removables","NoGunTracers"}, v) end) end
+    end})
+    removables_sec:Toggle({Name = "Remove Grenade Fuse", Default = false, Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"ItemModifiers","GrenadeFuse","RemoveFuse"}, v) end) end
+    end})
+end
+
 -- ════════════════════════════════════════════════
 -- Rivals HvH content (gamesense API)
 -- ════════════════════════════════════════════════
@@ -7967,6 +7988,122 @@ tags_sec:Toggle({Name = "Show Ping", Default = false})
 tags_sec:Toggle({Name = "Show Executor", Default = false})
 tags_sec:Label({Message = "Tag Color"}):ColorPicker({Default = Color3.fromRGB(255, 160, 0)})
 tags_sec:Toggle({Name = "Rainbow Tags", Default = false})
+
+-- ══════════════════════════════════════════════════════════════════
+-- WEAPONS PAGE (additional sections)
+-- ══════════════════════════════════════════════════════════════════
+local animplay_sec = Weapons:Section({Name = "Animation Player", Size = 160, Side = "Right"})
+local misc_wpn_sec = Weapons:Section({Name = "Misc",             Size = 104, Side = "Left"})
+
+animplay_sec:Toggle({Name = "Enable", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"AnimationPlayer","Enabled"}, v) end) end
+end})
+animplay_sec:Slider({Name = "Playback Speed", Default = 100, Max = 300, Min = 10, Decimal = 0, Ending = "%",
+    Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"AnimationPlayer","Speed"}, v / 100) end) end
+    end})
+animplay_sec:Slider({Name = "Start Frame", Default = 0, Max = 100, Min = 0, Decimal = 0, Ending = "%",
+    Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"AnimationPlayer","Start"}, v / 100) end) end
+    end})
+animplay_sec:Slider({Name = "End Frame", Default = 100, Max = 100, Min = 0, Decimal = 0, Ending = "%",
+    Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"AnimationPlayer","End"}, v / 100) end) end
+    end})
+
+misc_wpn_sec:Toggle({Name = "Anti-Katana", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"AntiKatana","Enabled"}, v) end) end
+end})
+misc_wpn_sec:Toggle({Name = "No Camera Sway", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"ItemModifiers","NoCameraSway"}, v) end) end
+end})
+misc_wpn_sec:Toggle({Name = "No Hitmarker", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"Removables","NoHitmarker"}, v) end) end
+end})
+
+-- ══════════════════════════════════════════════════════════════════
+-- PLAYER LIST PAGE
+-- ══════════════════════════════════════════════════════════════════
+local hackdet_sec  = PlayerList:Section({Name = "Hacker Detector", Size = 120, Side = "Left"})
+local moddet_sec   = PlayerList:Section({Name = "Mod Detector",    Size = 88,  Side = "Left"})
+local autoact_sec  = PlayerList:Section({Name = "Auto Actions",    Size = 136, Side = "Right"})
+local pltarget_sec = PlayerList:Section({Name = "Target Settings", Size = 136, Side = "Right"})
+
+hackdet_sec:Toggle({Name = "Enable", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"HackerDetector","Enabled"}, v) end) end
+end})
+hackdet_sec:Toggle({Name = "Notify on Detect", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"HackerDetector","Notify"}, v) end) end
+end})
+hackdet_sec:Label({Message = "Highlight Color"}):ColorPicker({Default = Color3.fromRGB(250, 170, 70),
+    Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"HackerDetector","Color"}, v) end) end
+    end})
+
+moddet_sec:Toggle({Name = "Enable", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"ModDetector","Enabled"}, v) end) end
+end})
+moddet_sec:Label({Message = "Highlight Color"}):ColorPicker({Default = Color3.fromRGB(250, 170, 70),
+    Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"ModDetector","Color"}, v) end) end
+    end})
+
+autoact_sec:Toggle({Name = "Auto Respawn", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"AutoRespawn","Enabled"}, v) end) end
+end})
+autoact_sec:Toggle({Name = "Auto Queue", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"AutoQueue","Enabled"}, v) end) end
+end})
+autoact_sec:Dropdown({Name = "Queue Mode", Default = "1v1", Content = {"1v1","2v2","FFA","Ranked"},
+    Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"AutoQueue","Queue"}, v) end) end
+    end})
+autoact_sec:Toggle({Name = "Auto Vote", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"AutoVote","Enabled"}, v) end) end
+end})
+autoact_sec:Toggle({Name = "Auto Ban Weapons", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"AutoBan","Enabled"}, v) end) end
+end})
+
+pltarget_sec:Dropdown({Name = "Priority", Default = "Distance", Content = {"Distance","Health","Threat","Random"},
+    Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"Target","Priority"}, v) end) end
+    end})
+pltarget_sec:Toggle({Name = "Anti-Katana", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"AntiKatana","Enabled"}, v) end) end
+end})
+pltarget_sec:Toggle({Name = "Target Invisible", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"Target","Invisible"}, v) end) end
+end})
+pltarget_sec:Slider({Name = "Lock Duration", Default = 500, Max = 5000, Min = 0, Decimal = 0, Ending = "ms",
+    Callback = function(v)
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function() ks:Set({"Target","LockDuration"}, v / 1000) end) end
+    end})
+pltarget_sec:Toggle({Name = "Prioritize Hackers", Default = false, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"Ragebot","PrioritizeHackers"}, v) end) end
+end})
 
 -- ══════════════════════════════════════════════════════════════════
 -- CONFIG PAGE
