@@ -7583,7 +7583,7 @@ rapidfire_sec:Toggle({Name = "Enabled", Default = false, Callback = function(v)
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"Ragebot","ShootFrames"}, v and 2 or 1) end) end
 end})
-rapidfire_sec:Slider({Name = "Shoot Frames", Default = 2, Max = 10, Min = 2, Decimal = 0,
+rapidfire_sec:Slider({Name = "Shoot Frames", Default = 2, Max = 10, Min = 2, Decimal = 1,
     Ending = "f", Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"Ragebot","ShootFrames"}, v) end) end
@@ -7609,7 +7609,7 @@ movement_sec:Toggle({Name = "Speed Hack", Default = false, Callback = function(v
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"Movement","WalkSpeed","Enabled"}, v) end) end
 end})
-movement_sec:Slider({Name = "Walk Speed", Default = 16, Max = 200, Min = 16, Decimal = 0,
+movement_sec:Slider({Name = "Walk Speed", Default = 16, Max = 200, Min = 16, Decimal = 1,
     Ending = "", Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"Movement","WalkSpeed","Value"}, v) end) end
@@ -7622,7 +7622,7 @@ movement_sec:Toggle({Name = "Auto Strafe", Default = false, Callback = function(
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"Movement","AutoStrafe","Enabled"}, v) end) end
 end})
-movement_sec:Slider({Name = "Jump Power", Default = 50, Max = 200, Min = 1, Decimal = 0,
+movement_sec:Slider({Name = "Jump Power", Default = 50, Max = 200, Min = 1, Decimal = 1,
     Ending = "", Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"Movement","JumpPower","Value"}, v) end) end
@@ -7663,7 +7663,7 @@ aa_sec:Dropdown({Name = "Pitch", Default = "Off", Content = {"Off","Down","Up","
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"AntiAim","Pitch","Type"}, v) end) end
     end})
-aa_sec:Slider({Name = "Yaw Offset", Default = 0, Max = 180, Min = -180, Decimal = 0, Ending = "°",
+aa_sec:Slider({Name = "Yaw Offset", Default = 0, Max = 180, Min = -180, Decimal = 1, Ending = "°",
     Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"AntiAim","Yaw","Offset"}, v) end) end
@@ -7707,7 +7707,7 @@ silentaim_sec:Toggle({Name = "Enabled", Default = false, Callback = function(v)
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"SilentAim","Enabled"}, v) end) end
 end})
-silentaim_sec:Slider({Name = "FOV", Default = 60, Max = 500, Min = 1, Decimal = 0, Ending = "°",
+silentaim_sec:Slider({Name = "FOV", Default = 60, Max = 500, Min = 1, Decimal = 1, Ending = "°",
     Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"SilentAim","Fov","Radius"}, v) end) end
@@ -7729,18 +7729,18 @@ legitaim_sec:Dropdown({Name = "Mode", Default = "Linear", Content = {"Linear","S
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"Aimbot","Mode","Type"}, v) end) end
     end})
-legitaim_sec:Slider({Name = "Speed", Default = 25, Max = 100, Min = 1, Decimal = 0, Ending = "%",
+legitaim_sec:Slider({Name = "Speed", Default = 25, Max = 100, Min = 1, Decimal = 1, Ending = "%",
     Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"Aimbot","Mode","Speed"}, v / 100) end) end
     end})
-legitaim_sec:Slider({Name = "FOV", Default = 80, Max = 180, Min = 1, Decimal = 0, Ending = "°"})
-legitaim_sec:Slider({Name = "Reaction Time", Default = 120, Max = 500, Min = 0, Decimal = 0,
+legitaim_sec:Slider({Name = "FOV", Default = 80, Max = 180, Min = 1, Decimal = 1, Ending = "°"})
+legitaim_sec:Slider({Name = "Reaction Time", Default = 120, Max = 500, Min = 0, Decimal = 1,
     Ending = "ms", Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"Aimbot","ReactionTime"}, v / 1000) end) end
     end})
-legitaim_sec:Slider({Name = "Switch Delay", Default = 200, Max = 1000, Min = 0, Decimal = 0,
+legitaim_sec:Slider({Name = "Switch Delay", Default = 200, Max = 1000, Min = 0, Decimal = 1,
     Ending = "ms", Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"Aimbot","SwitchDelay"}, v / 1000) end) end
@@ -7751,7 +7751,7 @@ triggerbot_sec:Toggle({Name = "Enabled", Default = false, Callback = function(v)
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"Triggerbot","Enabled"}, v) end) end
 end})
-triggerbot_sec:Slider({Name = "Delay", Default = 50, Max = 500, Min = 0, Decimal = 0, Ending = "ms"})
+triggerbot_sec:Slider({Name = "Delay", Default = 50, Max = 500, Min = 0, Decimal = 1, Ending = "ms"})
 triggerbot_sec:Toggle({Name = "Burst Mode", Default = false})
 triggerbot_sec:Label({Message = "Triggerbot Key"}):Keybind({Callback = function(v)
     local ks = getgenv()._UNC_KiciaStore
@@ -7762,8 +7762,8 @@ flickbot_sec:Toggle({Name = "Enabled", Default = false, Callback = function(v)
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"Flickbot","Enabled"}, v) end) end
 end})
-flickbot_sec:Slider({Name = "FOV", Default = 90, Max = 360, Min = 1, Decimal = 0, Ending = "°"})
-flickbot_sec:Slider({Name = "Backtrack", Default = 200, Max = 1000, Min = 0, Decimal = 0,
+flickbot_sec:Slider({Name = "FOV", Default = 90, Max = 360, Min = 1, Decimal = 1, Ending = "°"})
+flickbot_sec:Slider({Name = "Backtrack", Default = 200, Max = 1000, Min = 0, Decimal = 1,
     Ending = "ms"})
 flickbot_sec:Label({Message = "Flickbot Key"}):Keybind({Callback = function(v)
     local ks = getgenv()._UNC_KiciaStore
@@ -7992,7 +7992,7 @@ char_sec:Toggle({Name = "Fake Lag", Default = false, Callback = function(v)
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"FakeLag","Enabled"}, v) end) end
 end})
-char_sec:Slider({Name = "Fake Lag Amount", Default = 10, Max = 200, Min = 0, Decimal = 0,
+char_sec:Slider({Name = "Fake Lag Amount", Default = 10, Max = 200, Min = 0, Decimal = 1,
     Ending = "ms"})
 
 tags_sec:Toggle({Name = "Show Tags", Default = false, Callback = function(v)
@@ -8014,17 +8014,17 @@ animplay_sec:Toggle({Name = "Enable", Default = false, Callback = function(v)
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"AnimationPlayer","Enabled"}, v) end) end
 end})
-animplay_sec:Slider({Name = "Playback Speed", Default = 100, Max = 300, Min = 10, Decimal = 0, Ending = "%",
+animplay_sec:Slider({Name = "Playback Speed", Default = 100, Max = 300, Min = 10, Decimal = 1, Ending = "%",
     Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"AnimationPlayer","Speed"}, v / 100) end) end
     end})
-animplay_sec:Slider({Name = "Start Frame", Default = 0, Max = 100, Min = 0, Decimal = 0, Ending = "%",
+animplay_sec:Slider({Name = "Start Frame", Default = 0, Max = 100, Min = 0, Decimal = 1, Ending = "%",
     Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"AnimationPlayer","Start"}, v / 100) end) end
     end})
-animplay_sec:Slider({Name = "End Frame", Default = 100, Max = 100, Min = 0, Decimal = 0, Ending = "%",
+animplay_sec:Slider({Name = "End Frame", Default = 100, Max = 100, Min = 0, Decimal = 1, Ending = "%",
     Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"AnimationPlayer","End"}, v / 100) end) end
@@ -8110,7 +8110,7 @@ pltarget_sec:Toggle({Name = "Target Invisible", Default = false, Callback = func
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"Target","Invisible"}, v) end) end
 end})
-pltarget_sec:Slider({Name = "Lock Duration", Default = 500, Max = 5000, Min = 0, Decimal = 0, Ending = "ms",
+pltarget_sec:Slider({Name = "Lock Duration", Default = 500, Max = 5000, Min = 0, Decimal = 1, Ending = "ms",
     Callback = function(v)
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"Target","LockDuration"}, v / 1000) end) end
@@ -8415,7 +8415,7 @@ hitsound_sec:Toggle({Name = "Enabled", Default = false,
 hitsound_sec:Dropdown({Name = "Sound", Content = _hitsoundNames,
     Callback = function(v) _hsSelected = v end})
 hitsound_sec:Slider({Name = "Volume", Default = 80, Max = 100, Min = 1,
-    Decimal = 0, Ending = "%",
+    Decimal = 1, Ending = "%",
     Callback = function(v) _hsVolume = v / 100 end})
 hitsound_sec:Toggle({Name = "Headshot Sound", Default = false,
     Callback = function(v) _hsHeadshEn = v end})
@@ -8427,7 +8427,7 @@ killsound_sec:Toggle({Name = "Kill Sound", Default = false,
 killsound_sec:Dropdown({Name = "Kill Sound Select", Content = _hitsoundNames,
     Callback = function(v) _hsKillSel = v end})
 killsound_sec:Slider({Name = "Kill Volume", Default = 100, Max = 100, Min = 1,
-    Decimal = 0, Ending = "%",
+    Decimal = 1, Ending = "%",
     Callback = function(v) _hsKillVol = v / 100 end})
 
 -- ════════════════════════════════════════════════════════════════════════
@@ -8506,32 +8506,32 @@ do
     end})
 
     counter_cfg:Slider({Name = "Void Speed", Default = 100, Max = 500, Min = 1,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _ctrVoidSpd = v/100; _kSet({"Counter","VoidSpeed"}, v/100)
         end})
     counter_cfg:Slider({Name = "Max Legits", Default = 3, Max = 10, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _ctrMaxLeg = v; _kSet({"Counter","MaxLegits"}, v)
         end})
     counter_cfg:Slider({Name = "Legit Delay", Default = 100, Max = 500, Min = 0,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _ctrLegDly = v/1000; _kSet({"Counter","LegitDelay"}, v/1000)
         end})
 
     kicia_cfg:Slider({Name = "Cycle (ms)", Default = 50, Max = 500, Min = 1,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _ctrCycle = v; _kSet({"Counter","Kicia","Cycle"}, v)
         end})
     kicia_cfg:Slider({Name = "Fly Window (ms)", Default = 100, Max = 500, Min = 1,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _ctrFlyWin = v; _kSet({"Counter","Kicia","FlyWindow"}, v)
         end})
     kicia_cfg:Slider({Name = "Boost Force", Default = 10, Max = 100, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _ctrBoost = v; _kSet({"Counter","Kicia","BoostForce"}, v)
         end})
     kicia_cfg:Slider({Name = "Fly Speed", Default = 50, Max = 200, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _ctrFlySpd = v; _kSet({"Counter","Kicia","FlySpeed"}, v)
         end})
     kicia_cfg:Slider({Name = "Zigzag Amplitude", Default = 5, Max = 50, Min = 0,
@@ -8539,7 +8539,7 @@ do
             _ctrZigAmp = v; _kSet({"Counter","Kicia","ZigzagAmp"}, v)
         end})
     kicia_cfg:Slider({Name = "Zigzag Frequency", Default = 10, Max = 60, Min = 1,
-        Decimal = 0, Ending = "Hz", Callback = function(v)
+        Decimal = 1, Ending = "Hz", Callback = function(v)
             _ctrZigFreq = v; _kSet({"Counter","Kicia","ZigzagFreq"}, v)
         end})
     kicia_cfg:Slider({Name = "Parking Depth", Default = 2, Max = 20, Min = 0,
@@ -8709,7 +8709,7 @@ do
             _kSet({"Translocation","OffsetMode"}, _transMode)
         end})
     trans_sec:Slider({Name = "Frequency", Default = 10, Max = 60, Min = 1,
-        Decimal = 0, Ending = "Hz", Callback = function(v)
+        Decimal = 1, Ending = "Hz", Callback = function(v)
             _transFreq = v; _kSet({"Translocation","Frequency"}, v)
         end})
     trans_sec:Slider({Name = "Offset Distance", Default = 10, Max = 50, Min = 0,
@@ -8721,23 +8721,23 @@ do
             _transYOff = v; _kSet({"Translocation","YOffset"}, v)
         end})
     trans_sec:Slider({Name = "Fake Layers", Default = 1, Max = 10, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _transFake = v; _kSet({"Translocation","FakeLayers"}, v)
         end})
     trans_sec:Slider({Name = "Freq Min", Default = 5, Max = 60, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _transFreqMin = v; _kSet({"Translocation","FreqMin"}, v)
         end})
     trans_sec:Slider({Name = "Freq Max", Default = 15, Max = 60, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _transFreqMax = v; _kSet({"Translocation","FreqMax"}, v)
         end})
     trans_sec:Slider({Name = "Burst Count", Default = 3, Max = 20, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _transBurst = v; _kSet({"Translocation","BurstCount"}, v)
         end})
     trans_sec:Slider({Name = "Burst Interval (ms)", Default = 100, Max = 500, Min = 10,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _transBurstI = v; _kSet({"Translocation","BurstInterval"}, v)
         end})
 
@@ -8750,15 +8750,15 @@ do
             _transJitAmp = v; _kSet({"Translocation","JitterAmp"}, v)
         end})
     trans_help:Slider({Name = "Spin Speed", Default = 180, Max = 720, Min = 0,
-        Decimal = 0, Ending = "°/s", Callback = function(v)
+        Decimal = 1, Ending = "°/s", Callback = function(v)
             _transSpinSp = v; _kSet({"Translocation","SpinSpeed"}, v)
         end})
     trans_help:Slider({Name = "Fast TP Count", Default = 3, Max = 20, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"Translocation","FastTPCount"}, v)
         end})
     trans_help:Slider({Name = "Fast TP Interval (ms)", Default = 50, Max = 500, Min = 1,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"Translocation","FastTPInterval"}, v)
         end})
     trans_help:Slider({Name = "Stick Offset", Default = 0, Max = 10, Min = -10,
@@ -8766,7 +8766,7 @@ do
             _transStick = v; _kSet({"Translocation","StickOffset"}, v)
         end})
     trans_help:Slider({Name = "Aim Strength", Default = 100, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _transAimStr = v/100; _kSet({"Translocation","AimStrength"}, v/100)
         end})
     trans_help:Slider({Name = "Auto Dodge Radius", Default = 10, Max = 50, Min = 0,
@@ -8862,7 +8862,7 @@ do
             _slyngHitbox = v; _kSet({"SlingBypass","Hitbox"}, v)
         end})
     sling_sec:Slider({Name = "Weapon Range", Default = 50, Max = 200, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _slyngWpnRng = v; _kSet({"SlingBypass","WeaponRange"}, v)
         end})
     sling_sec:Slider({Name = "Attack Range", Default = 10, Max = 50, Min = 1,
@@ -8870,7 +8870,7 @@ do
             _slyngAtkRng = v; _kSet({"SlingBypass","AttackRange"}, v)
         end})
     sling_sec:Slider({Name = "Shot Cooldown", Default = 500, Max = 2000, Min = 0,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _slyngShotCD = v/1000; _kSet({"SlingBypass","ShotCooldown"}, v/1000)
         end})
     sling_sec:Slider({Name = "Stick Height", Default = 0, Max = 10, Min = -5,
@@ -8882,7 +8882,7 @@ do
             _slyngOrbitR = v; _kSet({"SlingBypass","OrbitRadius"}, v)
         end})
     sling_sec:Slider({Name = "Orbit Speed", Default = 200, Max = 1000, Min = 1,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _slyngOrbitSp = v/100; _kSet({"SlingBypass","OrbitSpeed"}, v/100)
         end})
     sling_sec:Slider({Name = "Orbit Height", Default = 5, Max = 20, Min = -5,
@@ -8890,11 +8890,11 @@ do
             _slyngOrbitH = v; _kSet({"SlingBypass","OrbitHeight"}, v)
         end})
     sling_sec:Slider({Name = "Follow Lead", Default = 20, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _slyngFollLd = v/100; _kSet({"SlingBypass","FollowLead"}, v/100)
         end})
     sling_sec:Slider({Name = "Follow Smoothing", Default = 50, Max = 100, Min = 1,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _slyngFollSm = v/100; _kSet({"SlingBypass","FollowSmoothing"}, v/100)
         end})
     sling_sec:Slider({Name = "Follow Distance", Default = 5, Max = 30, Min = 0,
@@ -8906,24 +8906,24 @@ do
             _slyngFollH = v; _kSet({"SlingBypass","FollowHeight"}, v)
         end})
     sling_sec:Slider({Name = "Hide Transparency", Default = 0, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _slyngHideTr = v/100; _kSet({"SlingBypass","HideTransparency"}, v/100)
         end})
     sling_sec:Slider({Name = "FastTP Speed", Default = 100, Max = 500, Min = 1,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _slyngFTPSpd = v; _kSet({"SlingBypass","FastTPSpeed"}, v)
         end})
 
     sling_help:Slider({Name = "Fast TP Count", Default = 3, Max = 20, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"SlingBypass","FastTPCount"}, v)
         end})
     sling_help:Slider({Name = "Fast TP Interval (ms)", Default = 50, Max = 500, Min = 1,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"SlingBypass","FastTPInterval"}, v)
         end})
     sling_help:Slider({Name = "Rivals Range", Default = 50, Max = 200, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"SlingBypass","RivalsRange"}, v)
         end})
     sling_help:Slider({Name = "Rivals Hitbox Size", Default = 5, Max = 20, Min = 1,
@@ -8931,7 +8931,7 @@ do
             _kSet({"SlingBypass","RivalsHitboxSize"}, v)
         end})
     sling_help:Slider({Name = "Aim Strength", Default = 100, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _slyngAimStr = v/100; _kSet({"SlingBypass","AimStrength"}, v/100)
         end})
     sling_help:Slider({Name = "Stick Offset", Default = 0, Max = 10, Min = -10,
@@ -8939,7 +8939,7 @@ do
             _kSet({"SlingBypass","StickOffset"}, v)
         end})
     sling_help:Slider({Name = "Rush Cooldown (ms)", Default = 500, Max = 2000, Min = 0,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"SlingBypass","RushCooldown"}, v/1000)
         end})
 
@@ -9035,39 +9035,39 @@ do
             _kSet({"AntiAim","Yaw","Type"}, v)
         end})
     aa2_sec:Slider({Name = "Speed", Default = 180, Max = 720, Min = 1,
-        Decimal = 0, Ending = "°/s", Callback = function(v)
+        Decimal = 1, Ending = "°/s", Callback = function(v)
             _kSet({"AntiAim","Speed"}, v)
         end})
     aa2_sec:Slider({Name = "Pitch Angle", Default = 0, Max = 89, Min = -89,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiAim","Pitch","Angle"}, v)
         end})
     aa2_sec:Slider({Name = "Yaw Angle", Default = 0, Max = 180, Min = -180,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiAim","Yaw","Angle"}, v)
         end})
     aa2_sec:Slider({Name = "Static Yaw", Default = 0, Max = 180, Min = -180,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiAim","Static","Yaw"}, v)
         end})
     aa2_sec:Slider({Name = "Static Pitch", Default = 0, Max = 89, Min = -89,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiAim","Static","Pitch"}, v)
         end})
     aa2_sec:Slider({Name = "Custom Yaw", Default = 0, Max = 180, Min = -180,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiAim","Custom","Yaw"}, v)
         end})
     aa2_sec:Slider({Name = "Custom Pitch", Default = 0, Max = 89, Min = -89,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiAim","Custom","Pitch"}, v)
         end})
     aa2_sec:Slider({Name = "Fake Yaw", Default = 0, Max = 180, Min = -180,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiAim","Fake","Yaw"}, v)
         end})
     aa2_sec:Slider({Name = "Fake Pitch", Default = 0, Max = 89, Min = -89,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiAim","Fake","Pitch"}, v)
         end})
     aa2_sec:Slider({Name = "Micro Jitter Amp", Default = 0, Max = 20, Min = 0,
@@ -9075,15 +9075,15 @@ do
             _kSet({"AntiAim","MicroJitter","Amplitude"}, v)
         end})
     aa2_sec:Slider({Name = "Micro Jitter Speed", Default = 10, Max = 60, Min = 1,
-        Decimal = 0, Ending = "Hz", Callback = function(v)
+        Decimal = 1, Ending = "Hz", Callback = function(v)
             _kSet({"AntiAim","MicroJitter","Speed"}, v)
         end})
     aa2_sec:Slider({Name = "Desync Yaw Offset", Default = 0, Max = 180, Min = -180,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiAim","Desync","YawOffset"}, v)
         end})
     aa2_sec:Slider({Name = "Roll Speed", Default = 0, Max = 360, Min = 0,
-        Decimal = 0, Ending = "°/s", Callback = function(v)
+        Decimal = 1, Ending = "°/s", Callback = function(v)
             _kSet({"AntiAim","Roll","Speed"}, v)
         end})
     aa2_sec:Slider({Name = "Breathe Amplitude", Default = 0, Max = 30, Min = 0,
@@ -9095,40 +9095,40 @@ do
             _kSet({"AntiAim","Breathe","Speed"}, v)
         end})
     aa2_sec:Slider({Name = "Flip Chance (%)", Default = 0, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"AntiAim","FlipChance"}, v/100)
         end})
 
     aa2_help:Slider({Name = "Multi Axis Speed X", Default = 0, Max = 360, Min = 0,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiAim","MultiAxis","SpeedX"}, v)
         end})
     aa2_help:Slider({Name = "Multi Axis Speed Y", Default = 0, Max = 360, Min = 0,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiAim","MultiAxis","SpeedY"}, v)
         end})
     aa2_help:Slider({Name = "Multi Axis Speed Z", Default = 0, Max = 360, Min = 0,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiAim","MultiAxis","SpeedZ"}, v)
         end})
     aa2_help:Slider({Name = "Chaos Interval (ms)", Default = 500, Max = 2000, Min = 10,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiAim","Chaos","Interval"}, v/1000)
         end})
     aa2_help:Slider({Name = "Chaos Max Angle", Default = 90, Max = 180, Min = 0,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiAim","Chaos","MaxAngle"}, v)
         end})
     aa2_help:Slider({Name = "Look At Interval (ms)", Default = 1000, Max = 5000, Min = 100,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiAim","LookAtInterval"}, v/1000)
         end})
     aa2_help:Slider({Name = "Fast TP Count", Default = 3, Max = 20, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiAim","FastTPCount"}, v)
         end})
     aa2_help:Slider({Name = "Fast TP Interval (ms)", Default = 50, Max = 500, Min = 1,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiAim","FastTPInterval"}, v)
         end})
     aa2_help:Slider({Name = "Stick Offset", Default = 0, Max = 10, Min = -10,
@@ -9136,14 +9136,14 @@ do
             _kSet({"AntiAim","StickOffset"}, v)
         end})
     aa2_help:Slider({Name = "Aim Strength", Default = 100, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"AntiAim","AimStrength"}, v/100)
         end})
     aa2_help:Toggle({Name = "Auto Shoot", Default = false, Callback = function(v)
         _kSet({"AntiAim","AutoShoot"}, v)
     end})
     aa2_help:Slider({Name = "Auto Shoot Range", Default = 20, Max = 100, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiAim","AutoShootRange"}, v)
         end})
 end
@@ -9164,11 +9164,11 @@ do
             _kSet({"AntiTranslocation","DetectRadius"}, v)
         end})
     antitrans_sec:Slider({Name = "Detect Window (ms)", Default = 100, Max = 500, Min = 10,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiTranslocation","DetectWindow"}, v/1000)
         end})
     antitrans_sec:Slider({Name = "Min TPs", Default = 2, Max = 10, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiTranslocation","MinTPs"}, v)
         end})
     antitrans_sec:Slider({Name = "Dodge Distance", Default = 10, Max = 30, Min = 1,
@@ -9176,11 +9176,11 @@ do
             _kSet({"AntiTranslocation","DodgeDistance"}, v)
         end})
     antitrans_sec:Slider({Name = "Cooldown (ms)", Default = 500, Max = 2000, Min = 50,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiTranslocation","Cooldown"}, v/1000)
         end})
     antitrans_sec:Slider({Name = "Freeze Time (ms)", Default = 500, Max = 2000, Min = 50,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiTranslocation","FreezeTime"}, v/1000)
         end})
     antitrans_sec:Slider({Name = "Predict Lead", Default = 0.1, Max = 1, Min = 0,
@@ -9205,19 +9205,19 @@ do
             _kSet({"AntiTranslocation","BouncebackDist"}, v)
         end})
     antitrans_help:Slider({Name = "Spin Evade Speed", Default = 180, Max = 720, Min = 0,
-        Decimal = 0, Ending = "°/s", Callback = function(v)
+        Decimal = 1, Ending = "°/s", Callback = function(v)
             _kSet({"AntiTranslocation","SpinEvadeSpeed"}, v)
         end})
     antitrans_help:Slider({Name = "Multi Dodge Count", Default = 1, Max = 5, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiTranslocation","MultiDodgeCount"}, v)
         end})
     antitrans_help:Slider({Name = "Fast TP Count", Default = 3, Max = 20, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiTranslocation","FastTPCount"}, v)
         end})
     antitrans_help:Slider({Name = "Fast TP Interval (ms)", Default = 50, Max = 500, Min = 1,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiTranslocation","FastTPInterval"}, v)
         end})
     antitrans_help:Slider({Name = "Stick Offset", Default = 0, Max = 10, Min = -10,
@@ -9225,11 +9225,11 @@ do
             _kSet({"AntiTranslocation","StickOffset"}, v)
         end})
     antitrans_help:Slider({Name = "Aim Strength", Default = 100, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"AntiTranslocation","AimStrength"}, v/100)
         end})
     antitrans_help:Slider({Name = "Auto Shoot Range", Default = 20, Max = 100, Min = 0,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiTranslocation","AutoShootRange"}, v)
         end})
 end
@@ -9247,11 +9247,11 @@ do
             _kSet({"AntiBait","DodgeMode"}, v)
         end})
     abait_sec:Slider({Name = "Fast TP Count", Default = 3, Max = 20, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiBait","FastTPCount"}, v)
         end})
     abait_sec:Slider({Name = "Fast TP Interval (ms)", Default = 50, Max = 500, Min = 1,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiBait","FastTPInterval"}, v)
         end})
     abait_sec:Slider({Name = "Stick Offset", Default = 0, Max = 10, Min = -10,
@@ -9259,34 +9259,34 @@ do
             _kSet({"AntiBait","StickOffset"}, v)
         end})
     abait_sec:Slider({Name = "Aim Strength", Default = 100, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"AntiBait","AimStrength"}, v/100)
         end})
     abait_sec:Toggle({Name = "Auto Shoot", Default = false, Callback = function(v)
         _kSet({"AntiBait","AutoShoot"}, v)
     end})
     abait_sec:Slider({Name = "Auto Shoot Range", Default = 20, Max = 100, Min = 0,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiBait","AutoShootRange"}, v)
         end})
     abait_sec:Toggle({Name = "Infinite Radius", Default = false, Callback = function(v)
         _kSet({"AntiBait","InfiniteRadius"}, v)
     end})
     abait_sec:Slider({Name = "Bait React Window (ms)", Default = 200, Max = 1000, Min = 10,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiBait","BaitReactWindow"}, v/1000)
         end})
     abait_sec:Slider({Name = "Stall Time (ms)", Default = 200, Max = 1000, Min = 0,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiBait","StallTime"}, v/1000)
         end})
     abait_sec:Slider({Name = "Fake Lock Time (ms)", Default = 100, Max = 500, Min = 0,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiBait","FakeLockTime"}, v/1000)
         end})
 
     abait_gun:Slider({Name = "Aim Threshold", Default = 10, Max = 90, Min = 1,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"AntiBait","Gun","AimThreshold"}, v)
         end})
     abait_gun:Slider({Name = "Dodge Distance", Default = 10, Max = 30, Min = 1,
@@ -9294,7 +9294,7 @@ do
             _kSet({"AntiBait","Gun","DodgeDist"}, v)
         end})
     abait_gun:Slider({Name = "Dodge Cooldown (ms)", Default = 500, Max = 2000, Min = 50,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiBait","Gun","DodgeCD"}, v/1000)
         end})
     abait_gun:Slider({Name = "Gun Lead", Default = 0.1, Max = 1, Min = 0,
@@ -9303,7 +9303,7 @@ do
         end})
 
     abait_tp:Slider({Name = "Vel Threshold", Default = 50, Max = 200, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiBait","TP","VelThreshold"}, v)
         end})
     abait_tp:Slider({Name = "Dodge Distance", Default = 10, Max = 30, Min = 1,
@@ -9311,15 +9311,15 @@ do
             _kSet({"AntiBait","TP","DodgeDist"}, v)
         end})
     abait_tp:Slider({Name = "Cooldown (ms)", Default = 500, Max = 2000, Min = 50,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiBait","TP","Cooldown"}, v/1000)
         end})
     abait_tp:Slider({Name = "Min TPs to Confirm", Default = 2, Max = 10, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"AntiBait","TP","MinTPs"}, v)
         end})
     abait_tp:Slider({Name = "Flicker Window (ms)", Default = 100, Max = 500, Min = 10,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiBait","TP","FlickerWindow"}, v/1000)
         end})
     abait_tp:Slider({Name = "TP Delta", Default = 5, Max = 30, Min = 0,
@@ -9327,7 +9327,7 @@ do
             _kSet({"AntiBait","TP","Delta"}, v)
         end})
     abait_tp:Slider({Name = "Rescan Interval (ms)", Default = 200, Max = 1000, Min = 10,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"AntiBait","TP","RescanInterval"}, v/1000)
         end})
 end
@@ -9352,19 +9352,19 @@ do
             _kSet({"Prediction","DodgeDistance"}, v)
         end})
     pred_sec:Slider({Name = "Cooldown (ms)", Default = 300, Max = 2000, Min = 10,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"Prediction","Cooldown"}, v/1000)
         end})
     pred_sec:Slider({Name = "Speed Threshold", Default = 50, Max = 500, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"Prediction","SpeedThreshold"}, v)
         end})
     pred_sec:Slider({Name = "Prediction Mult", Default = 100, Max = 500, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"Prediction","PredictionMult"}, v/100)
         end})
     pred_sec:Slider({Name = "Lead Time (ms)", Default = 100, Max = 500, Min = 0,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"Prediction","LeadTime"}, v/1000)
         end})
     pred_sec:Slider({Name = "Aim Threshold", Default = 5, Max = 30, Min = 0,
@@ -9376,11 +9376,11 @@ do
             _kSet({"Prediction","ShotDodgeDist"}, v)
         end})
     pred_sec:Slider({Name = "Enemy Bullet Speed", Default = 200, Max = 1000, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"Prediction","EnemyBulletSpeed"}, v)
         end})
     pred_sec:Slider({Name = "Reaction Time (ms)", Default = 50, Max = 500, Min = 0,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"Prediction","ReactionTime"}, v/1000)
         end})
     pred_sec:Slider({Name = "Predictive Aim Lead", Default = 0, Max = 1, Min = 0,
@@ -9392,15 +9392,15 @@ do
             _kSet({"Prediction","RivalsHitboxSize"}, v)
         end})
     pred_sec:Slider({Name = "Aim Strength", Default = 100, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"Prediction","AimStrength"}, v/100)
         end})
     pred_sec:Slider({Name = "Fast TP Count", Default = 3, Max = 20, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"Prediction","FastTPCount"}, v)
         end})
     pred_sec:Slider({Name = "Fast TP Interval (ms)", Default = 50, Max = 500, Min = 1,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"Prediction","FastTPInterval"}, v)
         end})
     pred_sec:Slider({Name = "Stick Offset", Default = 0, Max = 10, Min = -10,
@@ -9422,11 +9422,11 @@ do
         _kSet({"Target","Invisible"}, v)
     end})
     tgt_sec:Slider({Name = "Switch Delay (ms)", Default = 200, Max = 2000, Min = 0,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"Target","SwitchDelay"}, v/1000)
         end})
     tgt_sec:Slider({Name = "Lock Duration (ms)", Default = 1000, Max = 5000, Min = 0,
-        Decimal = 0, Ending = "ms", Callback = function(v)
+        Decimal = 1, Ending = "ms", Callback = function(v)
             _kSet({"Target","LockDuration"}, v/1000)
         end})
     tgt_sec:Toggle({Name = "Anti Katana", Default = false, Callback = function(v)
@@ -9469,7 +9469,7 @@ do
     end})
     wire_sec:Label({Message = "Color"}):ColorPicker({Default = Color3.fromRGB(0, 180, 255)})
     wire_sec:Slider({Name = "Transparency", Default = 50, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%"})
+        Decimal = 1, Ending = "%"})
     wire_sec:Toggle({Name = "Teammates", Default = false})
     wire_sec:Toggle({Name = "Local Player", Default = false})
 
@@ -9487,15 +9487,15 @@ do
             _kSet({"WeaponVisuals","ViewmodelOffset","Z"}, v)
         end})
     wpnv_sec:Slider({Name = "Viewmodel Pitch", Default = 0, Max = 180, Min = -180,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"WeaponVisuals","ViewmodelOffset","Pitch"}, v)
         end})
     wpnv_sec:Slider({Name = "Viewmodel Yaw", Default = 0, Max = 180, Min = -180,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"WeaponVisuals","ViewmodelOffset","Yaw"}, v)
         end})
     wpnv_sec:Slider({Name = "Viewmodel Roll", Default = 0, Max = 180, Min = -180,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"WeaponVisuals","ViewmodelOffset","Roll"}, v)
         end})
 
@@ -9505,7 +9505,7 @@ do
     end})
     arms_sec:Label({Message = "Arms Color"}):ColorPicker({Default = Color3.fromRGB(255, 100, 0)})
     arms_sec:Slider({Name = "Arms Fill Transparency", Default = 50, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"WeaponVisuals","ArmsHighlight","FillTransparency"}, v/100)
         end})
     arms_sec:Toggle({Name = "Arms Always On Top", Default = false, Callback = function(v)
@@ -9516,7 +9516,7 @@ do
     end})
     arms_sec:Label({Message = "Held Item Color"}):ColorPicker({Default = Color3.fromRGB(0, 200, 255)})
     arms_sec:Slider({Name = "Held Fill Transparency", Default = 50, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"WeaponVisuals","HeldItemHighlight","FillTransparency"}, v/100)
         end})
     arms_sec:Toggle({Name = "Held Always On Top", Default = false, Callback = function(v)
@@ -9549,15 +9549,15 @@ do
             _kSet({"Aura","RingThickness"}, v)
         end})
     aura_sec:Slider({Name = "Ring Count", Default = 1, Max = 10, Min = 1,
-        Decimal = 0, Ending = "", Callback = function(v)
+        Decimal = 1, Ending = "", Callback = function(v)
             _kSet({"Aura","RingCount"}, v)
         end})
     aura_sec:Slider({Name = "Spin Speed", Default = 90, Max = 720, Min = 0,
-        Decimal = 0, Ending = "°/s", Callback = function(v)
+        Decimal = 1, Ending = "°/s", Callback = function(v)
             _kSet({"Aura","SpinSpeed"}, v)
         end})
     aura_sec:Slider({Name = "Ring Tilt", Default = 0, Max = 90, Min = -90,
-        Decimal = 0, Ending = "°", Callback = function(v)
+        Decimal = 1, Ending = "°", Callback = function(v)
             _kSet({"Aura","RingTilt"}, v)
         end})
     aura_sec:Toggle({Name = "Bounce", Default = false, Callback = function(v)
@@ -9572,11 +9572,11 @@ do
             _kSet({"Aura","BounceAmplitude"}, v)
         end})
     aura_sec:Slider({Name = "Glow Fill Trans", Default = 70, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"Aura","GlowFillTransparency"}, v/100)
         end})
     aura_sec:Slider({Name = "Glow Outline Trans", Default = 50, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"Aura","GlowOutlineTransparency"}, v/100)
         end})
 
@@ -9586,9 +9586,9 @@ do
     end})
     hitfb_sec:Toggle({Name = "Sound", Default = true})
     hitfb_sec:Slider({Name = "Volume", Default = 80, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%"})
+        Decimal = 1, Ending = "%"})
     hitfb_sec:Slider({Name = "Pitch", Default = 100, Max = 200, Min = 50,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"HitFeedback","Pitch"}, v/100)
         end})
     hitfb_sec:Dropdown({Name = "Sound Type", Default = "Default", Content = {"Default","Hitscan","Melee","Explosive"}, Callback = function(v)
@@ -9610,9 +9610,9 @@ do
     end})
     elimfb_sec:Toggle({Name = "Sound", Default = true})
     elimfb_sec:Slider({Name = "Volume", Default = 100, Max = 100, Min = 0,
-        Decimal = 0, Ending = "%"})
+        Decimal = 1, Ending = "%"})
     elimfb_sec:Slider({Name = "Pitch", Default = 100, Max = 200, Min = 50,
-        Decimal = 0, Ending = "%", Callback = function(v)
+        Decimal = 1, Ending = "%", Callback = function(v)
             _kSet({"ElimFeedback","Pitch"}, v/100)
         end})
     elimfb_sec:Dropdown({Name = "Sound Type", Default = "Default", Content = {"Default","Kill","Ace","Domination"}, Callback = function(v)
@@ -10371,15 +10371,15 @@ end})
 halo_sec:Label({Message = "Halo Color"}):ColorPicker({Default = Color3.fromRGB(133,220,255),
     Callback = function(c) AC.haloColor = c; AC.haloRainbow = false; haloSetCol(c) end})
 halo_sec:Slider({Name = "Halo Rate", Default = 7, Max = 50, Min = 1,
-    Decimal = 0, Ending = "", Callback = function(v)
+    Decimal = 1, Ending = "", Callback = function(v)
         AC.haloRate = v; haloSetRate(v)
     end})
 halo_sec:Slider({Name = "Halo Brightness", Default = 20, Max = 100, Min = 0,
-    Decimal = 0, Ending = "%", Callback = function(v)
+    Decimal = 1, Ending = "%", Callback = function(v)
         AC.haloBrightness = v/10; haloSetBri(v/10)
     end})
 halo_sec:Slider({Name = "Halo Size", Default = 10, Max = 50, Min = 2,
-    Decimal = 0, Ending = "%", Callback = function(v)
+    Decimal = 1, Ending = "%", Callback = function(v)
         AC.haloSize = v/10; haloSetSz(v/10)
     end})
 halo_sec:Slider({Name = "Halo Offset Y", Default = 0, Max = 5, Min = -5,
@@ -10399,11 +10399,11 @@ end})
 aura1_sec:Label({Message = "Aura 1 Color"}):ColorPicker({Default = Color3.fromRGB(133,220,255),
     Callback = function(c) AC.auraColor = c; AC.auraRainbow = false; a1SetCol(c) end})
 aura1_sec:Slider({Name = "Aura 1 Rate", Default = 20, Max = 60, Min = 1,
-    Decimal = 0, Ending = "", Callback = function(v)
+    Decimal = 1, Ending = "", Callback = function(v)
         AC.auraRate = v; a1SetRate(v)
     end})
 aura1_sec:Slider({Name = "Aura 1 Size", Default = 10, Max = 50, Min = 2,
-    Decimal = 0, Ending = "%", Callback = function(v)
+    Decimal = 1, Ending = "%", Callback = function(v)
         AC.auraSize = v/10; a1SetSz(v/10)
     end})
 aura1_sec:Slider({Name = "Aura Offset X", Default = 0, Max = 5, Min = -5,
@@ -10423,11 +10423,11 @@ end})
 aura23_sec:Label({Message = "Aura 2 Color"}):ColorPicker({Default = Color3.fromRGB(133,220,255),
     Callback = function(c) AC.aura2Color = c; AC.aura2Rainbow = false; a2SetCol(c) end})
 aura23_sec:Slider({Name = "Aura 2 Rate", Default = 20, Max = 60, Min = 1,
-    Decimal = 0, Ending = "", Callback = function(v)
+    Decimal = 1, Ending = "", Callback = function(v)
         AC.aura2Rate = v; a2SetRate(v)
     end})
 aura23_sec:Slider({Name = "Aura 2 Size", Default = 10, Max = 50, Min = 2,
-    Decimal = 0, Ending = "%", Callback = function(v)
+    Decimal = 1, Ending = "%", Callback = function(v)
         AC.aura2Size = v/10; a2SetSz(v/10)
     end})
 aura23_sec:Toggle({Name = "Enable Aura 3 (Ambient)", Default = false, Callback = function(v)
@@ -10439,11 +10439,11 @@ end})
 aura23_sec:Label({Message = "Aura 3 Color"}):ColorPicker({Default = Color3.fromRGB(133,220,255),
     Callback = function(c) AC.aura3Color = c; AC.aura3Rainbow = false; a3SetCol(c) end})
 aura23_sec:Slider({Name = "Aura 3 Rate", Default = 20, Max = 60, Min = 1,
-    Decimal = 0, Ending = "", Callback = function(v)
+    Decimal = 1, Ending = "", Callback = function(v)
         AC.aura3Rate = v; a3SetRate(v)
     end})
 aura23_sec:Slider({Name = "Aura 3 Size", Default = 10, Max = 50, Min = 2,
-    Decimal = 0, Ending = "%", Callback = function(v)
+    Decimal = 1, Ending = "%", Callback = function(v)
         AC.aura3Size = v/10; a3SetSz(v/10)
     end})
 
@@ -10457,11 +10457,11 @@ end})
 angel_sec:Label({Message = "Wings Color"}):ColorPicker({Default = Color3.fromRGB(133,220,255),
     Callback = function(c) AC.angelColor = c; AC.angelRainbow = false; angelSetCol(c) end})
 angel_sec:Slider({Name = "Wings Rate", Default = 4, Max = 30, Min = 1,
-    Decimal = 0, Ending = "", Callback = function(v)
+    Decimal = 1, Ending = "", Callback = function(v)
         AC.angelRate = v; angelSetRate(v)
     end})
 angel_sec:Slider({Name = "Wings Brightness", Default = 10, Max = 100, Min = 0,
-    Decimal = 0, Ending = "%", Callback = function(v)
+    Decimal = 1, Ending = "%", Callback = function(v)
         AC.angelBrightness = v/10; angelSetBri(v/10)
     end})
 angel_sec:Slider({Name = "Wings Offset X", Default = 0, Max = 3, Min = -3,
@@ -10481,11 +10481,11 @@ end})
 trail_sec:Label({Message = "Trail Color"}):ColorPicker({Default = Color3.fromRGB(133,220,255),
     Callback = function(c) AC.trailColor = c; AC.trailRainbow = false; trailSetCol(c) end})
 trail_sec:Slider({Name = "Trail Width", Default = 15, Max = 50, Min = 5,
-    Decimal = 0, Ending = "%", Callback = function(v)
+    Decimal = 1, Ending = "%", Callback = function(v)
         AC.trailWidth = v/10; trailSetWidth(v/10)
     end})
 trail_sec:Slider({Name = "Trail Lifetime", Default = 4, Max = 20, Min = 1,
-    Decimal = 0, Ending = "/10s", Callback = function(v)
+    Decimal = 1, Ending = "/10s", Callback = function(v)
         AC.trailLifetime = v/10; trail.Lifetime = v/10
     end})
 
@@ -10494,7 +10494,7 @@ rbw_sec:Toggle({Name = "Rainbow Master", Default = true, Callback = function(v)
     AC.rainbowEnabled = v
 end})
 rbw_sec:Slider({Name = "Rainbow Speed", Default = 5, Max = 30, Min = 1,
-    Decimal = 0, Ending = "/10", Callback = function(v)
+    Decimal = 1, Ending = "/10", Callback = function(v)
         AC.rainbowSpeed = v/10
     end})
 
