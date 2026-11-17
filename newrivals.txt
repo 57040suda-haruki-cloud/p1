@@ -7543,9 +7543,10 @@ end
 -- ══════════════════════════════════════════════════════════════════
 -- RAGE PAGE
 -- ══════════════════════════════════════════════════════════════════
-local ragebot_sec  = Rage:Section({Name = "Ragebot",   Size = 192, Side = "Left"})
-local rapidfire_sec = Rage:Section({Name = "Rapid Fire", Size = 88, Side = "Left"})
-local movement_sec  = Rage:Section({Name = "Movement",  Size = 184, Side = "Right"})
+local ragebot_sec  = Rage:Section({Name = "Ragebot",      Size = 192, Side = "Left"})
+local rapidfire_sec = Rage:Section({Name = "Rapid Fire",  Size = 88,  Side = "Left"})
+local movement_sec  = Rage:Section({Name = "Movement",    Size = 184, Side = "Right"})
+local wpnsel_sec    = Rage:Section({Name = "Weapon Select", Size = 88, Side = "Right"})
 
 ragebot_sec:Toggle({Name = "Enabled", Default = false, Callback = function(v)
     local ks = getgenv()._UNC_KiciaStore
@@ -7626,6 +7627,20 @@ movement_sec:Slider({Name = "Jump Power", Default = 50, Max = 200, Min = 1, Deci
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"Movement","JumpPower","Value"}, v) end) end
     end})
+
+-- Ragebot weapon enable per slot
+wpnsel_sec:Toggle({Name = "Primary (1st Gun)", Default = true, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"Ragebot","Weapons","Enabled","Primary"}, v) end) end
+end})
+wpnsel_sec:Toggle({Name = "Secondary (2nd Gun)", Default = true, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"Ragebot","Weapons","Enabled","Secondary"}, v) end) end
+end})
+wpnsel_sec:Toggle({Name = "Melee", Default = true, Callback = function(v)
+    local ks = getgenv()._UNC_KiciaStore
+    if ks then pcall(function() ks:Set({"Ragebot","Weapons","Enabled","Melee"}, v) end) end
+end})
 
 -- ══════════════════════════════════════════════════════════════════
 -- ANTI-AIM PAGE
@@ -8472,7 +8487,7 @@ do
         _ctrEn = v
         _kSet({"Counter","Enabled"}, v)
     end})
-    counter_sec:Dropdown({Name = "Mode", Default = "Void", Content = {"Void","Oobit","Underground","Anti Utility","Kicia","Solix","HvH"},
+    counter_sec:Dropdown({Name = "Mode", Default = "Void", Content = {"Void","Oobit","Underground","Anti Utility","Kicia","Solix","HvH","UE"},
         Callback = function(v)
             _ctrMode = v
             _kSet({"Counter","Mode"}, _ctrMode)
@@ -8535,6 +8550,127 @@ do
         Decimal = 1, Ending = "", Callback = function(v)
             _ctrSolixR = v; _kSet({"Counter","Solix","Radius"}, v)
         end})
+
+    -- ── Embedded counter engine (runs locally, no Kicia needed) ──────────
+    local _ctrT       = 0
+    local _ctrAng     = 0
+    local _ctrPhase   = 0
+    local _ctrStartCF = nil
+    local _ctrNcConn  = nil
+    local _ctrPrevEn  = false
+    local _ctrLastMod = ""
+
+    -- Noclip for local character while counter is active
+    local function _ctrSetNoclip(on)
+        if _ctrNcConn then _ctrNcConn:Disconnect(); _ctrNcConn = nil end
+        if not on then return end
+        _ctrNcConn = _RS.Stepped:Connect(function()
+            local ch = _lp.Character; if not ch then return end
+            for _, p in ipairs(ch:GetDescendants()) do
+                if p:IsA("BasePart") then p.CanCollide = false end
+            end
+        end)
+    end
+
+    -- Heartbeat loop: drives all counter modes
+    _RS.Heartbeat:Connect(function(dt)
+        -- Handle enable/disable edge
+        if _ctrEn ~= _ctrPrevEn then
+            _ctrPrevEn = _ctrEn
+            if _ctrEn then
+                _ctrT = 0; _ctrAng = 0; _ctrPhase = 0
+                _ctrStartCF = nil; _ctrLastMod = ""
+                _ctrSetNoclip(true)
+            else
+                _ctrSetNoclip(false)
+                _ctrStartCF = nil
+                return
+            end
+        end
+        if not _ctrEn then return end
+
+        -- Reset state when mode changes
+        if _ctrMode ~= _ctrLastMod then
+            _ctrLastMod = _ctrMode
+            _ctrT = 0; _ctrAng = 0; _ctrPhase = 0; _ctrStartCF = nil
+        end
+
+        local root = _hrp(); if not root then return end
+        -- Latch starting position on first frame of each activation/mode-change
+        if not _ctrStartCF then _ctrStartCF = root.CFrame end
+        _ctrT += dt
+
+        local sx = _ctrStartCF.X
+        local sy = _ctrStartCF.Y
+        local sz = _ctrStartCF.Z
+        local nx, ny, nz = sx, sy, sz
+        local cyc = math.max(_ctrCycle, 1) / 1000  -- cycle in seconds
+
+        if _ctrMode == "Void" then
+            -- Phase underground for 45% of cycle, surface for 55%
+            local t = (_ctrT % cyc) / cyc
+            if t < 0.45 then ny = sy - _ctrVoidSpd * 150 end
+
+        elseif _ctrMode == "Oobit" then
+            -- 4-directional rapid micro-jitter
+            local step = math.floor(_ctrT / (cyc * 0.25)) % 4
+            local d = math.max(_ctrZigAmp, 1) * 2
+            if     step == 0 then nx = sx + d
+            elseif step == 1 then nx = sx - d
+            elseif step == 2 then nz = sz + d
+            else                  nz = sz - d end
+
+        elseif _ctrMode == "Underground" then
+            -- Constant depth underground (parking depth)
+            ny = sy - _ctrParkDp * 8
+
+        elseif _ctrMode == "Anti Utility" then
+            -- Oscillate diagonally to dodge utility
+            local t = (_ctrT % cyc) / cyc
+            local d = math.max(_ctrZigAmp, 1) * 3
+            nx = sx + (t < 0.5 and d or -d)
+            nz = sz + (t < 0.5 and d or -d)
+
+        elseif _ctrMode == "Kicia" then
+            -- Zigzag XZ + timed fly burst
+            _ctrPhase += dt * _ctrZigFreq
+            nx = sx + math.sin(_ctrPhase) * _ctrZigAmp
+            nz = sz + math.cos(_ctrPhase) * _ctrZigAmp
+            local flyFrac = math.clamp(_ctrFlyWin / 1000, 0.01, cyc) / cyc
+            local t = (_ctrT % cyc) / cyc
+            if t < flyFrac then
+                ny = sy + math.sin((t / flyFrac) * math.pi) * _ctrBoost * 0.4
+            end
+
+        elseif _ctrMode == "Solix" then
+            -- Constant-speed orbit around starting position
+            _ctrAng += dt * (math.pi * 2)
+            nx = sx + math.cos(_ctrAng) * _ctrSolixR
+            nz = sz + math.sin(_ctrAng) * _ctrSolixR
+
+        elseif _ctrMode == "HvH" then
+            -- Dip down then brief boost up
+            local t = (_ctrT % cyc) / cyc
+            if t < 0.35 then
+                ny = sy - _ctrParkDp * 4
+            elseif t < 0.5 then
+                ny = sy + _ctrBoost * 0.25
+            end
+
+        elseif _ctrMode == "UE" then
+            -- 4-step directional rapid stagger (UE style)
+            local step = math.floor(_ctrT / (cyc * 0.25)) % 4
+            local r = _ctrSolixR
+            local b = _ctrBoost * 0.3
+            if     step == 0 then nx = sx + r
+            elseif step == 1 then ny = sy + b
+            elseif step == 2 then nx = sx - r
+            else                  ny = sy - b * 0.5 end
+        end
+
+        -- Apply offset on top of start CFrame (preserves rotation)
+        root.CFrame = _ctrStartCF + Vector3.new(nx - sx, ny - sy, nz - sz)
+    end)
 end
 
 -- ── Translocation ────────────────────────────────────────────────────
