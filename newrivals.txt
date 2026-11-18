@@ -7224,7 +7224,7 @@ pcall(function()
     end
 end)
 
-local Window = Library:Window({CloseBind = Enum.KeyCode.Insert})
+local Window = Library:Window({CloseBind = Enum.KeyCode.F1})
 local Rage = Window:CreateTab({Icon = "rbxassetid://18248771514"})
 local AntiAim = Window:CreateTab({Icon = "rbxassetid://15453313321"})
 local Aimbot = Window:CreateTab({Icon = "rbxassetid://15453335745"})
@@ -7543,12 +7543,20 @@ end
 -- ══════════════════════════════════════════════════════════════════
 -- RAGE PAGE
 -- ══════════════════════════════════════════════════════════════════
+-- ── Ragebot engine state (upvalues shared between UI callbacks and engine) ──
+local _rbEn        = false
+local _rbKeyHeld   = false
+local _rbHitbox    = "Head"
+local _rbPriority  = "Nearest"
+local _rbWpnEnabled= {Primary = true, Secondary = true, Melee = true}
+
 local ragebot_sec  = Rage:Section({Name = "Ragebot",      Size = 192, Side = "Left"})
 local rapidfire_sec = Rage:Section({Name = "Rapid Fire",  Size = 88,  Side = "Left"})
 local movement_sec  = Rage:Section({Name = "Movement",    Size = 184, Side = "Right"})
-local wpnsel_sec    = Rage:Section({Name = "Weapon Select", Size = 88, Side = "Right"})
+local wpnsel_sec    = Rage:Section({Name = "Weapon Select", Size = 64, Side = "Right"})
 
 ragebot_sec:Toggle({Name = "Enabled", Default = false, Callback = function(v)
+    _rbEn = v
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"Ragebot","Enabled"}, v) end) end
 end})
@@ -7570,11 +7578,16 @@ ragebot_sec:Toggle({Name = "Target Hackers Only", Default = false, Callback = fu
 end})
 ragebot_sec:Dropdown({Name = "Hitbox", Default = "Head", Content = {"Head", "Body", "Nearest", "Random"},
     Callback = function(v)
+        _rbHitbox = v
         local ks = getgenv()._UNC_KiciaStore
         if ks then pcall(function() ks:Set({"Ragebot","Hitbox"}, v) end) end
     end})
-ragebot_sec:Dropdown({Name = "Target Priority", Default = "Nearest", Content = {"Nearest", "Lowest HP", "Highest HP", "In FOV"}})
+ragebot_sec:Dropdown({Name = "Target Priority", Default = "Nearest", Content = {"Nearest", "Lowest HP", "Highest HP", "In FOV"},
+    Callback = function(v)
+        _rbPriority = v
+    end})
 ragebot_sec:Label({Message = "Ragebot Key"}):Keybind({Callback = function(v)
+    _rbKeyHeld = v
     local ks = getgenv()._UNC_KiciaStore
     if ks then pcall(function() ks:Set({"Ragebot","Keybind","State"}, v) end) end
 end})
@@ -7628,19 +7641,173 @@ movement_sec:Slider({Name = "Jump Power", Default = 50, Max = 200, Min = 1, Deci
         if ks then pcall(function() ks:Set({"Movement","JumpPower","Value"}, v) end) end
     end})
 
--- Ragebot weapon enable per slot
-wpnsel_sec:Toggle({Name = "Primary (1st Gun)", Default = true, Callback = function(v)
-    local ks = getgenv()._UNC_KiciaStore
-    if ks then pcall(function() ks:Set({"Ragebot","Weapons","Enabled","Primary"}, v) end) end
-end})
-wpnsel_sec:Toggle({Name = "Secondary (2nd Gun)", Default = true, Callback = function(v)
-    local ks = getgenv()._UNC_KiciaStore
-    if ks then pcall(function() ks:Set({"Ragebot","Weapons","Enabled","Secondary"}, v) end) end
-end})
-wpnsel_sec:Toggle({Name = "Melee", Default = true, Callback = function(v)
-    local ks = getgenv()._UNC_KiciaStore
-    if ks then pcall(function() ks:Set({"Ragebot","Weapons","Enabled","Melee"}, v) end) end
-end})
+-- Weapon slot filter (MultiBox list — select which slots ragebot is active on)
+wpnsel_sec:MultiBox({
+    Name = "Active Slots",
+    Default = {"Primary", "Secondary", "Melee"},
+    Content = {"Primary", "Secondary", "Melee"},
+    Callback = function(list)
+        _rbWpnEnabled = {Primary = false, Secondary = false, Melee = false}
+        for _, v in ipairs(list) do _rbWpnEnabled[v] = true end
+        local ks = getgenv()._UNC_KiciaStore
+        if ks then pcall(function()
+            ks:Set({"Ragebot","Weapons","Enabled","Primary"},   _rbWpnEnabled.Primary)
+            ks:Set({"Ragebot","Weapons","Enabled","Secondary"}, _rbWpnEnabled.Secondary)
+            ks:Set({"Ragebot","Weapons","Enabled","Melee"},     _rbWpnEnabled.Melee)
+        end) end
+    end
+})
+
+-- ── Embedded Ragebot Engine (standalone, no Kicia required) ─────────────
+do
+    local _rbLP = game:GetService("Players").LocalPlayer
+    local _rbRS = game:GetService("RunService")
+    local _rbLastShot = 0
+    local _rbFireRate = 0.07  -- seconds between shots
+
+    local function _rbGetHRP()
+        local ch = _rbLP.Character
+        return ch and ch:FindFirstChild("HumanoidRootPart")
+    end
+
+    -- Detect which inventory slot (Primary/Secondary/Melee) is currently equipped
+    local function _rbEquippedSlot()
+        local ch = _rbLP.Character
+        if not ch then return nil end
+        local tool = ch:FindFirstChildWhichIsA("Tool")
+        if not tool then return nil end
+        -- Try common attribute names for slot index
+        local idx = tool:GetAttribute("InventorySlot")
+                 or tool:GetAttribute("Slot")
+                 or tool:GetAttribute("SlotIndex")
+                 or tool:GetAttribute("EquipSlot")
+        if idx == 1 then return "Primary"
+        elseif idx == 2 then return "Secondary"
+        elseif idx == 3 then return "Melee"
+        end
+        -- Fallback: heuristic — if the tool has an attack/swing animation it is Melee
+        for _, c in ipairs(tool:GetChildren()) do
+            local n = c.Name:lower()
+            if n == "attack" or n == "swing" or n == "slash" or n == "stab" then
+                return "Melee"
+            end
+        end
+        -- Second fallback: check if tool has ammo attribute (gun indicator)
+        if tool:GetAttribute("Ammo") or tool:GetAttribute("CurrentAmmo")
+          or tool:GetAttribute("MaxAmmo") or tool:FindFirstChild("Ammo") then
+            return "Primary"
+        end
+        return "Primary"  -- default
+    end
+
+    -- Find the best enemy target and return (player, worldPosition)
+    local function _rbFindTarget()
+        local myHRP = _rbGetHRP()
+        if not myHRP then return nil, nil end
+        local cam   = workspace.CurrentCamera
+        local best, bestMetric, bestPos = nil, math.huge, nil
+
+        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+            if p == _rbLP then continue end
+            local pc = p.Character
+            if not pc then continue end
+            local hum = pc:FindFirstChildOfClass("Humanoid")
+            if not hum or hum.Health <= 0 then continue end
+            local hrp = pc:FindFirstChild("HumanoidRootPart")
+            if not hrp then continue end
+            -- Skip same-team players (Roblox Team service check)
+            if _rbLP.Team and p.Team and p.Team == _rbLP.Team then continue end
+
+            local dist = (hrp.Position - myHRP.Position).Magnitude
+            local metric
+            local pri = _rbPriority
+            if pri == "Nearest" then
+                metric = dist
+            elseif pri == "Lowest HP" then
+                metric = hum.Health
+            elseif pri == "Highest HP" then
+                metric = -hum.Health
+            elseif pri == "In FOV" then
+                local sc, on = cam:WorldToViewportPoint(hrp.Position)
+                if not on then continue end
+                local center = cam.ViewportSize / 2
+                metric = (Vector2.new(sc.X, sc.Y) - center).Magnitude
+            else
+                metric = dist
+            end
+
+            if metric < bestMetric then
+                bestMetric = metric
+                best       = p
+                local hbx  = _rbHitbox
+                if hbx == "Head" then
+                    local head = pc:FindFirstChild("Head")
+                    bestPos = head and head.Position or hrp.Position + Vector3.new(0, 1.5, 0)
+                elseif hbx == "Body" then
+                    bestPos = hrp.Position
+                elseif hbx == "Nearest" then
+                    local minD2 = math.huge
+                    for _, part in ipairs(pc:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            local d2 = (part.Position - myHRP.Position).Magnitude
+                            if d2 < minD2 then minD2 = d2; bestPos = part.Position end
+                        end
+                    end
+                else  -- Random
+                    local bps = {}
+                    for _, part in ipairs(pc:GetDescendants()) do
+                        if part:IsA("BasePart") then bps[#bps+1] = part end
+                    end
+                    local rp = #bps > 0 and bps[math.random(#bps)] or nil
+                    bestPos = rp and rp.Position or hrp.Position
+                end
+            end
+        end
+        return best, bestPos
+    end
+
+    _rbRS.RenderStepped:Connect(function()
+        -- Active only when master toggle or hold-key is on
+        if not (_rbEn or _rbKeyHeld) then return end
+
+        -- Weapon slot filter
+        local slot = _rbEquippedSlot()
+        if slot and not _rbWpnEnabled[slot] then return end
+
+        local target, targetPos = _rbFindTarget()
+        if not target or not targetPos then return end
+
+        -- Aim camera at target
+        local cam    = workspace.CurrentCamera
+        local camPos = cam.CFrame.Position
+        cam.CFrame   = CFrame.lookAt(camPos, targetPos)
+
+        -- Rate-limit firing
+        local now = os.clock()
+        if now - _rbLastShot < _rbFireRate then return end
+        _rbLastShot = now
+
+        if slot == "Melee" then
+            -- Teleport behind target and melee attack
+            local ch   = _rbLP.Character
+            local myHRP = ch and ch:FindFirstChild("HumanoidRootPart")
+            if myHRP then
+                local tChar = target.Character
+                local tHRP  = tChar and tChar:FindFirstChild("HumanoidRootPart")
+                if tHRP then
+                    pcall(function()
+                        myHRP.CFrame = tHRP.CFrame * CFrame.new(0, 0, -2.5)
+                    end)
+                end
+            end
+            pcall(mouse1click)
+        else
+            -- Gun: press → release after short delay
+            pcall(mouse1press)
+            task.delay(0.05, function() pcall(mouse1release) end)
+        end
+    end)
+end
 
 -- ══════════════════════════════════════════════════════════════════
 -- ANTI-AIM PAGE
@@ -9754,16 +9921,23 @@ do
         local s = self.states[player]
         if not s then return end
         local char = s.char
-        if not char or not s.hrp or not s.hum then self:_hide(s); return end
+        if not char or not s.hrp or not s.hum then self:_hide(s); s._missCt = 0; return end
         if not espFlags.show_team then
             local t = player.Team
             if t and _espLP.Team and t == _espLP.Team then
-                self:_hide(s); return
+                self:_hide(s); s._missCt = 0; return
             end
         end
-        if s.health <= 0 then self:_hide(s); return end
+        if s.health <= 0 then self:_hide(s); s._missCt = 0; return end
         local b = self:_bounds(s)
-        if not b then self:_hide(s); return end
+        if not b then
+            -- Allow up to 4 consecutive off-screen frames before hiding
+            -- (prevents single-frame flicker at screen edges)
+            s._missCt = (s._missCt or 0) + 1
+            if s._missCt >= 4 then self:_hide(s) end
+            return
+        end
+        s._missCt = 0
         local tl, sz, top, bot, dist = b.tl, b.sz, b.top, b.bot, b.dist
         local cam = workspace.CurrentCamera
 
