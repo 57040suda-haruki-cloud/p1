@@ -8463,8 +8463,8 @@ end
 -- ── Counter ──────────────────────────────────────────────────────────
 do
     local counter_sec  = Rage:Section({Name = "Counter",        Size = 192, Side = "Left"})
-    local counter_cfg  = Rage:Section({Name = "Counter Config", Size = 128, Side = "Left"})
-    local kicia_cfg    = Rage:Section({Name = "Kicia / Solix",  Size = 192, Side = "Right"})
+    local counter_cfg  = Rage:Section({Name = "Counter Config", Size = 152, Side = "Left"})
+    local kicia_cfg    = Rage:Section({Name = "Kicia / Solix",  Size = 352, Side = "Right"})
 
     local _ctrEn      = false
     local _ctrMode    = "Void"
@@ -8675,8 +8675,8 @@ end
 
 -- ── Translocation ────────────────────────────────────────────────────
 do
-    local trans_sec  = Rage:Section({Name = "Translocation",    Size = 176, Side = "Right"})
-    local trans_help = Rage:Section({Name = "Trans Helpful",    Size = 184, Side = "Right"})
+    local trans_sec  = Rage:Section({Name = "Translocation",    Size = 416, Side = "Right"})
+    local trans_help = Rage:Section({Name = "Trans Helpful",    Size = 392, Side = "Right"})
 
     local _transEn    = false
     local _transMode  = "Ahead"
