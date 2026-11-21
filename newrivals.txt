@@ -8288,6 +8288,298 @@ pltarget_sec:Toggle({Name = "Prioritize Hackers", Default = false, Callback = fu
 end})
 
 -- ══════════════════════════════════════════════════════════════════
+-- BLACKLIST MANAGER (PlayerList page)
+-- ══════════════════════════════════════════════════════════════════
+do
+    local bl_sec = PlayerList:Section({Name = "Blacklist", Size = 72, Side = "Left"})
+
+    if not getgenv()._UNC_Blacklist then getgenv()._UNC_Blacklist = {} end
+    local BL = getgenv()._UNC_Blacklist
+
+    local _blGui = Instance.new("ScreenGui")
+    _blGui.Name = "OrbisBlacklist"
+    _blGui.ResetOnSpawn = false
+    _blGui.DisplayOrder = 997
+    _blGui.IgnoreGuiInset = true
+    _blGui.Enabled = false
+    local _blOk, _ = pcall(function() _blGui.Parent = game:GetService("CoreGui") end)
+    if not _blOk then _blGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
+
+    local _blFrame = Instance.new("Frame")
+    _blFrame.Name = "BlFrame"
+    _blFrame.Size = UDim2.new(0, 500, 0, 420)
+    _blFrame.Position = UDim2.new(0.5, -250, 0.5, -210)
+    _blFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
+    _blFrame.BorderSizePixel = 0
+    _blFrame.Parent = _blGui
+    local _bfc = Instance.new("UICorner"); _bfc.CornerRadius = UDim.new(0,10); _bfc.Parent = _blFrame
+    local _bfs = Instance.new("UIStroke"); _bfs.Color = Color3.fromRGB(160,80,20); _bfs.Thickness = 1.5; _bfs.Parent = _blFrame
+
+    local _blTitle = Instance.new("TextLabel")
+    _blTitle.Size = UDim2.new(1, -50, 0, 30)
+    _blTitle.Position = UDim2.new(0, 10, 0, 0)
+    _blTitle.BackgroundTransparency = 1
+    _blTitle.Text = "Blacklist Manager  —  tracked by UserId"
+    _blTitle.TextColor3 = Color3.fromRGB(255, 160, 60)
+    _blTitle.TextSize = 13
+    _blTitle.Font = Enum.Font.GothamBold
+    _blTitle.TextXAlignment = Enum.TextXAlignment.Left
+    _blTitle.Parent = _blFrame
+
+    local _blClose = Instance.new("TextButton")
+    _blClose.Size = UDim2.new(0, 28, 0, 28)
+    _blClose.Position = UDim2.new(1, -34, 0, 1)
+    _blClose.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+    _blClose.BorderSizePixel = 0
+    _blClose.Text = "✕"
+    _blClose.TextColor3 = Color3.fromRGB(255,255,255)
+    _blClose.TextSize = 14
+    _blClose.Font = Enum.Font.GothamBold
+    _blClose.Parent = _blFrame
+    local _blcc = Instance.new("UICorner"); _blcc.CornerRadius = UDim.new(0,6); _blcc.Parent = _blClose
+    _blClose.MouseButton1Click:Connect(function() _blGui.Enabled = false end)
+
+    local _blDiv = Instance.new("Frame")
+    _blDiv.Size = UDim2.new(1, -20, 0, 1)
+    _blDiv.Position = UDim2.new(0, 10, 0, 32)
+    _blDiv.BackgroundColor3 = Color3.fromRGB(80, 50, 20)
+    _blDiv.BorderSizePixel = 0
+    _blDiv.Parent = _blFrame
+
+    local function mkHdr(txt, x, w)
+        local l = Instance.new("TextLabel")
+        l.Size = UDim2.new(0, w, 0, 20)
+        l.Position = UDim2.new(0, x, 0, 38)
+        l.BackgroundTransparency = 1
+        l.Text = txt
+        l.TextColor3 = Color3.fromRGB(180, 180, 180)
+        l.TextSize = 11
+        l.Font = Enum.Font.GothamBold
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.Parent = _blFrame
+    end
+    mkHdr("Current Players  (click + BL to blacklist)", 10, 220)
+    mkHdr("Blacklisted  (name changers shown in orange)", 240, 250)
+
+    local function mkScroll(x, w, barCol)
+        local sf = Instance.new("ScrollingFrame")
+        sf.Size = UDim2.new(0, w, 0, 322)
+        sf.Position = UDim2.new(0, x, 0, 60)
+        sf.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
+        sf.BorderSizePixel = 0
+        sf.ScrollBarThickness = 4
+        sf.ScrollBarImageColor3 = barCol
+        sf.CanvasSize = UDim2.new(0, 0, 0, 0)
+        sf.Parent = _blFrame
+        local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,6); c.Parent = sf
+        local ll = Instance.new("UIListLayout"); ll.Padding = UDim.new(0, 2); ll.Parent = sf
+        local pp = Instance.new("UIPadding")
+        pp.PaddingLeft = UDim.new(0, 4); pp.PaddingTop = UDim.new(0, 4); pp.Parent = sf
+        return sf
+    end
+    local _leftScroll  = mkScroll(10,  220, Color3.fromRGB(80, 160, 80))
+    local _rightScroll = mkScroll(240, 250, Color3.fromRGB(255, 100, 40))
+
+    local _blStatus = Instance.new("TextLabel")
+    _blStatus.Size = UDim2.new(1, -110, 0, 20)
+    _blStatus.Position = UDim2.new(0, 10, 1, -26)
+    _blStatus.BackgroundTransparency = 1
+    _blStatus.Text = "0 blacklisted"
+    _blStatus.TextColor3 = Color3.fromRGB(100, 100, 100)
+    _blStatus.TextSize = 11
+    _blStatus.Font = Enum.Font.Gotham
+    _blStatus.TextXAlignment = Enum.TextXAlignment.Left
+    _blStatus.Parent = _blFrame
+
+    local _blRefBtn = Instance.new("TextButton")
+    _blRefBtn.Size = UDim2.new(0, 80, 0, 22)
+    _blRefBtn.Position = UDim2.new(1, -96, 1, -28)
+    _blRefBtn.BackgroundColor3 = Color3.fromRGB(30, 60, 100)
+    _blRefBtn.BorderSizePixel = 0
+    _blRefBtn.Text = "Refresh"
+    _blRefBtn.TextColor3 = Color3.fromRGB(180, 210, 255)
+    _blRefBtn.TextSize = 11
+    _blRefBtn.Font = Enum.Font.GothamBold
+    _blRefBtn.Parent = _blFrame
+    local _rbrc = Instance.new("UICorner"); _rbrc.CornerRadius = UDim.new(0,6); _rbrc.Parent = _blRefBtn
+
+    local _blPlrs = game:GetService("Players")
+    local _blLP   = _blPlrs.LocalPlayer
+
+    local function countBL()
+        local n = 0
+        for _ in pairs(BL) do n = n + 1 end
+        return n
+    end
+
+    local function refreshBLPanel()
+        for _, c in ipairs(_rightScroll:GetChildren()) do
+            if c:IsA("Frame") then c:Destroy() end
+        end
+        local n = 0
+        for uid, data in pairs(BL) do
+            n = n + 1
+            local curName, renamed = data.name, false
+            for _, p in ipairs(_blPlrs:GetPlayers()) do
+                if p.UserId == uid then
+                    if p.Name ~= data.name then curName = p.Name; renamed = true end
+                    break
+                end
+            end
+            local row = Instance.new("Frame")
+            row.Size = UDim2.new(1, -8, 0, 40)
+            row.BackgroundColor3 = Color3.fromRGB(18, 10, 10)
+            row.BorderSizePixel = 0
+            row.Parent = _rightScroll
+            local rc = Instance.new("UICorner"); rc.CornerRadius = UDim.new(0,4); rc.Parent = row
+
+            local nl = Instance.new("TextLabel")
+            nl.Size = UDim2.new(1, -44, 0, 20)
+            nl.Position = UDim2.new(0, 4, 0, 2)
+            nl.BackgroundTransparency = 1
+            nl.TextXAlignment = Enum.TextXAlignment.Left
+            nl.TextSize = 11
+            nl.Font = Enum.Font.GothamBold
+            nl.TextTruncate = Enum.TextTruncate.AtEnd
+            nl.Parent = row
+            if renamed then
+                nl.Text = curName .. "  (was: " .. data.name .. ")"
+                nl.TextColor3 = Color3.fromRGB(255, 180, 40)
+            else
+                nl.Text = data.name
+                nl.TextColor3 = Color3.fromRGB(255, 100, 100)
+            end
+
+            local ul = Instance.new("TextLabel")
+            ul.Size = UDim2.new(1, -44, 0, 14)
+            ul.Position = UDim2.new(0, 4, 0, 22)
+            ul.BackgroundTransparency = 1
+            ul.Text = "UserId: " .. tostring(uid)
+            ul.TextColor3 = Color3.fromRGB(70, 70, 70)
+            ul.TextSize = 10
+            ul.Font = Enum.Font.Gotham
+            ul.TextXAlignment = Enum.TextXAlignment.Left
+            ul.Parent = row
+
+            local rmBtn = Instance.new("TextButton")
+            rmBtn.Size = UDim2.new(0, 36, 0, 32)
+            rmBtn.Position = UDim2.new(1, -40, 0, 4)
+            rmBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+            rmBtn.BorderSizePixel = 0
+            rmBtn.Text = "✕"
+            rmBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            rmBtn.TextSize = 12
+            rmBtn.Font = Enum.Font.GothamBold
+            rmBtn.Parent = row
+            local rmc = Instance.new("UICorner"); rmc.CornerRadius = UDim.new(0,4); rmc.Parent = rmBtn
+            local capturedUid = uid
+            rmBtn.MouseButton1Click:Connect(function()
+                BL[capturedUid] = nil
+                row:Destroy()
+                _blStatus.Text = countBL() .. " blacklisted"
+            end)
+        end
+        _rightScroll.CanvasSize = UDim2.new(0, 0, 0, n * 44)
+        _blStatus.Text = countBL() .. " blacklisted"
+    end
+
+    local function refreshPlayerPanel()
+        for _, c in ipairs(_leftScroll:GetChildren()) do
+            if c:IsA("Frame") then c:Destroy() end
+        end
+        local players = _blPlrs:GetPlayers()
+        local count = 0
+        for _, p in ipairs(players) do
+            if p == _blLP then continue end
+            count = count + 1
+            local inBL = BL[p.UserId] ~= nil
+            local row = Instance.new("Frame")
+            row.Size = UDim2.new(1, -8, 0, 32)
+            row.BackgroundColor3 = inBL and Color3.fromRGB(20,10,10) or Color3.fromRGB(12,18,12)
+            row.BorderSizePixel = 0
+            row.Parent = _leftScroll
+            local pc = Instance.new("UICorner"); pc.CornerRadius = UDim.new(0,4); pc.Parent = row
+
+            local nl2 = Instance.new("TextLabel")
+            nl2.Size = UDim2.new(1, -48, 0, 32)
+            nl2.Position = UDim2.new(0, 4, 0, 0)
+            nl2.BackgroundTransparency = 1
+            nl2.Text = p.Name
+            nl2.TextColor3 = inBL and Color3.fromRGB(255,80,80) or Color3.fromRGB(180,220,180)
+            nl2.TextSize = 12
+            nl2.Font = Enum.Font.Gotham
+            nl2.TextXAlignment = Enum.TextXAlignment.Left
+            nl2.TextTruncate = Enum.TextTruncate.AtEnd
+            nl2.Parent = row
+
+            local addBtn = Instance.new("TextButton")
+            addBtn.Size = UDim2.new(0, 40, 0, 24)
+            addBtn.Position = UDim2.new(1, -44, 0, 4)
+            addBtn.BackgroundColor3 = inBL and Color3.fromRGB(80,20,20) or Color3.fromRGB(20,80,40)
+            addBtn.BorderSizePixel = 0
+            addBtn.Text = inBL and "BL'd" or "+ BL"
+            addBtn.TextColor3 = Color3.fromRGB(255,255,255)
+            addBtn.TextSize = 10
+            addBtn.Font = Enum.Font.GothamBold
+            addBtn.Parent = row
+            local abc = Instance.new("UICorner"); abc.CornerRadius = UDim.new(0,4); abc.Parent = addBtn
+            local localP = p
+            addBtn.MouseButton1Click:Connect(function()
+                if BL[localP.UserId] then
+                    BL[localP.UserId] = nil
+                else
+                    BL[localP.UserId] = {name = localP.Name, addedAt = tick()}
+                end
+                refreshPlayerPanel()
+                refreshBLPanel()
+            end)
+        end
+        _leftScroll.CanvasSize = UDim2.new(0, 0, 0, count * 36)
+    end
+
+    _blRefBtn.MouseButton1Click:Connect(function()
+        refreshPlayerPanel()
+        refreshBLPanel()
+    end)
+
+    _blGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+        if _blGui.Enabled then
+            refreshPlayerPanel()
+            refreshBLPanel()
+        end
+    end)
+
+    -- Draggable
+    do
+        local _drag, _dragStart, _frameStart = false, nil, nil
+        _blTitle.InputBegan:Connect(function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                _drag = true; _dragStart = inp.Position; _frameStart = _blFrame.Position
+            end
+        end)
+        _blTitle.InputEnded:Connect(function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 then _drag = false end
+        end)
+        game:GetService("UserInputService").InputChanged:Connect(function(inp)
+            if _drag and inp.UserInputType == Enum.UserInputType.MouseMovement then
+                local d = inp.Position - _dragStart
+                _blFrame.Position = UDim2.new(
+                    _frameStart.X.Scale, _frameStart.X.Offset + d.X,
+                    _frameStart.Y.Scale, _frameStart.Y.Offset + d.Y)
+            end
+        end)
+    end
+
+    local _blOpenRef
+    _blOpenRef = bl_sec:Toggle({Name = "Open Blacklist Manager", Default = false,
+        Callback = function(v) _blGui.Enabled = v end})
+    _blClose.MouseButton1Click:Connect(function()
+        pcall(function() _blOpenRef:Set(false) end)
+    end)
+    bl_sec:Label({Message = "Track name changers by UserId"})
+end
+
+-- ══════════════════════════════════════════════════════════════════
 -- CONFIG PAGE
 -- ══════════════════════════════════════════════════════════════════
 local savecfg_sec  = Configs:Section({Name = "Config",   Size = 144, Side = "Left"})
@@ -9859,7 +10151,7 @@ do
         end
         local s = {
             player=player, char=nil, hrp=nil, hum=nil,
-            health=100, parts={}, skel=skel, connections={}, lerpHP=1,
+            health=100, parts={}, skel=skel, connections={}, playerConns={}, lerpHP=1,
             fill     = espD("Square",{Visible=false,Filled=true, Color=Color3.new(1,0,0),Transparency=0.6}),
             boxShad  = espD("Square",{Visible=false,Filled=false,Color=Color3.new(0,0,0),Thickness=4}),
             box      = espD("Square",{Visible=false,Filled=false,Color=Color3.new(1,0,0),Thickness=2}),
@@ -9978,7 +10270,8 @@ do
         s.boxShad.Visible = espFlags.box
         s.box.Visible     = espFlags.box
         if espFlags.box then
-            s.box.Color        = espColors.box
+            local _isBL = getgenv()._UNC_Blacklist and getgenv()._UNC_Blacklist[player.UserId]
+            s.box.Color        = _isBL and Color3.fromRGB(255, 160, 0) or espColors.box
             s.box.Position     = tl
             s.box.Size         = sz
             s.boxShad.Position = tl
@@ -10041,7 +10334,14 @@ do
         -- name (above box)
         s.nameT.Visible = espFlags.name
         if espFlags.name then
-            s.nameT.Text     = player.Name
+            local _blE = getgenv()._UNC_Blacklist and getgenv()._UNC_Blacklist[player.UserId]
+            if _blE and _blE.name ~= player.Name then
+                s.nameT.Text  = player.Name .. " [" .. _blE.name .. "]"
+                s.nameT.Color = Color3.fromRGB(255, 160, 0)
+            else
+                s.nameT.Text  = player.Name
+                s.nameT.Color = _blE and Color3.fromRGB(255, 160, 0) or Color3.new(1, 1, 1)
+            end
             s.nameT.Position = tl + Vector2.new(sz.X / 2, -13)
         end
 
@@ -10138,13 +10438,13 @@ do
             if player == _espLP then return end
             local s = self:_mk(player)
             self.states[player] = s
-            table.insert(s.connections,
+            table.insert(s.playerConns,
                 player.CharacterAdded:Connect(function(char)
                     task.spawn(function()
                         pcall(function() self:_onChar(player, char) end)
                     end)
                 end))
-            table.insert(s.connections,
+            table.insert(s.playerConns,
                 player.CharacterRemoving:Connect(function()
                     self:_hide(s); s.char = nil
                 end))
@@ -10159,8 +10459,9 @@ do
         _espP.PlayerRemoving:Connect(function(player)
             local s = self.states[player]
             if not s then return end
-            for _, c in ipairs(s.connections) do pcall(function() c:Disconnect() end) end
-            for _, d in ipairs(s.drawings)    do pcall(function() d:Remove()     end) end
+            for _, c in ipairs(s.connections)  do pcall(function() c:Disconnect() end) end
+            for _, c in ipairs(s.playerConns)  do pcall(function() c:Disconnect() end) end
+            for _, d in ipairs(s.drawings)     do pcall(function() d:Remove()     end) end
             if s.highlight then pcall(function() s.highlight:Destroy() end) end
             if s.wireframe  then pcall(function() s.wireframe:Destroy()  end) end
             self.states[player] = nil
